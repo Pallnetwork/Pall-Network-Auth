@@ -40,28 +40,25 @@ function F2Referrals({ userId, onTotalChange }: { userId: string; onTotalChange?
   useEffect(() => {
     const fetchF2Referrals = async () => {
       try {
-        // Get F1 referrals first
-        const f1Query = query(
-          collection(db, "users"),
-          where("referredBy", "==", userId)
-        );
-        const f1Snap = await getDocs(f1Query);
-        const f1Users = f1Snap.docs.map(doc => doc.data().username);
+        // Step 1: Get direct referrals (F1)
+        const q1 = query(collection(db, "users"), where("referredBy", "==", userId));
+        const snap1 = await getDocs(q1);
 
-        if (f1Users.length === 0) {
-          setF2Referrals([]);
-          onTotalChange?.(0);
-          setLoading(false);
-          return;
+        let f2List: User[] = [];
+
+        // Step 2: For each F1 user, get their referrals (F2 - indirect referrals)
+        for (let doc1 of snap1.docs) {
+          const userF1Id = doc1.id;
+
+          const q2 = query(collection(db, "users"), where("referredBy", "==", userF1Id));
+          const snap2 = await getDocs(q2);
+
+          snap2.docs.forEach(doc => {
+            const userData = doc.data() as User;
+            f2List.push(userData);
+          });
         }
 
-        // Get F2 referrals (people referred by F1 users)
-        const f2Query = query(
-          collection(db, "users"),
-          where("referredBy", "in", f1Users)
-        );
-        const f2Snap = await getDocs(f2Query);
-        const f2List = f2Snap.docs.map(doc => doc.data() as User);
         setF2Referrals(f2List);
         
         // Calculate total F2 commission
