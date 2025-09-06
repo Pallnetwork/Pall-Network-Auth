@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Zap } from "lucide-react";
+import { LogOut, Menu, X, Home, User, Users, CreditCard, Info } from "lucide-react";
 
 interface User {
   id: string;
@@ -18,9 +20,32 @@ interface User {
   referredBy?: string;
 }
 
+interface Profile {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  dob: string;
+  gender: string;
+  phone: string;
+  address: string;
+  createdAt: any;
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [referrals, setReferrals] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState("HOME");
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    dob: "",
+    gender: "",
+    phone: "",
+    address: "",
+  });
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -31,17 +56,35 @@ export default function Dashboard() {
       return;
     }
 
-    const fetchUser = async () => {
+    const fetchData = async () => {
       try {
+        // Fetch user data
         const userDoc = await getDoc(doc(db, "users", userId));
         if (userDoc.exists()) {
           setUser(userDoc.data() as User);
         } else {
           localStorage.removeItem("userId");
           navigate("/signin");
+          return;
         }
+
+        // Fetch profile data
+        const profileDoc = await getDoc(doc(db, "profiles", userId));
+        if (profileDoc.exists()) {
+          setProfile(profileDoc.data() as Profile);
+        }
+
+        // Fetch referrals (people referred by this user)
+        const q = query(
+          collection(db, "users"),
+          where("referredBy", "==", userDoc.data()?.username)
+        );
+        const referralSnap = await getDocs(q);
+        const referralList = referralSnap.docs.map(doc => doc.data() as User);
+        setReferrals(referralList);
+
       } catch (error) {
-        console.error("Error fetching user:", error);
+        console.error("Error fetching data:", error);
         localStorage.removeItem("userId");
         navigate("/signin");
       } finally {
@@ -49,8 +92,45 @@ export default function Dashboard() {
       }
     };
 
-    fetchUser();
+    fetchData();
   }, [navigate]);
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const saveProfile = async () => {
+    if (profile) {
+      toast({
+        title: "Profile already exists",
+        description: "Profile already filled, cannot edit again!",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) return;
+
+    try {
+      await setDoc(doc(db, "profiles", user.id), {
+        ...form,
+        userId: user.id,
+        createdAt: new Date(),
+      });
+      setProfile({ ...form, userId: user.id, createdAt: new Date() });
+      toast({
+        title: "Success",
+        description: "Profile saved successfully!",
+      });
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("userId");
@@ -59,6 +139,20 @@ export default function Dashboard() {
       description: "You have been signed out successfully.",
     });
     navigate("/signin");
+  };
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return "Unknown";
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return "Unknown";
+    }
   };
 
   if (isLoading) {
@@ -76,114 +170,384 @@ export default function Dashboard() {
     return null;
   }
 
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return "Unknown";
-    try {
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch {
-      return "Unknown";
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4">
-      <div className="container mx-auto max-w-4xl">
-        <Card className="mb-8">
-          <CardHeader className="text-center">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">Dashboard</h2>
-              <div className="w-3 h-3 rounded-full bg-green-400"></div>
-            </div>
-            
-            {/* Welcome Section */}
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary to-blue-600 mb-4 shadow-lg">
-                <Zap className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-3xl font-bold mb-2">Welcome to Pall Network! 🚀</h3>
-              <p className="text-muted-foreground">You're successfully authenticated and ready to explore.</p>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
-            {/* User Info Card */}
-            <div className="bg-muted/30 rounded-lg p-6">
-              <h4 className="font-semibold mb-4">Account Information</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Name:</span>
-                  <span data-testid="text-name">{user.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Username:</span>
-                  <span data-testid="text-username">@{user.username}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email:</span>
-                  <span data-testid="text-email">{user.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Member since:</span>
-                  <span data-testid="text-created-at">{formatDate(user.createdAt)}</span>
-                </div>
-                {user.referralCode && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Your Referral Code:</span>
-                    <span data-testid="text-referral-code" className="font-mono bg-muted px-2 py-1 rounded text-sm">
-                      {user.referralCode}
-                    </span>
-                  </div>
-                )}
-                {user.referredBy && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Referred by:</span>
-                    <span data-testid="text-referred-by">@{user.referredBy}</span>
-                  </div>
-                )}
-                {user.invitation && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Used Invitation:</span>
-                    <span data-testid="text-invitation">{user.invitation}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Top Bar */}
+      <div className="flex justify-between items-center bg-green-600 text-white p-4 shadow-lg">
+        <div className="flex items-center space-x-3">
+          <img src="/src/assets/app-icon.png" alt="Pall Network" className="w-8 h-8 rounded-full" />
+          <h1 className="text-xl font-bold">Pall Network</h1>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="text-white hover:bg-green-700"
+          data-testid="button-menu"
+        >
+          <Menu className="w-6 h-6" />
+        </Button>
+      </div>
 
-            {/* Quick Actions */}
-            <div className="space-y-3">
+      {/* Sidebar */}
+      {sidebarOpen && (
+        <div className="fixed top-0 right-0 h-full w-72 bg-white dark:bg-gray-900 shadow-lg z-50 border-l">
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-semibold">Menu</h2>
               <Button
-                variant="secondary"
-                className="w-full"
-                data-testid="button-profile-settings"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarOpen(false)}
+                data-testid="button-close-sidebar"
               >
-                View Profile Settings
-              </Button>
-              <Button
-                variant="secondary"
-                className="w-full"
-                data-testid="button-network-activity"
-              >
-                Network Activity
+                <X className="w-5 h-5" />
               </Button>
             </div>
+            <nav className="space-y-2">
+              <Button
+                variant={currentPage === "HOME" ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => { setCurrentPage("HOME"); setSidebarOpen(false); }}
+                data-testid="nav-home"
+              >
+                <Home className="w-4 h-4 mr-3" />
+                Home
+              </Button>
+              <Button
+                variant={currentPage === "PROFILE" ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => { setCurrentPage("PROFILE"); setSidebarOpen(false); }}
+                data-testid="nav-profile"
+              >
+                <User className="w-4 h-4 mr-3" />
+                Profile
+              </Button>
+              <Button
+                variant={currentPage === "REFERRAL" ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => { setCurrentPage("REFERRAL"); setSidebarOpen(false); }}
+                data-testid="nav-referral"
+              >
+                <Users className="w-4 h-4 mr-3" />
+                Referral Team
+              </Button>
+              <Button
+                variant={currentPage === "KYC" ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => { setCurrentPage("KYC"); setSidebarOpen(false); }}
+                data-testid="nav-kyc"
+              >
+                <CreditCard className="w-4 h-4 mr-3" />
+                KYC Verification
+              </Button>
+              <Button
+                variant={currentPage === "ABOUT" ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => { setCurrentPage("ABOUT"); setSidebarOpen(false); }}
+                data-testid="nav-about"
+              >
+                <Info className="w-4 h-4 mr-3" />
+                About
+              </Button>
+            </nav>
+            <div className="mt-8 pt-8 border-t">
+              <Button
+                variant="destructive"
+                onClick={handleLogout}
+                className="w-full"
+                data-testid="button-logout"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            {/* Logout Button */}
-            <Button
-              variant="destructive"
-              onClick={handleLogout}
-              className="w-full"
-              data-testid="button-logout"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
-          </CardContent>
-        </Card>
+      {/* Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        ></div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 p-6">
+        <div className="container mx-auto max-w-4xl">
+          {/* HOME Page */}
+          {currentPage === "HOME" && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-3xl font-bold mb-2">Welcome to Pall Network Dashboard! 🚀</h2>
+                <p className="text-muted-foreground mb-6">
+                  A decentralized crypto mining and commerce platform
+                </p>
+              </div>
+
+              {/* Quick Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <h3 className="text-2xl font-bold text-green-600">{referrals.length}</h3>
+                    <p className="text-muted-foreground">Total Referrals</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <h3 className="text-2xl font-bold text-blue-600">{referrals.length} USDT</h3>
+                    <p className="text-muted-foreground">Referral Rewards</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <h3 className="text-2xl font-bold text-primary">Active</h3>
+                    <p className="text-muted-foreground">Account Status</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Referral Code */}
+              {user.referralCode && (
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="font-semibold mb-4">Your Referral Code</h3>
+                    <div className="flex items-center justify-between bg-muted p-4 rounded-lg">
+                      <code className="font-mono text-lg">{user.referralCode}</code>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(user.referralCode || "");
+                          toast({
+                            title: "Copied!",
+                            description: "Referral code copied to clipboard",
+                          });
+                        }}
+                        data-testid="button-copy-code"
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Share this code with friends to earn 1 USDT per referral
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* PROFILE Page */}
+          {currentPage === "PROFILE" && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-2xl font-bold">Profile Information</h2>
+              </CardHeader>
+              <CardContent>
+                {profile ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <strong>First Name:</strong> {profile.firstName}
+                      </div>
+                      <div>
+                        <strong>Last Name:</strong> {profile.lastName}
+                      </div>
+                      <div>
+                        <strong>Date of Birth:</strong> {profile.dob}
+                      </div>
+                      <div>
+                        <strong>Gender:</strong> {profile.gender}
+                      </div>
+                      <div>
+                        <strong>Phone:</strong> {profile.phone}
+                      </div>
+                      <div>
+                        <strong>Address:</strong> {profile.address}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="firstName">First Name</Label>
+                        <Input
+                          id="firstName"
+                          name="firstName"
+                          value={form.firstName}
+                          onChange={handleFormChange}
+                          data-testid="input-first-name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input
+                          id="lastName"
+                          name="lastName"
+                          value={form.lastName}
+                          onChange={handleFormChange}
+                          data-testid="input-last-name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="dob">Date of Birth</Label>
+                        <Input
+                          id="dob"
+                          name="dob"
+                          type="date"
+                          value={form.dob}
+                          onChange={handleFormChange}
+                          data-testid="input-dob"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="gender">Gender</Label>
+                        <select
+                          id="gender"
+                          name="gender"
+                          value={form.gender}
+                          onChange={handleFormChange}
+                          className="w-full p-2 border border-input rounded-md bg-background"
+                          data-testid="select-gender"
+                        >
+                          <option value="">Select Gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                          <option value="Prefer not to say">Prefer not to say</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label htmlFor="phone">Phone</Label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          value={form.phone}
+                          onChange={handleFormChange}
+                          data-testid="input-phone"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="address">Address</Label>
+                        <Input
+                          id="address"
+                          name="address"
+                          value={form.address}
+                          onChange={handleFormChange}
+                          data-testid="input-address"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      onClick={saveProfile}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      data-testid="button-save-profile"
+                    >
+                      Save Profile
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* REFERRAL Page */}
+          {currentPage === "REFERRAL" && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-2xl font-bold">Referral Team</h2>
+              </CardHeader>
+              <CardContent>
+                {referrals.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    No referrals yet. Share your referral code to start earning!
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {referrals.map((referral, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center p-4 border rounded-lg"
+                        data-testid={`referral-${index}`}
+                      >
+                        <div>
+                          <p className="font-medium">@{referral.username}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Joined {formatDate(referral.createdAt)}
+                          </p>
+                        </div>
+                        <div className="text-green-600 font-bold">
+                          +1 USDT
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* KYC Page */}
+          {currentPage === "KYC" && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-2xl font-bold">KYC Verification</h2>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <CreditCard className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
+                  <p className="text-muted-foreground">
+                    KYC verification will be available in the next update
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ABOUT Page */}
+          {currentPage === "ABOUT" && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-2xl font-bold">About Pall Network</h2>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p>
+                    Pall Network is a decentralized crypto mining and commerce platform where users
+                    can mine Pall Tokens, invite others, and earn referral rewards.
+                  </p>
+                  <p>
+                    Our mission is to bring mining to everyone through web and mobile applications,
+                    making cryptocurrency accessible to users worldwide.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    <div>
+                      <h3 className="font-semibold mb-2">Features</h3>
+                      <ul className="space-y-1 text-sm text-muted-foreground">
+                        <li>• Decentralized mining</li>
+                        <li>• Referral rewards system</li>
+                        <li>• User-friendly interface</li>
+                        <li>• Mobile & web access</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-2">Contact</h3>
+                      <p className="text-sm text-muted-foreground">
+                        For support or questions, please visit our help center
+                        or contact our support team.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
