@@ -29,11 +29,8 @@ export default function Home() {
         <div className="w-full max-w-6xl">
           {/* Header Section */}
           <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary to-blue-600 mb-6 shadow-lg">
-              <svg viewBox="0 0 24 24" className="w-12 h-12 text-white" fill="currentColor">
-                <path d="M12 2L3 7v10c0 5.55 3.84 9.74 9 9.96C17.16 26.74 21 22.55 21 17V7l-9-5zm0 2.18L19 8.82V17c0 4.55-3.14 8.03-7 8.27C8.14 25.03 5 21.55 5 17V8.82L12 4.18z"/>
-                <path d="M10 12l2-5 2 5-1 3h-2l-1-3z"/>
-              </svg>
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary to-blue-600 mb-6 shadow-lg overflow-hidden">
+              <img src="/src/assets/app-icon.png" alt="Pall Network Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-4xl font-bold mb-4">Pall Network</h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
