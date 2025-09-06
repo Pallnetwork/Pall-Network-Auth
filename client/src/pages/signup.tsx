@@ -34,7 +34,9 @@ export default function SignUp() {
   const handlePackageChange = (value: string) => {
     const packagePrices = {
       "Basic": 25,
+      "Silver": 20,
       "Gold": 56,
+      "Diamond": 100,
       "Premium": 100
     };
     setForm({ 
@@ -183,7 +185,9 @@ export default function SignUp() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Basic">Basic - $25 USDT</SelectItem>
+                  <SelectItem value="Silver">Silver - $20 USDT</SelectItem>
                   <SelectItem value="Gold">Gold - $56 USDT</SelectItem>
+                  <SelectItem value="Diamond">Diamond - $100 USDT</SelectItem>
                   <SelectItem value="Premium">Premium - $100 USDT</SelectItem>
                 </SelectContent>
               </Select>
