@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import { distributeReferralCommission } from "@/lib/referralCommission";
 
 declare global {
   interface Window {
@@ -169,6 +170,14 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
 
       // Save package to Firestore with transaction hash
       await updateMining(userId, pkg, tx.hash);
+
+      // Distribute referral commissions
+      const commissionResult = await distributeReferralCommission(userId, pkg.price);
+      if (commissionResult.success) {
+        console.log(`💰 Commissions distributed - F1: ${commissionResult.f1Commission}, F2: ${commissionResult.f2Commission}`);
+      } else {
+        console.error("Commission distribution failed:", commissionResult.error);
+      }
 
     } catch (error: any) {
       console.error("Transaction error:", error);
