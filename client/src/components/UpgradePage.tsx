@@ -58,15 +58,30 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
     }
   };
 
-  // Update mining package in Firestore
-  const updateMining = async (userId: string, pkg: typeof PACKAGES[0]) => {
+  // Update mining package in Firestore and record transaction
+  const updateMining = async (userId: string, pkg: typeof PACKAGES[0], txHash: string) => {
     try {
+      // Update wallet with new package
       await setDoc(doc(db, "wallets", userId), {
         currentPackage: pkg.name,
         miningSpeed: pkg.speed,
         packagePrice: pkg.price,
         upgradedAt: new Date()
       }, { merge: true });
+
+      // Record transaction in transactions collection
+      const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      await setDoc(doc(db, "transactions", transactionId), {
+        userId: userId,
+        package: pkg.name,
+        amount: pkg.price,
+        speed: pkg.speed,
+        txHash: txHash,
+        status: "confirmed",
+        network: "BEP20",
+        createdAt: new Date()
+      });
+
     } catch (error) {
       console.error("Error updating mining package:", error);
     }
@@ -102,15 +117,15 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
       });
 
       const tx = await usdt.transfer(RECEIVER_ADDRESS, amount);
-      await tx.wait();
+      const receipt = await tx.wait();
 
       toast({
         title: "Package Purchased!",
         description: `${pkg.name} Package - Speed upgraded to ${pkg.speed}X`,
       });
 
-      // Save package to Firestore
-      await updateMining(userId, pkg);
+      // Save package to Firestore with transaction hash
+      await updateMining(userId, pkg, tx.hash);
 
     } catch (error: any) {
       console.error("Transaction error:", error);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,6 +123,7 @@ export default function Dashboard() {
     totalCommission: number;
     referredUsers: string[];
   } | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [pallBalance, setPallBalance] = useState(0);
   const [usdtBalance, setUsdtBalance] = useState(0);
   const [miningStatus, setMiningStatus] = useState(false);
@@ -219,6 +220,23 @@ export default function Dashboard() {
           }
         } catch (error) {
           console.error("Error fetching referral data:", error);
+        }
+
+        // Fetch transaction history
+        try {
+          const transactionQuery = query(
+            collection(db, "transactions"),
+            where("userId", "==", userId),
+            orderBy("createdAt", "desc")
+          );
+          const transactionSnap = await getDocs(transactionQuery);
+          const transactionList = transactionSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setTransactions(transactionList);
+        } catch (error) {
+          console.error("Error fetching transactions:", error);
         }
 
       } catch (error) {
@@ -805,16 +823,47 @@ export default function Dashboard() {
           {currentPage === "KYC" && (
             <Card>
               <CardHeader>
-                <h2 className="text-2xl font-bold">KYC Verification</h2>
+                <h2 className="text-2xl font-bold">Transaction History</h2>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12">
-                  <CreditCard className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
-                  <p className="text-muted-foreground">
-                    KYC verification will be available in the next update
-                  </p>
-                </div>
+                {transactions.length === 0 ? (
+                  <div className="text-center py-12">
+                    <CreditCard className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No Transactions</h3>
+                    <p className="text-muted-foreground">
+                      Your package upgrades will appear here
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {transactions.map((tx) => (
+                      <div key={tx.id} className="border rounded-lg p-4 flex justify-between items-center">
+                        <div>
+                          <h3 className="font-semibold">{tx.package} Package</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {tx.speed}X Mining Speed • {tx.network}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(tx.createdAt.toDate ? tx.createdAt.toDate() : tx.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-green-600">{tx.amount} USDT</p>
+                          <p className="text-xs text-muted-foreground capitalize">{tx.status}</p>
+                          <a 
+                            href={`https://bscscan.com/tx/${tx.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline"
+                            data-testid={`link-tx-${tx.id}`}
+                          >
+                            View on BscScan
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
