@@ -117,6 +117,12 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [referrals, setReferrals] = useState<User[]>([]);
   const [f2Total, setF2Total] = useState(0);
+  const [referralData, setReferralData] = useState<{
+    f1Commission: number;
+    f2Commission: number;
+    totalCommission: number;
+    referredUsers: string[];
+  } | null>(null);
   const [pallBalance, setPallBalance] = useState(0);
   const [usdtBalance, setUsdtBalance] = useState(0);
   const [miningStatus, setMiningStatus] = useState(false);
@@ -183,6 +189,36 @@ export default function Dashboard() {
           }
         } catch (error) {
           console.error("Error fetching mining data:", error);
+        }
+
+        // Fetch referral data
+        try {
+          const referralSnap = await getDoc(doc(db, "referrals", userId));
+          if (referralSnap.exists()) {
+            const refData = referralSnap.data();
+            setReferralData({
+              f1Commission: refData.f1Commission || 0,
+              f2Commission: refData.f2Commission || 0,
+              totalCommission: refData.totalCommission || 0,
+              referredUsers: refData.referredUsers || []
+            });
+          } else {
+            // Initialize referral document if it doesn't exist
+            await setDoc(doc(db, "referrals", userId), {
+              referredUsers: [],
+              f1Commission: 0,
+              f2Commission: 0,
+              totalCommission: 0
+            });
+            setReferralData({
+              f1Commission: 0,
+              f2Commission: 0,
+              totalCommission: 0,
+              referredUsers: []
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching referral data:", error);
         }
 
       } catch (error) {
@@ -258,8 +294,8 @@ export default function Dashboard() {
   };
 
   // Commission Totals
-  const totalF1 = referrals.reduce((sum, r) => sum + (0.05 * (r.packagePrice || 0)), 0);
-  const totalF2 = f2Total;
+  const totalF1 = referralData?.f1Commission || 0;
+  const totalF2 = referralData?.f2Commission || 0;
 
   if (isLoading) {
     return (
@@ -707,8 +743,8 @@ export default function Dashboard() {
               <h2 className="text-2xl font-bold mb-4">Wallet</h2>
               <div className="mb-4">
                 <p className="text-lg">💰 Pall Balance: <b>{pallBalance.toFixed(4)} PALL</b></p>
-                <p className="text-lg">💵 USDT Balance: <b>{usdtBalance.toFixed(2)} USDT</b></p>
-                <p className="text-xs text-gray-500 mt-1">Referral Earnings: F1 + F2 = {(totalF1 + totalF2).toFixed(2)} USDT</p>
+                <p className="text-lg">💵 USDT Balance: <b>{(totalF1 + totalF2).toFixed(2)} USDT</b></p>
+                <p className="text-xs text-gray-500 mt-1">F1: {totalF1.toFixed(2)} + F2: {totalF2.toFixed(2)} = {(totalF1 + totalF2).toFixed(2)} USDT</p>
               </div>
               <div className="space-y-2 mb-4">
                 <input 
