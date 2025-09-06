@@ -118,6 +118,7 @@ export default function Dashboard() {
   const [referrals, setReferrals] = useState<User[]>([]);
   const [f2Total, setF2Total] = useState(0);
   const [pallBalance, setPallBalance] = useState(0);
+  const [usdtBalance, setUsdtBalance] = useState(0);
   const [miningStatus, setMiningStatus] = useState(false);
   const [currentPackage, setCurrentPackage] = useState<string>("Free");
   const [miningSpeed, setMiningSpeed] = useState<number>(1);
@@ -175,8 +176,9 @@ export default function Dashboard() {
           if (walletSnap.exists()) {
             const walletData = walletSnap.data();
             setPallBalance(walletData.pallBalance || 0);
+            setUsdtBalance(walletData.usdtBalance || 0);
             setMiningStatus(walletData.miningActive || false);
-            setCurrentPackage(walletData.package || "Free");
+            setCurrentPackage(walletData.currentPackage || "Free");
             setMiningSpeed(walletData.miningSpeed || 1);
           }
         } catch (error) {
@@ -705,7 +707,8 @@ export default function Dashboard() {
               <h2 className="text-2xl font-bold mb-4">Wallet</h2>
               <div className="mb-4">
                 <p className="text-lg">💰 Pall Balance: <b>{pallBalance.toFixed(4)} PALL</b></p>
-                <p className="text-lg">💵 USDT (Referral Commission): <b>{(totalF1 + totalF2).toFixed(2)} USDT</b></p>
+                <p className="text-lg">💵 USDT Balance: <b>{usdtBalance.toFixed(2)} USDT</b></p>
+                <p className="text-xs text-gray-500 mt-1">Referral Earnings: F1 + F2 = {(totalF1 + totalF2).toFixed(2)} USDT</p>
               </div>
               <div className="space-y-2 mb-4">
                 <input 

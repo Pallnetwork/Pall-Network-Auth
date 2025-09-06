@@ -62,7 +62,7 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
   const updateMining = async (userId: string, pkg: typeof PACKAGES[0]) => {
     try {
       await setDoc(doc(db, "wallets", userId), {
-        package: pkg.name,
+        currentPackage: pkg.name,
         miningSpeed: pkg.speed,
         packagePrice: pkg.price,
         upgradedAt: new Date()
