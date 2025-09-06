@@ -18,6 +18,7 @@ interface User {
   invitation?: string;
   referralCode?: string;
   referredBy?: string;
+  package?: string;
   packagePrice?: number;
 }
 

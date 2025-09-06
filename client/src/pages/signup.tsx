@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
@@ -17,6 +18,8 @@ export default function SignUp() {
     username: "",
     invitation: "",
     password: "",
+    package: "Basic",
+    packagePrice: 25,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,6 +29,19 @@ export default function SignUp() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError("");
+  };
+
+  const handlePackageChange = (value: string) => {
+    const packagePrices = {
+      "Basic": 25,
+      "Gold": 56,
+      "Premium": 100
+    };
+    setForm({ 
+      ...form, 
+      package: value, 
+      packagePrice: packagePrices[value as keyof typeof packagePrices] 
+    });
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -61,7 +77,8 @@ export default function SignUp() {
         id: userId,
         referralCode: referralCode,
         referredBy: referredBy || null,
-        packagePrice: 100, // Default package price for commission calculations
+        package: form.package,
+        packagePrice: form.packagePrice,
         createdAt: new Date(),
       });
       
@@ -157,6 +174,19 @@ export default function SignUp() {
                 required
                 data-testid="input-password"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="package">Package</Label>
+              <Select value={form.package} onValueChange={handlePackageChange} data-testid="select-package">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a package" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Basic">Basic - $25 USDT</SelectItem>
+                  <SelectItem value="Gold">Gold - $56 USDT</SelectItem>
+                  <SelectItem value="Premium">Premium - $100 USDT</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {error && (
