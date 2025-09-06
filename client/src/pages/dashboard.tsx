@@ -671,6 +671,20 @@ export default function Dashboard() {
                 <p className="text-lg">💰 Pall Balance: <b>{pallBalance.toFixed(4)} PALL</b></p>
                 <p className="text-lg">💵 USDT (Referral Commission): <b>{(totalF1 + totalF2).toFixed(2)} USDT</b></p>
               </div>
+              <div className="space-y-2 mb-4">
+                <input 
+                  type="text" 
+                  placeholder="Wallet Address (e.g., 0xAaE232DeFc1a7951C6b8a00EC46C6d451f605cCF)"
+                  className="w-full p-2 border rounded text-sm"
+                  data-testid="input-wallet-address"
+                />
+                <input 
+                  type="number" 
+                  placeholder="Amount"
+                  className="w-full p-2 border rounded text-sm"
+                  data-testid="input-amount"
+                />
+              </div>
               <button 
                 className="w-full bg-blue-500 text-white p-2 rounded mb-2 hover:bg-blue-600 transition-colors" 
                 onClick={() => {
