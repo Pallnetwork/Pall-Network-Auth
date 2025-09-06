@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { doc, setDoc, getDocs, query, collection, where } from "firebase/firestore";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
 
 export default function SignUp() {
   const [form, setForm] = useState({
@@ -52,14 +52,8 @@ export default function SignUp() {
     setError("");
 
     try {
-      const userId = uuidv4();
-
-      // Generate referral code for the new user
-      const referralCode = form.username.toLowerCase() + "-" + userId.slice(0, 5);
-
+      // Check if invitation code exists and is valid (if provided)
       let referredBy = null;
-
-      // Check if invitation code exists and is valid
       if (form.invitation) {
         const q = query(
           collection(db, "users"),
@@ -70,31 +64,78 @@ export default function SignUp() {
           referredBy = snap.docs[0].data().username;
         } else {
           setError("Invalid invitation code. Please check and try again.");
+          setIsLoading(false);
           return;
         }
       }
 
-      await setDoc(doc(db, "users", userId), {
-        ...form,
-        id: userId,
+      // Create Firebase Authentication user
+      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      const user = userCredential.user;
+
+      // Update user profile with display name
+      await updateProfile(user, {
+        displayName: form.name
+      });
+
+      // Generate referral code for the new user
+      const referralCode = form.username.toLowerCase() + "-" + user.uid.slice(0, 5);
+
+      // Create user document in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        email: form.email,
+        name: form.name,
+        username: form.username,
+        id: user.uid,
         referralCode: referralCode,
         referredBy: referredBy || null,
         package: form.package,
         packagePrice: form.packagePrice,
         createdAt: new Date(),
       });
+
+      // Create wallet document with default balance
+      await setDoc(doc(db, "wallets", user.uid), {
+        userId: user.uid,
+        pallBalance: 0,
+        usdtBalance: 0,
+        currentPackage: form.package,
+        miningSpeed: 1,
+        packagePrice: form.packagePrice,
+        miningActive: false,
+        lastStart: null,
+        totalEarnings: 0,
+        createdAt: new Date(),
+      });
+
+      // Store userId in localStorage for immediate access
+      localStorage.setItem("userId", user.uid);
       
-      localStorage.setItem("userId", userId);
       toast({
         title: "Success",
         description: referredBy 
           ? `Account created successfully! Referred by ${referredBy}.`
           : "Account created successfully!",
       });
+      
+      console.log("✅ User created in Firebase Auth:", user.uid);
+      console.log("✅ User document created in Firestore");
+      console.log("✅ Wallet document created with default balance");
+      
       navigate("/dashboard");
-    } catch (err) {
-      setError("Failed to create account. Please try again.");
-      console.error("Signup error:", err);
+    } catch (err: any) {
+      console.error("❌ Signup error:", err);
+      
+      // Handle specific Firebase Auth errors
+      if (err.code === 'auth/email-already-in-use') {
+        setError("This email is already registered. Please use a different email or sign in.");
+      } else if (err.code === 'auth/weak-password') {
+        setError("Password is too weak. Please use at least 6 characters.");
+      } else if (err.code === 'auth/invalid-email') {
+        setError("Invalid email address. Please check and try again.");
+      } else {
+        setError("Failed to create account. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 
 export default function SignIn() {
-  const [form, setForm] = useState({ identifier: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [, navigate] = useLocation();
@@ -27,47 +27,35 @@ export default function SignIn() {
     setError("");
 
     try {
-      // First try to find user by username
-      let q = query(
-        collection(db, "users"),
-        where("username", "==", form.identifier)
-      );
-      let snap = await getDocs(q);
+      // Use Firebase Authentication to sign in
+      const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
+      const user = userCredential.user;
 
-      let user = null;
-      if (!snap.empty) {
-        user = snap.docs[0].data();
-      } else {
-        // If not found by username, try by email
-        q = query(
-          collection(db, "users"),
-          where("email", "==", form.identifier)
-        );
-        snap = await getDocs(q);
-        if (!snap.empty) {
-          user = snap.docs[0].data();
-        }
-      }
-
-      if (!user) {
-        setError("User not found");
-        return;
-      }
-
-      if (user.password !== form.password) {
-        setError("Invalid password");
-        return;
-      }
-
-      localStorage.setItem("userId", user.id);
+      // Store userId in localStorage for immediate access
+      localStorage.setItem("userId", user.uid);
+      
       toast({
         title: "Success",
         description: "You have been signed in successfully!",
       });
+      
+      console.log("✅ User signed in successfully:", user.uid);
       navigate("/dashboard");
-    } catch (err) {
-      setError("An error occurred. Please try again.");
-      console.error("Signin error:", err);
+    } catch (err: any) {
+      console.error("❌ Signin error:", err);
+      
+      // Handle specific Firebase Auth errors
+      if (err.code === 'auth/user-not-found') {
+        setError("No account found with this email. Please check your email or create an account.");
+      } else if (err.code === 'auth/wrong-password') {
+        setError("Incorrect password. Please try again.");
+      } else if (err.code === 'auth/invalid-email') {
+        setError("Invalid email address. Please check and try again.");
+      } else if (err.code === 'auth/too-many-requests') {
+        setError("Too many failed attempts. Please try again later.");
+      } else {
+        setError("Sign in failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -85,16 +73,16 @@ export default function SignIn() {
         <CardContent className="space-y-4">
           <form onSubmit={handleSignin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="identifier">Email or Username</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="identifier"
-                name="identifier"
-                type="text"
-                placeholder="Enter your email or username"
-                value={form.identifier}
+                id="email"
+                name="email"
+                type="email"
+                placeholder="Enter your email"
+                value={form.email}
                 onChange={handleChange}
                 required
-                data-testid="input-identifier"
+                data-testid="input-email"
               />
             </div>
             <div className="space-y-2">
