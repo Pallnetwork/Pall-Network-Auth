@@ -74,6 +74,35 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
     loadSettings();
   }, []);
 
+  // Detect installed wallets
+  const detectWallet = () => {
+    if (window.ethereum) {
+      if (window.ethereum.isMetaMask) return "MetaMask";
+      if (window.ethereum.isTrust) return "Trust Wallet";
+      if (window.ethereum.isCoinbaseWallet) return "Coinbase Wallet";
+      return "Web3 Wallet";
+    }
+    return null;
+  };
+
+  // Auto-connect if wallet already connected
+  useEffect(() => {
+    const autoConnect = async () => {
+      if (window.ethereum) {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const accounts = await provider.listAccounts();
+          if (accounts.length > 0) {
+            setWallet(accounts[0].address);
+          }
+        } catch (error) {
+          console.log("Auto-connect failed:", error);
+        }
+      }
+    };
+    autoConnect();
+  }, []);
+
   // Connect Wallet (MetaMask / Web3 Provider)
   const connectWallet = async () => {
     try {
@@ -81,14 +110,15 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const accounts = await provider.send("eth_requestAccounts", []);
         setWallet(accounts[0]);
+        const walletName = detectWallet();
         toast({
           title: "Wallet Connected",
-          description: `Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
+          description: `${walletName} connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
         });
       } else {
         toast({
           title: "No Wallet Found",
-          description: "Please install MetaMask or Trust Wallet.",
+          description: "Please install MetaMask, Trust Wallet, or another Web3 wallet.",
           variant: "destructive",
         });
       }

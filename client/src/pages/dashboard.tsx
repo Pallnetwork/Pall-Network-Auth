@@ -758,50 +758,65 @@ export default function Dashboard() {
           {/* WALLET Page */}
           {currentPage === "WALLET" && (
             <div className="bg-white dark:bg-card p-6 rounded shadow-md max-w-md mx-auto">
-              <h2 className="text-2xl font-bold mb-4">Wallet</h2>
-              <div className="mb-4">
-                <p className="text-lg">💰 Pall Balance: <b>{pallBalance.toFixed(4)} PALL</b></p>
-                <p className="text-lg">💵 USDT Balance: <b>{(totalF1 + totalF2).toFixed(2)} USDT</b></p>
-                <p className="text-xs text-gray-500 mt-1">F1: {totalF1.toFixed(2)} + F2: {totalF2.toFixed(2)} = {(totalF1 + totalF2).toFixed(2)} USDT</p>
+              <h2 className="text-2xl font-bold mb-4">💳 Wallet</h2>
+              
+              {/* Balance Display */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
+                <p className="text-lg mb-2">💰 <strong>PALL Balance:</strong> {pallBalance.toFixed(4)} PALL</p>
+                <p className="text-lg mb-2">💵 <strong>USDT Balance:</strong> {(totalF1 + totalF2).toFixed(2)} USDT</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Referral Earnings: F1 ({totalF1.toFixed(2)}) + F2 ({totalF2.toFixed(2)})</p>
               </div>
-              <div className="space-y-2 mb-4">
-                <input 
-                  type="text" 
-                  placeholder="Wallet Address (e.g., 0xAaE232DeFc1a7951C6b8a00EC46C6d451f605cCF)"
-                  className="w-full p-2 border rounded text-sm"
-                  data-testid="input-wallet-address"
-                />
-                <input 
-                  type="number" 
-                  placeholder="Amount"
-                  className="w-full p-2 border rounded text-sm"
-                  data-testid="input-amount"
-                />
+
+              {/* Wallet Connection Status */}
+              <div className="mb-4 p-3 border rounded-lg">
+                {typeof window !== 'undefined' && window.ethereum ? (
+                  <div className="text-center">
+                    <div className="text-green-600 dark:text-green-400 mb-2">✅ Web3 Wallet Detected</div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {window.ethereum.isMetaMask ? "MetaMask" : 
+                       window.ethereum.isTrust ? "Trust Wallet" : 
+                       window.ethereum.isCoinbaseWallet ? "Coinbase Wallet" : "Web3 Wallet"} is installed
+                    </p>
+                    <Button 
+                      className="mt-2 w-full bg-blue-500 hover:bg-blue-600"
+                      onClick={() => setCurrentPage("UPGRADE")}
+                    >
+                      Connect & Upgrade Package
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="text-yellow-600 dark:text-yellow-400 mb-2">⚠️ No Web3 Wallet Found</div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Install a Web3 wallet to enable USDT transactions
+                    </p>
+                    <div className="space-y-2">
+                      <a
+                        href="https://metamask.io/download/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full bg-orange-500 hover:bg-orange-600 text-white p-2 rounded text-center transition-colors"
+                      >
+                        📦 Install MetaMask
+                      </a>
+                      <a
+                        href="https://trustwallet.com/download"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full bg-blue-500 hover:bg-blue-600 text-white p-2 rounded text-center transition-colors"
+                      >
+                        📱 Install Trust Wallet
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
-              <button 
-                className="w-full bg-blue-500 text-white p-2 rounded mb-2 hover:bg-blue-600 transition-colors" 
-                onClick={() => {
-                  toast({
-                    title: "Coming Soon",
-                    description: "Deposit functionality will be available soon",
-                  });
-                }}
-                data-testid="button-deposit"
-              >
-                Deposit
-              </button>
-              <button 
-                className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition-colors" 
-                onClick={() => {
-                  toast({
-                    title: "Coming Soon", 
-                    description: "Withdraw functionality will be available soon",
-                  });
-                }}
-                data-testid="button-withdraw"
-              >
-                Withdraw
-              </button>
+
+              {/* Transaction Info */}
+              <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+                <p>💡 <strong>Note:</strong> This is a cloud mining simulation platform.</p>
+                <p>USDT transactions are processed via blockchain wallets.</p>
+              </div>
             </div>
           )}
 
