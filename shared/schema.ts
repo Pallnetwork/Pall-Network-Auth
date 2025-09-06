@@ -10,6 +10,8 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   invitation: text("invitation"),
+  referralBy: text("referral_by"), // Username of the person who referred this user
+  kycStatus: text("kyc_status").default("pending"), // pending, approved, rejected
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -19,6 +21,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
   invitation: true,
+  referralBy: true,
+  kycStatus: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
