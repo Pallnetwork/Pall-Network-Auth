@@ -119,6 +119,8 @@ export default function Dashboard() {
   const [f2Total, setF2Total] = useState(0);
   const [pallBalance, setPallBalance] = useState(0);
   const [miningStatus, setMiningStatus] = useState(false);
+  const [currentPackage, setCurrentPackage] = useState<string>("Free");
+  const [miningSpeed, setMiningSpeed] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("HOME");
@@ -174,6 +176,8 @@ export default function Dashboard() {
             const walletData = walletSnap.data();
             setPallBalance(walletData.pallBalance || 0);
             setMiningStatus(walletData.miningActive || false);
+            setCurrentPackage(walletData.package || "Free");
+            setMiningSpeed(walletData.miningSpeed || 1);
           }
         } catch (error) {
           console.error("Error fetching mining data:", error);
@@ -444,6 +448,28 @@ export default function Dashboard() {
                 </Card>
               </div>
 
+              {/* Current Mining Package */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-semibold mb-2">Current Mining Package</h3>
+                      <p className="text-2xl font-bold text-blue-600">{currentPackage}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Mining Speed: {miningSpeed}X {currentPackage === "Free" ? "(0.01 PALL/sec)" : `(${(0.01 * miningSpeed).toFixed(3)} PALL/sec)`}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setCurrentPage("UPGRADE")}
+                      className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                      data-testid="button-upgrade-mining"
+                    >
+                      ⚡ Upgrade Mining
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Referral Code */}
               {user.referralCode && (
                 <Card>
@@ -467,7 +493,7 @@ export default function Dashboard() {
                       </Button>
                     </div>
                     <p className="text-sm text-muted-foreground mt-2">
-                      Share this code with friends to earn 1 USDT per referral
+                      Share this code with friends to earn commissions from referrals
                     </p>
                   </CardContent>
                 </Card>

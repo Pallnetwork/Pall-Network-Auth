@@ -12,7 +12,8 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const [balance, setBalance] = useState(0);
   const [mining, setMining] = useState(false);
   const [lastStart, setLastStart] = useState<Date | null>(null);
-  const miningRate = 0.01; // 0.01 PALL per second
+  const [miningSpeed, setMiningSpeed] = useState(1);
+  const baseMiningRate = 0.01; // Base rate: 0.01 PALL per second
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,6 +24,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           setBalance(data.pallBalance || 0);
           setLastStart(data.lastStart ? data.lastStart.toDate() : null);
           setMining(data.miningActive || false);
+          setMiningSpeed(data.miningSpeed || 1);
         }
       } catch (error) {
         console.error("Error fetching mining data:", error);
@@ -36,7 +38,8 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     if (mining) {
       interval = setInterval(async () => {
         setBalance(prev => {
-          const newBalance = prev + miningRate;
+          const actualRate = baseMiningRate * miningSpeed;
+          const newBalance = prev + actualRate;
           saveBalance(newBalance);
           return newBalance;
         });
@@ -95,7 +98,8 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         
         {mining && (
           <div className="text-sm text-green-600">
-            <p>⚡ Mining Active - Earning {miningRate} PALL/second</p>
+            <p>⚡ Mining Active - Earning {(baseMiningRate * miningSpeed).toFixed(3)} PALL/second</p>
+            <p className="text-xs">Speed Multiplier: {miningSpeed}X</p>
             {lastStart && (
               <p>Started: {lastStart.toLocaleTimeString()}</p>
             )}
@@ -121,7 +125,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         )}
 
         <p className="text-xs text-muted-foreground">
-          Mining Rate: {miningRate} PALL per second
+          Base Rate: {baseMiningRate} PALL/sec × {miningSpeed}X = {(baseMiningRate * miningSpeed).toFixed(3)} PALL/sec
         </p>
       </CardContent>
     </Card>
