@@ -1,0 +1,96 @@
+import React, { useState } from "react";
+import { ethers } from "ethers";
+
+const PACKAGES = [
+  { name: "Bronze", price: 5, speed: 3 },
+  { name: "Silver", price: 8, speed: 7 },
+  { name: "Gold", price: 49, speed: 15 },
+  { name: "Diamond", price: 100, speed: 22 },
+];
+
+const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // BEP20 USDT Contract
+const RECEIVER_ADDRESS = "0xAaE232DeFc1a7951C6b8a00EC46C6d451f605cCF";
+
+export default function UpgradePage({ userId, updateMining }) {
+  const [wallet, setWallet] = useState(null);
+
+  // ✅ Connect Wallet (MetaMask / Web3 Provider)
+  const connectWallet = async () => {
+    if (window.ethereum) {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      setWallet(accounts[0]);
+      alert("Wallet connected: " + accounts[0]);
+    } else {
+      alert("No Web3 wallet found. Install MetaMask or Trust Wallet.");
+    }
+  };
+
+  // ✅ Buy Package
+  const buyPackage = async (pkg) => {
+    try {
+      if (!wallet) return alert("Please connect wallet first!");
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      // ERC20 Transfer (USDT on BNB Chain)
+      const usdt = new ethers.Contract(
+        USDT_ADDRESS,
+        ["function transfer(address to, uint256 amount) public returns (bool)"],
+        signer
+      );
+
+      const amount = ethers.parseUnits(pkg.price.toString(), 18); // USDT 18 decimals
+      const tx = await usdt.transfer(RECEIVER_ADDRESS, amount);
+      await tx.wait();
+
+      alert(${pkg.name} Package Purchased! Speed upgraded to ${pkg.speed}X);
+
+      // Save package to Firestore
+      await updateMining(userId, pkg);
+
+    } catch (error) {
+      console.error(error);
+      alert("Transaction failed. Try again.");
+    }
+  };
+
+  return (
+    <div className="bg-white p-6 rounded shadow-md max-w-lg text-center">
+      <h2 className="text-2xl font-bold mb-4">Upgrade Mining</h2>
+
+      {!wallet ? (
+        <button
+          onClick={connectWallet}
+          className="bg-blue-500 text-white px-4 py-2 rounded mb-4"
+        >
+          Connect Wallet
+        </button>
+      ) : (
+        <p className="mb-4 text-green-600">Wallet Connected: {wallet}</p>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        {PACKAGES.map((pkg, i) => (
+          <div key={i} className="border p-4 rounded">
+            <h3 className="text-xl font-bold">{pkg.name}</h3>
+            <p>{pkg.price} USDT</p>
+            <p>Mining Speed: {pkg.speed}X</p>
+            <button
+              onClick={() => buyPackage(pkg)}
+              className="bg-green-500 text-white px-4 py-2 rounded mt-2"
+            >
+              Buy
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-4 text-sm text-gray-500">
+        ⚠ Payment accepted only in USDT (BEP20) on BNB Chain.  
+        Once purchased, package cannot be changed.
+      </p>
+    </div>
+  );
+}

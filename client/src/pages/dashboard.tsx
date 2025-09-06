@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Menu, X, Home, User, Users, CreditCard, Info, Wallet, Shield, Pickaxe } from "lucide-react";
+import { LogOut, Menu, X, Home, User, Users, CreditCard, Info, Wallet, Shield, Pickaxe, Zap } from "lucide-react";
 import MiningDashboard from "@/components/MiningDashboard";
+import UpgradePage from "@/components/UpgradePage";
 
 interface User {
   id: string;
@@ -348,6 +349,15 @@ export default function Dashboard() {
               >
                 <Pickaxe className="w-4 h-4 mr-3" />
                 MINING
+              </Button>
+              <Button
+                variant={currentPage === "UPGRADE" ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => { setCurrentPage("UPGRADE"); setSidebarOpen(false); }}
+                data-testid="nav-upgrade"
+              >
+                <Zap className="w-4 h-4 mr-3" />
+                UPGRADE
               </Button>
               <Button
                 variant={currentPage === "KYC" ? "secondary" : "ghost"}
@@ -716,6 +726,13 @@ export default function Dashboard() {
           {currentPage === "MINING" && (
             <div>
               {user && <MiningDashboard userId={user.id} />}
+            </div>
+          )}
+
+          {/* UPGRADE Page */}
+          {currentPage === "UPGRADE" && (
+            <div>
+              {user && <UpgradePage userId={user.id} />}
             </div>
           )}
 
