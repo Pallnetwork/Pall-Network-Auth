@@ -8,16 +8,11 @@
     
     <!-- PWA Configuration -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#3b82f6" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Pall Network" />
+    <meta name="theme-color" content="#2563EB" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
     
-    <!-- App Icons -->
+    <!-- App Icon -->
     <link rel="icon" type="image/png" href="/src/assets/app-icon.png" />
-    <link rel="apple-touch-icon" href="/src/assets/app-icon.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
-    <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
     
     <!-- Font imports -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,15 +31,11 @@
     
     <!-- Service Worker Registration -->
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('SW registered: ', registration);
-            })
-            .catch(registrationError => {
-              console.log('SW registration failed: ', registrationError);
-            });
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/service-worker.js")
+            .then((reg) => console.log("Service Worker registered: ", reg))
+            .catch((err) => console.log("SW registration failed: ", err));
         });
       }
     </script>
