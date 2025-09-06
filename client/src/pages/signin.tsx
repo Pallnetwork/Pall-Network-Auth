@@ -128,17 +128,13 @@ export default function SignIn() {
             </Button>
 
             <div className="space-y-2 text-center">
-              <Link href="/forgot-password">
-                <a className="text-sm text-primary hover:underline" data-testid="link-forgot-password">
-                  Forgot Password?
-                </a>
+              <Link href="/forgot-password" className="text-sm text-primary hover:underline block" data-testid="link-forgot-password">
+                Forgot Password?
               </Link>
               <div className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Link href="/signup">
-                  <a className="text-primary hover:underline" data-testid="link-signup">
-                    Create Account
-                  </a>
+                <Link href="/signup" className="text-primary hover:underline" data-testid="link-signup">
+                  Create Account
                 </Link>
               </div>
             </div>

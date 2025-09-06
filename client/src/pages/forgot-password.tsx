@@ -208,10 +208,8 @@ export default function ForgotPassword() {
           )}
 
           <div className="text-center">
-            <Link href="/signin">
-              <a className="text-sm text-primary hover:underline" data-testid="link-signin">
-                Back to Sign In
-              </a>
+            <Link href="/signin" className="text-sm text-primary hover:underline" data-testid="link-signin">
+              Back to Sign In
             </Link>
           </div>
         </CardContent>

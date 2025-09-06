@@ -14,6 +14,8 @@ interface User {
   email: string;
   createdAt: any;
   invitation?: string;
+  referralCode?: string;
+  referredBy?: string;
 }
 
 export default function Dashboard() {
@@ -129,9 +131,23 @@ export default function Dashboard() {
                   <span className="text-muted-foreground">Member since:</span>
                   <span data-testid="text-created-at">{formatDate(user.createdAt)}</span>
                 </div>
+                {user.referralCode && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Your Referral Code:</span>
+                    <span data-testid="text-referral-code" className="font-mono bg-muted px-2 py-1 rounded text-sm">
+                      {user.referralCode}
+                    </span>
+                  </div>
+                )}
+                {user.referredBy && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Referred by:</span>
+                    <span data-testid="text-referred-by">@{user.referredBy}</span>
+                  </div>
+                )}
                 {user.invitation && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Invitation Code:</span>
+                    <span className="text-muted-foreground">Used Invitation:</span>
                     <span data-testid="text-invitation">{user.invitation}</span>
                   </div>
                 )}

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDocs, query, collection, where } from "firebase/firestore";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
-import { nanoid } from "nanoid";
+import { v4 as uuidv4 } from "uuid";
 
 export default function SignUp() {
   const [form, setForm] = useState({
@@ -34,17 +34,42 @@ export default function SignUp() {
     setError("");
 
     try {
-      const userId = nanoid();
+      const userId = uuidv4();
+
+      // Generate referral code for the new user
+      const referralCode = form.username.toLowerCase() + "-" + userId.slice(0, 5);
+
+      let referredBy = null;
+
+      // Check if invitation code exists and is valid
+      if (form.invitation) {
+        const q = query(
+          collection(db, "users"),
+          where("referralCode", "==", form.invitation)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          referredBy = snap.docs[0].data().username;
+        } else {
+          setError("Invalid invitation code. Please check and try again.");
+          return;
+        }
+      }
+
       await setDoc(doc(db, "users", userId), {
         ...form,
         id: userId,
+        referralCode: referralCode,
+        referredBy: referredBy || null,
         createdAt: new Date(),
       });
       
       localStorage.setItem("userId", userId);
       toast({
         title: "Success",
-        description: "Account created successfully!",
+        description: referredBy 
+          ? `Account created successfully! Referred by ${referredBy}.`
+          : "Account created successfully!",
       });
       navigate("/dashboard");
     } catch (err) {
@@ -151,10 +176,8 @@ export default function SignUp() {
 
             <div className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/signin">
-                <a className="text-primary hover:underline" data-testid="link-signin">
-                  Sign In
-                </a>
+              <Link href="/signin" className="text-primary hover:underline" data-testid="link-signin">
+                Sign In
               </Link>
             </div>
           </form>
