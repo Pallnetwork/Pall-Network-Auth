@@ -18,6 +18,7 @@ interface User {
   invitation?: string;
   referralCode?: string;
   referredBy?: string;
+  packagePrice?: number;
 }
 
 interface Profile {
@@ -31,10 +32,91 @@ interface Profile {
   createdAt: any;
 }
 
+// F2 Referrals Component
+function F2Referrals({ userId, onTotalChange }: { userId: string; onTotalChange?: (total: number) => void }) {
+  const [f2Referrals, setF2Referrals] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchF2Referrals = async () => {
+      try {
+        // Get F1 referrals first
+        const f1Query = query(
+          collection(db, "users"),
+          where("referredBy", "==", userId)
+        );
+        const f1Snap = await getDocs(f1Query);
+        const f1Users = f1Snap.docs.map(doc => doc.data().username);
+
+        if (f1Users.length === 0) {
+          setF2Referrals([]);
+          onTotalChange?.(0);
+          setLoading(false);
+          return;
+        }
+
+        // Get F2 referrals (people referred by F1 users)
+        const f2Query = query(
+          collection(db, "users"),
+          where("referredBy", "in", f1Users)
+        );
+        const f2Snap = await getDocs(f2Query);
+        const f2List = f2Snap.docs.map(doc => doc.data() as User);
+        setF2Referrals(f2List);
+        
+        // Calculate total F2 commission
+        const total = f2List.reduce((sum, r) => sum + (0.025 * (r.packagePrice || 100)), 0);
+        onTotalChange?.(total);
+      } catch (error) {
+        console.error("Error fetching F2 referrals:", error);
+        onTotalChange?.(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchF2Referrals();
+  }, [userId, onTotalChange]);
+
+  if (loading) {
+    return <p className="text-muted-foreground">Loading indirect referrals...</p>;
+  }
+
+  if (f2Referrals.length === 0) {
+    return <p className="text-muted-foreground mb-4">No indirect referrals yet.</p>;
+  }
+
+  return (
+    <div className="space-y-2 mb-4">
+      {f2Referrals.map((referral, index) => (
+        <div
+          key={index}
+          className="flex justify-between items-center p-3 border rounded-lg bg-blue-50 dark:bg-blue-900/20"
+          data-testid={`f2-referral-${index}`}
+        >
+          <div>
+            <p className="font-medium">@{referral.username}</p>
+            <p className="text-sm text-muted-foreground">
+              Joined {new Date(referral.createdAt?.toDate?.() || referral.createdAt).toLocaleDateString()}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Referred by: @{referral.referredBy}
+            </p>
+          </div>
+          <div className="text-blue-600 font-bold">
+            2.5% ({(0.025 * (referral.packagePrice || 100)).toFixed(2)} USDT)
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [referrals, setReferrals] = useState<User[]>([]);
+  const [f2Total, setF2Total] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("HOME");
@@ -461,30 +543,74 @@ export default function Dashboard() {
               <CardHeader>
                 <h2 className="text-2xl font-bold">Referral Team</h2>
               </CardHeader>
-              <CardContent>
-                {referrals.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    No referrals yet. Share your referral code to start earning!
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {referrals.map((referral, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center p-4 border rounded-lg"
-                        data-testid={`referral-${index}`}
-                      >
-                        <div>
-                          <p className="font-medium">@{referral.username}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Joined {formatDate(referral.createdAt)}
-                          </p>
+              <CardContent className="space-y-6">
+                {/* F1 Direct Referrals */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 text-green-600">
+                    Direct Referrals (F1) – 5% Commission
+                  </h3>
+                  {referrals.length === 0 ? (
+                    <p className="text-muted-foreground mb-4">No direct referrals yet.</p>
+                  ) : (
+                    <div className="space-y-2 mb-4">
+                      {referrals.map((referral, index) => (
+                        <div
+                          key={index}
+                          className="flex justify-between items-center p-3 border rounded-lg bg-green-50 dark:bg-green-900/20"
+                          data-testid={`f1-referral-${index}`}
+                        >
+                          <div>
+                            <p className="font-medium">@{referral.username}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Joined {formatDate(referral.createdAt)}
+                            </p>
+                          </div>
+                          <div className="text-green-600 font-bold">
+                            5% ({(0.05 * (referral.packagePrice || 100)).toFixed(2)} USDT)
+                          </div>
                         </div>
-                        <div className="text-green-600 font-bold">
-                          +1 USDT
-                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* F2 Indirect Referrals */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 text-blue-600">
+                    Indirect Referrals (F2) – 2.5% Commission
+                  </h3>
+                  {user && <F2Referrals userId={user.username} onTotalChange={setF2Total} />}
+                </div>
+
+                {/* Commission Summary */}
+                <div className="mt-6 p-4 bg-muted rounded-lg">
+                  <h4 className="font-semibold mb-2">Commission Summary</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">F1 Total:</span>
+                      <span className="ml-2 font-bold text-green-600">
+                        {(referrals.reduce((sum, r) => sum + (0.05 * (r.packagePrice || 100)), 0)).toFixed(2)} USDT
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">F2 Total:</span>
+                      <span className="ml-2 font-bold text-blue-600" data-testid="f2-total">
+                        {f2Total.toFixed(2)} USDT
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {referrals.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">
+                      No referrals yet. Share your referral code to start earning!
+                    </p>
+                    {user?.referralCode && (
+                      <div className="bg-muted p-4 rounded-lg inline-block">
+                        <code className="font-mono">{user.referralCode}</code>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
               </CardContent>

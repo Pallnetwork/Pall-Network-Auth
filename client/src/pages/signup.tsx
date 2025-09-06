@@ -61,6 +61,7 @@ export default function SignUp() {
         id: userId,
         referralCode: referralCode,
         referredBy: referredBy || null,
+        packagePrice: 100, // Default package price for commission calculations
         createdAt: new Date(),
       });
       
