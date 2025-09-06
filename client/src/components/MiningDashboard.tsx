@@ -13,11 +13,21 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const [mining, setMining] = useState(false);
   const [lastStart, setLastStart] = useState<Date | null>(null);
   const [miningSpeed, setMiningSpeed] = useState(1);
-  const baseMiningRate = 0.01; // Base rate: 0.01 PALL per second
+  const [baseMiningRate, setBaseMiningRate] = useState(0.01);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Load settings first
+        const settingsSnap = await getDoc(doc(db, "settings", "config"));
+        if (settingsSnap.exists()) {
+          const settings = settingsSnap.data();
+          if (settings.mining?.baseRate) {
+            setBaseMiningRate(settings.mining.baseRate);
+          }
+        }
+
+        // Load wallet data
         const snap = await getDoc(doc(db, "wallets", userId));
         if (snap.exists()) {
           const data = snap.data();

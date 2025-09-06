@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 declare global {
   interface Window {
@@ -12,7 +12,8 @@ declare global {
   }
 }
 
-const PACKAGES = [
+// Default packages - will be overridden by Firebase settings
+const DEFAULT_PACKAGES = [
   { name: "Bronze", price: 3, speed: 2, audience: "Beginners / Entry users" },
   { name: "Silver", price: 10, speed: 6, audience: "Regular miners" },
   { name: "Gold", price: 50, speed: 15, audience: "Semi-Pro miners" },
@@ -28,7 +29,49 @@ interface UpgradePageProps {
 
 export default function UpgradePage({ userId }: UpgradePageProps) {
   const [wallet, setWallet] = useState<string | null>(null);
+  const [packages, setPackages] = useState(DEFAULT_PACKAGES);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Load settings from Firebase
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settingsDoc = await getDoc(doc(db, "settings", "config"));
+        if (settingsDoc.exists()) {
+          const settings = settingsDoc.data();
+          if (settings.packages) {
+            const firebasePackages = Object.entries(settings.packages).map(([name, config]: [string, any]) => ({
+              name,
+              price: config.price,
+              speed: config.speed,
+              audience: name === "Bronze" ? "Beginners / Entry users" : 
+                       name === "Silver" ? "Regular miners" :
+                       name === "Gold" ? "Semi-Pro miners" : "Pro miners / Investors"
+            }));
+            setPackages(firebasePackages);
+          }
+        } else {
+          // Initialize settings if they don't exist
+          await setDoc(doc(db, "settings", "config"), {
+            mining: { baseRate: 0.01 },
+            referral: { f1: 0.05, f2: 0.025 },
+            packages: {
+              Bronze: { price: 3, speed: 2 },
+              Silver: { price: 10, speed: 6 },
+              Gold: { price: 50, speed: 15 },
+              Diamond: { price: 120, speed: 25 }
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Error loading settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Connect Wallet (MetaMask / Web3 Provider)
   const connectWallet = async () => {
@@ -59,7 +102,7 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
   };
 
   // Update mining package in Firestore and record transaction
-  const updateMining = async (userId: string, pkg: typeof PACKAGES[0], txHash: string) => {
+  const updateMining = async (userId: string, pkg: typeof packages[0], txHash: string) => {
     try {
       // Update wallet with new package
       await setDoc(doc(db, "wallets", userId), {
@@ -88,7 +131,7 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
   };
 
   // Buy Package
-  const buyPackage = async (pkg: typeof PACKAGES[0]) => {
+  const buyPackage = async (pkg: typeof packages[0]) => {
     try {
       if (!wallet) {
         toast({
@@ -161,8 +204,13 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {PACKAGES.map((pkg, i) => (
+        {loading ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Loading packages...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {packages.map((pkg, i) => (
             <Card key={i} className="border-2 hover:border-primary transition-colors">
               <CardContent className="p-4 text-center">
                 <h3 className="text-xl font-bold mb-2">{pkg.name}</h3>
@@ -182,8 +230,9 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
                 </Button>
               </CardContent>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="text-center text-sm text-muted-foreground">
           <p>⚠️ Payment accepted only in USDT (BEP20) on BNB Smart Chain.</p>
