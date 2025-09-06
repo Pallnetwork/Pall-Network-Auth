@@ -235,6 +235,10 @@ export default function Dashboard() {
     }
   };
 
+  // Commission Totals
+  const totalF1 = referrals.reduce((sum, r) => sum + (0.05 * (r.packagePrice || 0)), 0);
+  const totalF2 = f2Total;
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
@@ -596,13 +600,13 @@ export default function Dashboard() {
                     <div>
                       <span className="text-muted-foreground">F1 Total:</span>
                       <span className="ml-2 font-bold text-green-600">
-                        {(referrals.reduce((sum, r) => sum + (0.05 * (r.packagePrice || 100)), 0)).toFixed(2)} USDT
+                        {totalF1.toFixed(2)} USDT
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">F2 Total:</span>
                       <span className="ml-2 font-bold text-blue-600" data-testid="f2-total">
-                        {f2Total.toFixed(2)} USDT
+                        {totalF2.toFixed(2)} USDT
                       </span>
                     </div>
                   </div>
@@ -630,7 +634,7 @@ export default function Dashboard() {
               <h2 className="text-2xl font-bold mb-4">Wallet</h2>
               <div className="mb-4">
                 <p className="text-lg">💰 Pall Balance: <b>0.00 PALL</b></p>
-                <p className="text-lg">💵 USDT (Referral Commission): <b>{(referrals.reduce((sum, r) => sum + (0.05 * (r.packagePrice || 100)), 0) + f2Total).toFixed(2)} USDT</b></p>
+                <p className="text-lg">💵 USDT (Referral Commission): <b>{(totalF1 + totalF2).toFixed(2)} USDT</b></p>
               </div>
               <button 
                 className="w-full bg-blue-500 text-white p-2 rounded mb-2 hover:bg-blue-600 transition-colors" 
