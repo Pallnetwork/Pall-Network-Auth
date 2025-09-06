@@ -173,9 +173,9 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
 
       // Distribute referral commissions
       const commissionResult = await distributeReferralCommission(userId, pkg.price);
-      if (commissionResult.success) {
-        console.log(`💰 Commissions distributed - F1: ${commissionResult.f1Commission}, F2: ${commissionResult.f2Commission}`);
-      } else {
+      if (commissionResult && commissionResult.success) {
+        console.log(`💰 Commissions distributed - F1: ${commissionResult.f1Commission || 0}, F2: ${commissionResult.f2Commission || 0}`);
+      } else if (commissionResult && !commissionResult.success) {
         console.error("Commission distribution failed:", commissionResult.error);
       }
 
