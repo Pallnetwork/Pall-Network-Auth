@@ -13,10 +13,10 @@ declare global {
 }
 
 const PACKAGES = [
-  { name: "Bronze", price: 5, speed: 3 },
-  { name: "Silver", price: 8, speed: 7 },
-  { name: "Gold", price: 49, speed: 15 },
-  { name: "Diamond", price: 100, speed: 22 },
+  { name: "Bronze", price: 3, speed: 2, audience: "Beginners / Entry users" },
+  { name: "Silver", price: 10, speed: 6, audience: "Regular miners" },
+  { name: "Gold", price: 50, speed: 15, audience: "Semi-Pro miners" },
+  { name: "Diamond", price: 120, speed: 25, audience: "Pro miners / Investors" },
 ];
 
 const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // BEP20 USDT Contract
@@ -152,8 +152,11 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
               <CardContent className="p-4 text-center">
                 <h3 className="text-xl font-bold mb-2">{pkg.name}</h3>
                 <p className="text-2xl font-bold text-green-600 mb-1">{pkg.price} USDT</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Mining Speed: {pkg.speed}X
+                <p className="text-sm font-semibold text-blue-600 mb-2">
+                  {pkg.speed}X Mining Speed
+                </p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  {pkg.audience}
                 </p>
                 <Button
                   onClick={() => buyPackage(pkg)}
