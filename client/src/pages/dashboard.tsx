@@ -626,90 +626,37 @@ export default function Dashboard() {
 
           {/* WALLET Page */}
           {currentPage === "WALLET" && (
-            <Card>
-              <CardHeader>
-                <h2 className="text-2xl font-bold">WALLET</h2>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {/* Balance Summary */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <h3 className="text-2xl font-bold text-green-600">
-                          {(referrals.reduce((sum, r) => sum + (0.05 * (r.packagePrice || 100)), 0) + f2Total).toFixed(2)}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">Total Earnings (USDT)</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <h3 className="text-2xl font-bold text-blue-600">
-                          {(referrals.reduce((sum, r) => sum + (0.05 * (r.packagePrice || 100)), 0)).toFixed(2)}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">F1 Commissions</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <h3 className="text-2xl font-bold text-purple-600">
-                          {f2Total.toFixed(2)}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">F2 Commissions</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Withdrawal Section */}
-                  <Card>
-                    <CardHeader>
-                      <h3 className="text-lg font-semibold">Withdraw Earnings</h3>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <Label htmlFor="wallet-address">USDT Wallet Address</Label>
-                        <Input
-                          id="wallet-address"
-                          placeholder="Enter your USDT wallet address"
-                          data-testid="input-wallet-address"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="withdrawal-amount">Amount (USDT)</Label>
-                        <Input
-                          id="withdrawal-amount"
-                          type="number"
-                          placeholder="Enter amount to withdraw"
-                          data-testid="input-withdrawal-amount"
-                        />
-                      </div>
-                      <Button className="w-full bg-green-600 hover:bg-green-700" data-testid="button-withdraw">
-                        Request Withdrawal
-                      </Button>
-                      <p className="text-xs text-muted-foreground">
-                        Minimum withdrawal: 10 USDT. Processing time: 24-48 hours.
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Transaction History */}
-                  <Card>
-                    <CardHeader>
-                      <h3 className="text-lg font-semibold">Transaction History</h3>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8">
-                        <Wallet className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                        <h4 className="text-lg font-medium mb-2">No Transactions Yet</h4>
-                        <p className="text-muted-foreground">
-                          Your withdrawal history will appear here once you make transactions.
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-card p-6 rounded shadow-md max-w-md mx-auto">
+              <h2 className="text-2xl font-bold mb-4">Wallet</h2>
+              <div className="mb-4">
+                <p className="text-lg">💰 Pall Balance: <b>0.00 PALL</b></p>
+                <p className="text-lg">💵 USDT (Referral Commission): <b>{(referrals.reduce((sum, r) => sum + (0.05 * (r.packagePrice || 100)), 0) + f2Total).toFixed(2)} USDT</b></p>
+              </div>
+              <button 
+                className="w-full bg-blue-500 text-white p-2 rounded mb-2 hover:bg-blue-600 transition-colors" 
+                onClick={() => {
+                  toast({
+                    title: "Coming Soon",
+                    description: "Deposit functionality will be available soon",
+                  });
+                }}
+                data-testid="button-deposit"
+              >
+                Deposit
+              </button>
+              <button 
+                className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition-colors" 
+                onClick={() => {
+                  toast({
+                    title: "Coming Soon", 
+                    description: "Withdraw functionality will be available soon",
+                  });
+                }}
+                data-testid="button-withdraw"
+              >
+                Withdraw
+              </button>
+            </div>
           )}
 
           {/* KYC Page */}
