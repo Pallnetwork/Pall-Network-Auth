@@ -1,0 +1,76 @@
+Create a complete full-stack crypto mining simulation app named "Pall Network"
+that runs as:
+1. A responsive Web Application (accessible via browser)
+2. A Progressive Web App (PWA) installable on Android/iOS from the browser
+3. A hybrid Android App (wrapped with Capacitor/Cordova/Ionic) to be published on Google Play Store
+
+Requirements:
+
+1. Authentication:
+   - Signup, Login, Forgot Password
+   - Fields: Email, Name, Username, Invitation Code, Password
+   - Firebase Authentication + Firestore
+
+2. Dashboard (Pi Network style):
+   - Top bar: left ☰ sidebar, right app name
+   - Mining Button "⛏ Start Mining"
+   - Mining allowed once every 24 hours
+   - Balance increases automatically during mining session
+   - Countdown Timer (24h)
+   - Show Pall Token Balance, Referral Commission (USDT), Current Package
+
+3. Sidebar Menu:
+   - Home (Dashboard)
+   - Profile (First Name, Last Name, DOB, Gender, Phone, Address → one-time save)
+   - Referral Team (F1/F2 list with 5% and 2.5% commission in USDT)
+   - Wallet (show Pall Balance + USDT Balance, Deposit/Withdraw → "Coming Soon")
+   - Upgrade Mining Package (Bronze, Silver, Gold, Diamond, with Wallet Connect for USDT BEP20)
+   - KYC Verification (Coming Soon)
+   - About (App info text)
+
+4. Mining Logic:
+   - Base Rate: 0.01 PALL/sec
+   - Packages:
+     Bronze → 5 USDT → 3X speed
+     Silver → 8 USDT → 7X speed
+     Gold → 49 USDT → 15X speed
+     Diamond → 100 USDT → 22X speed
+   - User mining data (active status, last start time, package, balance) saved in Firebase
+
+5. Referral System:
+   - Invitation Code during signup
+   - Track referrals (F1 direct, F2 indirect)
+   - Commission % stored in Firestore
+   - Referral earnings shown in Wallet + Referral Team page
+
+6. Wallet Connect Integration:
+   - User can connect Web3 wallet (MetaMask/TrustWallet/WalletConnect)
+   - Payments accepted only in USDT (BEP20, BNB Chain)
+   - User buys package → funds sent directly to: 0xAaE232DeFc1a7951C6b8a00EC46C6d451f605cCF
+   - After transaction confirmation → mining speed updated
+
+7. PWA Configuration:
+   - Add manifest.json with app name, icon, theme colors
+   - Add service worker for offline support
+   - Installable on Android/iOS as PWA
+
+8. Android App:
+   - Use Capacitor/Ionic to wrap the PWA
+   - Generate Android APK/AAB for Google Play Store
+   - App must follow Google Play crypto policy:
+     - Only cloud mining simulation (no hardware mining)
+     - Clear disclaimer "This app simulates cloud mining of Pall Token. No real device mining is performed."
+     - Payments handled via blockchain wallets (no in-app billing required)
+
+9. Tech Stack:
+   - Frontend: React + TailwindCSS
+   - Backend: Firebase (Auth + Firestore + Hosting)
+   - Web3: Ethers.js or Web3.js
+   - PWA: manifest.json + service worker
+   - Android: Capacitor wrap
+
+10. UI/UX:
+   - Clean modern dashboard
+   - Pi Network style circular mining timer
+   - Responsive (mobile-first)
+   - Dark + Light theme toggle

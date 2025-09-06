@@ -15,10 +15,10 @@ declare global {
 
 // Default packages - will be overridden by Firebase settings
 const DEFAULT_PACKAGES = [
-  { name: "Bronze", price: 3, speed: 2, audience: "Beginners / Entry users" },
-  { name: "Silver", price: 10, speed: 6, audience: "Regular miners" },
-  { name: "Gold", price: 50, speed: 15, audience: "Semi-Pro miners" },
-  { name: "Diamond", price: 120, speed: 25, audience: "Pro miners / Investors" },
+  { name: "Bronze", price: 5, speed: 3, audience: "Beginners / Entry users" },
+  { name: "Silver", price: 8, speed: 7, audience: "Regular miners" },
+  { name: "Gold", price: 49, speed: 15, audience: "Semi-Pro miners" },
+  { name: "Diamond", price: 100, speed: 22, audience: "Pro miners / Investors" },
 ];
 
 const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // BEP20 USDT Contract
