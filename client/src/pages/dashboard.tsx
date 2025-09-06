@@ -610,6 +610,9 @@ export default function Dashboard() {
                       </span>
                     </div>
                   </div>
+                  <p className="mt-4 font-bold">
+                    Total Referral Commission: {(totalF1 + totalF2).toFixed(2)} USDT
+                  </p>
                 </div>
 
                 {referrals.length === 0 && (
