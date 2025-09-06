@@ -1,0 +1,72 @@
+import React, { useState } from "react";
+import { db } from "./firebase";
+import { doc, setDoc, getDocs, query, collection, where } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
+
+export default function Signup() {
+  const [form, setForm] = useState({
+    email: "",
+    name: "",
+    username: "",
+    invitation: "",
+    password: ""
+  });
+  const navigate = useNavigate();
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    try {
+      const userId = uuidv4();
+
+      // 🔹 ہر یوزر کے لیے referral code generate کریں
+      const referralCode = form.username.toLowerCase() + "-" + userId.slice(0, 5);
+
+      let referredBy = null;
+
+      // 🔹 اگر Invitation Code ڈالا گیا ہے → چیک کریں کہ exist کرتا ہے
+      if (form.invitation) {
+        const q = query(
+          collection(db, "users"),
+          where("referralCode", "==", form.invitation)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          referredBy = snap.docs[0].data().username;
+        } else {
+          alert("Invalid Invitation Code");
+          return;
+        }
+      }
+
+      await setDoc(doc(db, "users", userId), {
+        ...form,
+        id: userId,
+        referralCode: referralCode,
+        referredBy: referredBy || null,
+        createdAt: new Date()
+      });
+
+      localStorage.setItem("userId", userId);
+      navigate("/dashboard");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      <form onSubmit={handleSignup} className="bg-white p-6 rounded-xl shadow-md w-96">
+        <h1 className="text-2xl font-bold mb-4">Create Account</h1>
+        <input type="text" name="name" placeholder="Name" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+        <input type="text" name="username" placeholder="Username" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+        <input type="email" name="email" placeholder="Email" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+        <input type="text" name="invitation" placeholder="Invitation Code (optional)" onChange={handleChange} className="w-full p-2 mb-2 border rounded"/>
+        <input type="password" name="password" placeholder="Password" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+        <button type="submit" className="w-full bg-green-500 text-white p-2 rounded">Create Account</button>
+      </form>
+    </div>
+  );
+}
