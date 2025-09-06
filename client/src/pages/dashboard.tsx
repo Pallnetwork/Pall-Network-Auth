@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Menu, X, Home, User, Users, CreditCard, Info, Wallet, Shield } from "lucide-react";
+import { LogOut, Menu, X, Home, User, Users, CreditCard, Info, Wallet, Shield, Pickaxe } from "lucide-react";
+import MiningDashboard from "@/components/MiningDashboard";
 
 interface User {
   id: string;
@@ -115,6 +116,8 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [referrals, setReferrals] = useState<User[]>([]);
   const [f2Total, setF2Total] = useState(0);
+  const [pallBalance, setPallBalance] = useState(0);
+  const [miningStatus, setMiningStatus] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("HOME");
@@ -162,6 +165,18 @@ export default function Dashboard() {
         const referralSnap = await getDocs(q);
         const referralList = referralSnap.docs.map(doc => doc.data() as User);
         setReferrals(referralList);
+
+        // Fetch mining data
+        try {
+          const walletSnap = await getDoc(doc(db, "wallets", userId));
+          if (walletSnap.exists()) {
+            const walletData = walletSnap.data();
+            setPallBalance(walletData.pallBalance || 0);
+            setMiningStatus(walletData.miningActive || false);
+          }
+        } catch (error) {
+          console.error("Error fetching mining data:", error);
+        }
 
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -326,6 +341,15 @@ export default function Dashboard() {
                 WALLET
               </Button>
               <Button
+                variant={currentPage === "MINING" ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => { setCurrentPage("MINING"); setSidebarOpen(false); }}
+                data-testid="nav-mining"
+              >
+                <Pickaxe className="w-4 h-4 mr-3" />
+                MINING
+              </Button>
+              <Button
                 variant={currentPage === "KYC" ? "secondary" : "ghost"}
                 className="w-full justify-start"
                 onClick={() => { setCurrentPage("KYC"); setSidebarOpen(false); }}
@@ -381,23 +405,31 @@ export default function Dashboard() {
               </div>
 
               {/* Quick Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
-                  <CardContent className="p-6 text-center">
-                    <h3 className="text-2xl font-bold text-green-600">{referrals.length}</h3>
-                    <p className="text-muted-foreground">Total Referrals</p>
+                  <CardContent className="p-4 text-center">
+                    <h3 className="text-xl font-bold text-blue-600">{pallBalance.toFixed(4)}</h3>
+                    <p className="text-sm text-muted-foreground">PALL Balance</p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="p-6 text-center">
-                    <h3 className="text-2xl font-bold text-blue-600">{referrals.length} USDT</h3>
-                    <p className="text-muted-foreground">Referral Rewards</p>
+                  <CardContent className="p-4 text-center">
+                    <h3 className="text-xl font-bold text-green-600">{referrals.length}</h3>
+                    <p className="text-sm text-muted-foreground">Total Referrals</p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="p-6 text-center">
-                    <h3 className="text-2xl font-bold text-primary">Active</h3>
-                    <p className="text-muted-foreground">Account Status</p>
+                  <CardContent className="p-4 text-center">
+                    <h3 className="text-xl font-bold text-purple-600">{(totalF1 + totalF2).toFixed(2)}</h3>
+                    <p className="text-sm text-muted-foreground">USDT Earnings</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <h3 className={`text-xl font-bold ${miningStatus ? 'text-green-600' : 'text-gray-500'}`}>
+                      {miningStatus ? '⚡ Active' : '⛏ Idle'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">Mining Status</p>
                   </CardContent>
                 </Card>
               </div>
@@ -636,7 +668,7 @@ export default function Dashboard() {
             <div className="bg-white dark:bg-card p-6 rounded shadow-md max-w-md mx-auto">
               <h2 className="text-2xl font-bold mb-4">Wallet</h2>
               <div className="mb-4">
-                <p className="text-lg">💰 Pall Balance: <b>0.00 PALL</b></p>
+                <p className="text-lg">💰 Pall Balance: <b>{pallBalance.toFixed(4)} PALL</b></p>
                 <p className="text-lg">💵 USDT (Referral Commission): <b>{(totalF1 + totalF2).toFixed(2)} USDT</b></p>
               </div>
               <button 
@@ -663,6 +695,13 @@ export default function Dashboard() {
               >
                 Withdraw
               </button>
+            </div>
+          )}
+
+          {/* MINING Page */}
+          {currentPage === "MINING" && (
+            <div>
+              {user && <MiningDashboard userId={user.id} />}
             </div>
           )}
 
