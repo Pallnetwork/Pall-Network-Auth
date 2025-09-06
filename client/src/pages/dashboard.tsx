@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, Menu, X, Home, User, Users, CreditCard, Info, Wallet, Shield, Pickaxe, Zap } from "lucide-react";
 import MiningDashboard from "@/components/MiningDashboard";
 import UpgradePage from "@/components/UpgradePage";
+import PoliciesPage from "@/components/PoliciesPage";
 
 interface User {
   id: string;
@@ -435,7 +436,7 @@ export default function Dashboard() {
                 data-testid="nav-about"
               >
                 <Info className="w-4 h-4 mr-3" />
-                ABOUT
+                POLICIES
               </Button>
             </nav>
             <div className="mt-8 pt-8 border-t">
@@ -885,41 +886,7 @@ export default function Dashboard() {
 
           {/* ABOUT Page */}
           {currentPage === "ABOUT" && (
-            <Card>
-              <CardHeader>
-                <h2 className="text-2xl font-bold">About Pall Network</h2>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p>
-                    Pall Network is a decentralized crypto mining and commerce platform where users
-                    can mine Pall Tokens, invite others, and earn referral rewards.
-                  </p>
-                  <p>
-                    Our mission is to bring mining to everyone through web and mobile applications,
-                    making cryptocurrency accessible to users worldwide.
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                    <div>
-                      <h3 className="font-semibold mb-2">Features</h3>
-                      <ul className="space-y-1 text-sm text-muted-foreground">
-                        <li>• Decentralized mining</li>
-                        <li>• Referral rewards system</li>
-                        <li>• User-friendly interface</li>
-                        <li>• Mobile & web access</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold mb-2">Contact</h3>
-                      <p className="text-sm text-muted-foreground">
-                        For support or questions, please visit our help center
-                        or contact our support team.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <PoliciesPage onBack={() => setCurrentPage("HOME")} />
           )}
         </div>
       </div>
