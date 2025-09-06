@@ -1,15 +1,17 @@
 {
-  "name": "Pall Network",
+  "name": "Pall Network - Cloud Mining Simulation",
   "short_name": "Pall Network",
-  "description": "Cloud mining simulation platform for PALL tokens with referral rewards",
+  "description": "Educational cloud mining simulation platform. Learn about cryptocurrency mining with 24-hour cycles and referral systems.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
+  "theme_color": "#2563EB",
   "orientation": "portrait-primary",
   "scope": "/",
-  "categories": ["productivity", "finance"],
+  "categories": ["education", "productivity", "finance"],
   "lang": "en-US",
+  "dir": "ltr",
+  "display_override": ["standalone", "minimal-ui"],
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
