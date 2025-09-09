@@ -88,15 +88,29 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
   // Auto-connect if wallet already connected
   useEffect(() => {
     const autoConnect = async () => {
+      // Check if we're on a secure context (https or localhost)
+      if (!window.isSecureContext && !window.location.hostname.includes('localhost')) {
+        console.warn("Wallet connection requires secure context (HTTPS)");
+        return;
+      }
+
       if (window.ethereum) {
         try {
           const provider = new ethers.BrowserProvider(window.ethereum);
-          const accounts = await provider.listAccounts();
-          if (accounts.length > 0) {
-            setWallet(accounts[0].address);
+          // Check if already connected (permissions granted)
+          const permissions = await window.ethereum.request({
+            method: 'wallet_getPermissions',
+          });
+          
+          if (permissions.length > 0) {
+            const accounts = await provider.listAccounts();
+            if (accounts.length > 0) {
+              setWallet(accounts[0].address);
+              console.log("✅ Auto-connected to wallet:", accounts[0].address);
+            }
           }
         } catch (error) {
-          console.log("Auto-connect failed:", error);
+          console.log("Auto-connect check failed:", error);
         }
       }
     };
@@ -106,27 +120,63 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
   // Connect Wallet (MetaMask / Web3 Provider)
   const connectWallet = async () => {
     try {
+      // Check if we're on a secure context
+      if (!window.isSecureContext && !window.location.hostname.includes('localhost')) {
+        toast({
+          title: "Secure Connection Required",
+          description: "Wallet connection requires HTTPS. Please use a secure connection.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (window.ethereum) {
         const provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.send("eth_requestAccounts", []);
-        setWallet(accounts[0]);
-        const walletName = detectWallet();
-        toast({
-          title: "Wallet Connected",
-          description: `${walletName} connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
+        
+        // Request account access with proper error handling
+        const accounts = await window.ethereum.request({
+          method: 'eth_requestAccounts',
         });
+        
+        if (accounts && accounts.length > 0) {
+          setWallet(accounts[0]);
+          const walletName = detectWallet();
+          
+          console.log("✅ Wallet connected successfully:", accounts[0]);
+          
+          toast({
+            title: "Wallet Connected",
+            description: `${walletName} connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
+          });
+        } else {
+          throw new Error("No accounts returned");
+        }
       } else {
+        // Enhanced wallet detection for mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
         toast({
-          title: "No Wallet Found",
-          description: "Please install MetaMask, Trust Wallet, or another Web3 wallet.",
+          title: "No Web3 Wallet Found",
+          description: isMobile 
+            ? "Please use a Web3 browser like Trust Wallet or MetaMask mobile app."
+            : "Please install MetaMask, Trust Wallet, or another Web3 wallet extension.",
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Wallet connection error:", error);
+      
+      let errorMessage = "Failed to connect wallet. Please try again.";
+      
+      if (error.code === 4001) {
+        errorMessage = "Connection request was rejected. Please approve the connection in your wallet.";
+      } else if (error.code === -32002) {
+        errorMessage = "Connection request already pending. Please check your wallet.";
+      }
+      
       toast({
         title: "Connection Failed",
-        description: "Failed to connect wallet. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
