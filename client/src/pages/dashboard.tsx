@@ -144,6 +144,34 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
+  // Real-time balance sync for mining dashboard
+  useEffect(() => {
+    let balanceInterval: NodeJS.Timeout;
+    
+    const syncBalance = async () => {
+      const userId = localStorage.getItem("userId");
+      if (userId) {
+        try {
+          const walletSnap = await getDoc(doc(db, "wallets", userId));
+          if (walletSnap.exists()) {
+            const walletData = walletSnap.data();
+            setPallBalance(walletData.pallBalance || 0);
+            setMiningStatus(walletData.miningActive || false);
+          }
+        } catch (error) {
+          console.error("Error syncing balance:", error);
+        }
+      }
+    };
+
+    // Sync balance every 5 seconds to reflect mining updates
+    balanceInterval = setInterval(syncBalance, 5000);
+
+    return () => {
+      clearInterval(balanceInterval);
+    };
+  }, []);
+
   useEffect(() => {
     const userId = localStorage.getItem("userId");
     if (!userId) {
@@ -403,15 +431,6 @@ export default function Dashboard() {
                 WALLET
               </Button>
               <Button
-                variant={currentPage === "MINING" ? "secondary" : "ghost"}
-                className="w-full justify-start"
-                onClick={() => { setCurrentPage("MINING"); setSidebarOpen(false); }}
-                data-testid="nav-mining"
-              >
-                <Pickaxe className="w-4 h-4 mr-3" />
-                MINING
-              </Button>
-              <Button
                 variant={currentPage === "UPGRADE" ? "secondary" : "ghost"}
                 className="w-full justify-start"
                 onClick={() => { setCurrentPage("UPGRADE"); setSidebarOpen(false); }}
@@ -473,6 +492,11 @@ export default function Dashboard() {
                 <p className="text-muted-foreground mb-6">
                   A decentralized crypto mining and commerce platform
                 </p>
+              </div>
+
+              {/* Mining Dashboard - Main Feature */}
+              <div className="mb-8">
+                {user && <MiningDashboard userId={user.id} />}
               </div>
 
               {/* Quick Stats */}
@@ -821,12 +845,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* MINING Page */}
-          {currentPage === "MINING" && (
-            <div>
-              {user && <MiningDashboard userId={user.id} />}
-            </div>
-          )}
 
           {/* UPGRADE Page */}
           {currentPage === "UPGRADE" && (
