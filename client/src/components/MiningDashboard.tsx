@@ -13,7 +13,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const [mining, setMining] = useState(false);
   const [lastStart, setLastStart] = useState<Date | null>(null);
   const [miningSpeed, setMiningSpeed] = useState(1);
-  const [baseMiningRate, setBaseMiningRate] = useState(0.01);
+  const [baseMiningRate, setBaseMiningRate] = useState(1 / (24 * 60 * 60)); // Exactly 1 token per 24 hours
   const [currentPackage, setCurrentPackage] = useState("Free");
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [canStartMining, setCanStartMining] = useState(true);
@@ -27,7 +27,13 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           const settings = settingsSnap.data();
           if (settings.mining?.baseRate) {
             setBaseMiningRate(settings.mining.baseRate);
+          } else {
+            // Default rate: exactly 1 token per 24 hours
+            setBaseMiningRate(1 / (24 * 60 * 60));
           }
+        } else {
+          // Default rate if no settings exist
+          setBaseMiningRate(1 / (24 * 60 * 60));
         }
 
         // Load wallet data
