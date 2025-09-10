@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun, Smartphone, Shield, Zap, Download, ExternalLink, FileText, Users, Clock, Coins } from "lucide-react";
-import appIconPath from "@/assets/app-icon.png";
+// Using public path for the icon since it's already in public folder
+const appIconPath = "/logo192.png";
 
 export default function Homepage() {
   const { theme, setTheme } = useTheme();
