@@ -21,19 +21,17 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Load settings first
-        const settingsSnap = await getDoc(doc(db, "settings", "config"));
-        if (settingsSnap.exists()) {
-          const settings = settingsSnap.data();
-          if (settings.mining?.baseRate) {
-            setBaseMiningRate(settings.mining.baseRate);
-          } else {
-            // Default rate: exactly 1 token per 24 hours
-            setBaseMiningRate(1 / (24 * 60 * 60));
-          }
-        } else {
-          // Default rate if no settings exist
-          setBaseMiningRate(1 / (24 * 60 * 60));
+        // Load settings first and force correct mining rate
+        const correctRate = 1 / (24 * 60 * 60); // Exactly 1 PALL per 24 hours
+        setBaseMiningRate(correctRate);
+        
+        // Update Firestore settings to ensure correct rate is stored
+        try {
+          await setDoc(doc(db, "settings", "config"), {
+            mining: { baseRate: correctRate }
+          }, { merge: true });
+        } catch (error) {
+          console.log("Settings update:", error);
         }
 
         // Load wallet data
@@ -179,7 +177,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         {/* Balance Display */}
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-4 rounded-lg">
           <p className="text-sm text-muted-foreground">Current Balance</p>
-          <p className="text-2xl font-bold text-blue-600">{balance.toFixed(4)} PALL</p>
+          <p className="text-2xl font-bold text-blue-600">{balance.toFixed(8)} PALL</p>
         </div>
 
         {/* Pi Network Style Circular Mining Interface */}
@@ -236,7 +234,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
               ⛔ Stop Mining
             </Button>
             <p className="text-xs text-green-600">
-              Earning {(baseMiningRate * miningSpeed).toFixed(3)} PALL/second
+              Earning {(baseMiningRate * miningSpeed).toFixed(8)} PALL/second
             </p>
           </div>
         ) : (

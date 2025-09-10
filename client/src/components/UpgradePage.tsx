@@ -55,7 +55,7 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
         } else {
           // Initialize settings if they don't exist
           await setDoc(doc(db, "settings", "config"), {
-            mining: { baseRate: 0.01 },
+            mining: { baseRate: 1 / (24 * 60 * 60) }, // Exactly 1 PALL per 24 hours
             referral: { f1: 0.05, f2: 0.025 },
             packages: {
               Bronze: { price: 3, speed: 2 },
@@ -326,7 +326,7 @@ export default function UpgradePage({ userId }: UpgradePageProps) {
         <div className="text-center text-sm text-muted-foreground">
           <p>⚠️ Payment accepted only in USDT (BEP20) on BNB Smart Chain.</p>
           <p>Once purchased, packages cannot be changed.</p>
-          <p>Mining speed multiplier applies to base rate of 0.01 PALL/second.</p>
+          <p>Mining speed multiplier applies to base rate of 1 PALL per 24 hours (≈0.0000116 PALL/second).</p>
         </div>
       </CardContent>
     </Card>
