@@ -40,7 +40,7 @@ export default function SignIn() {
       });
       
       console.log("✅ User signed in successfully:", user.uid);
-      navigate("/dashboard");
+      navigate("/app/dashboard");
     } catch (err: any) {
       console.error("❌ Signin error:", err);
       
@@ -116,12 +116,12 @@ export default function SignIn() {
             </Button>
 
             <div className="space-y-2 text-center">
-              <Link href="/forgot-password" className="text-sm text-primary hover:underline block" data-testid="link-forgot-password">
+              <Link href="/app/forgot-password" className="text-sm text-primary hover:underline block" data-testid="link-forgot-password">
                 Forgot Password?
               </Link>
               <div className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Link href="/signup" className="text-primary hover:underline" data-testid="link-signup">
+                <Link href="/app/signup" className="text-primary hover:underline" data-testid="link-signup">
                   Create Account
                 </Link>
               </div>

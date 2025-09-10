@@ -122,7 +122,7 @@ export default function SignUp() {
       console.log("✅ User document created in Firestore");
       console.log("✅ Wallet document created with default balance");
       
-      navigate("/dashboard");
+      navigate("/app/dashboard");
     } catch (err: any) {
       console.error("❌ Signup error:", err);
       
@@ -252,7 +252,7 @@ export default function SignUp() {
 
             <div className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/signin" className="text-primary hover:underline" data-testid="link-signin">
+              <Link href="/app/signin" className="text-primary hover:underline" data-testid="link-signin">
                 Sign In
               </Link>
             </div>

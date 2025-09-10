@@ -85,7 +85,7 @@ export default function ForgotPassword() {
           title: "Success",
           description: "Password updated successfully!",
         });
-        navigate("/signin");
+        navigate("/app/signin");
       }
     } catch (err) {
       setError("Failed to update password. Please try again.");
@@ -208,7 +208,7 @@ export default function ForgotPassword() {
           )}
 
           <div className="text-center">
-            <Link href="/signin" className="text-sm text-primary hover:underline" data-testid="link-signin">
+            <Link href="/app/signin" className="text-sm text-primary hover:underline" data-testid="link-signin">
               Back to Sign In
             </Link>
           </div>

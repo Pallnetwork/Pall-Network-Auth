@@ -40,12 +40,12 @@ export default function Home() {
 
           {/* Quick Access Buttons */}
           <div className="flex justify-center gap-4 mb-12">
-            <Link href="/signin">
+            <Link href="/app/signin">
               <Button size="lg" data-testid="button-signin">
                 Sign In
               </Button>
             </Link>
-            <Link href="/signup">
+            <Link href="/app/signup">
               <Button variant="outline" size="lg" data-testid="button-signup">
                 Create Account
               </Button>
