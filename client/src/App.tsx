@@ -22,8 +22,12 @@ function Router() {
       <Route path="/app/signup" component={SignUp} />
       <Route path="/app/forgot-password" component={ForgotPassword} />
       <Route path="/app/dashboard" component={Dashboard} />
+      <Route path="/app/dashboard/profile" component={Dashboard} />
+      <Route path="/app/dashboard/referral" component={Dashboard} />
+      <Route path="/app/dashboard/wallet" component={Dashboard} />
+      <Route path="/app/dashboard/upgrade" component={Dashboard} />
+      <Route path="/app/dashboard/policies" component={Dashboard} />
       <Route path="/app/kyc" component={KYCPage} />
-      <Route path="/app/policies" component={() => <Dashboard />} />
       {/* Legacy routes redirect to /app */}
       <Route path="/signin" component={() => <Redirect to="/app/signin" />} />
       <Route path="/signup" component={() => <Redirect to="/app/signup" />} />

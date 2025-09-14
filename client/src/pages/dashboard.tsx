@@ -133,7 +133,6 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [authInitialized, setAuthInitialized] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState("HOME");
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -146,8 +145,18 @@ export default function Dashboard() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
   const [shareLink, setShareLink] = useState("");
-  const [, navigate] = useLocation();
+  const [path, navigate] = useLocation();
   const { toast } = useToast();
+
+  // Derive current page from URL path instead of internal state
+  const currentPage = (() => {
+    if (path === '/app/dashboard/profile') return 'PROFILE';
+    if (path === '/app/dashboard/referral') return 'REFERRAL';
+    if (path === '/app/dashboard/wallet') return 'WALLET';
+    if (path === '/app/dashboard/upgrade') return 'UPGRADE';
+    if (path === '/app/dashboard/policies') return 'ABOUT';
+    return 'HOME'; // default for /app/dashboard
+  })();
 
   // Real-time balance sync for mining dashboard
   useEffect(() => {
@@ -501,7 +510,7 @@ export default function Dashboard() {
               <Button
                 variant={currentPage === "HOME" ? "secondary" : "ghost"}
                 className="w-full justify-start"
-                onClick={() => { setCurrentPage("HOME"); setSidebarOpen(false); }}
+                onClick={() => { navigate("/app/dashboard"); setSidebarOpen(false); }}
                 data-testid="nav-home"
               >
                 <Home className="w-4 h-4 mr-3" />
@@ -510,7 +519,7 @@ export default function Dashboard() {
               <Button
                 variant={currentPage === "PROFILE" ? "secondary" : "ghost"}
                 className="w-full justify-start"
-                onClick={() => { setCurrentPage("PROFILE"); setSidebarOpen(false); }}
+                onClick={() => { navigate("/app/dashboard/profile"); setSidebarOpen(false); }}
                 data-testid="nav-profile"
               >
                 <User className="w-4 h-4 mr-3" />
@@ -519,7 +528,7 @@ export default function Dashboard() {
               <Button
                 variant={currentPage === "REFERRAL" ? "secondary" : "ghost"}
                 className="w-full justify-start"
-                onClick={() => { setCurrentPage("REFERRAL"); setSidebarOpen(false); }}
+                onClick={() => { navigate("/app/dashboard/referral"); setSidebarOpen(false); }}
                 data-testid="nav-referral"
               >
                 <Users className="w-4 h-4 mr-3" />
@@ -528,7 +537,7 @@ export default function Dashboard() {
               <Button
                 variant={currentPage === "WALLET" ? "secondary" : "ghost"}
                 className="w-full justify-start"
-                onClick={() => { setCurrentPage("WALLET"); setSidebarOpen(false); }}
+                onClick={() => { navigate("/app/dashboard/wallet"); setSidebarOpen(false); }}
                 data-testid="nav-wallet"
               >
                 <Wallet className="w-4 h-4 mr-3" />
@@ -537,7 +546,7 @@ export default function Dashboard() {
               <Button
                 variant={currentPage === "UPGRADE" ? "secondary" : "ghost"}
                 className="w-full justify-start"
-                onClick={() => { setCurrentPage("UPGRADE"); setSidebarOpen(false); }}
+                onClick={() => { navigate("/app/dashboard/upgrade"); setSidebarOpen(false); }}
                 data-testid="nav-upgrade"
               >
                 <Zap className="w-4 h-4 mr-3" />
@@ -558,7 +567,7 @@ export default function Dashboard() {
               <Button
                 variant={currentPage === "ABOUT" ? "secondary" : "ghost"}
                 className="w-full justify-start"
-                onClick={() => { setCurrentPage("ABOUT"); setSidebarOpen(false); }}
+                onClick={() => { navigate("/app/dashboard/policies"); setSidebarOpen(false); }}
                 data-testid="nav-about"
               >
                 <Info className="w-4 h-4 mr-3" />
@@ -1007,7 +1016,7 @@ export default function Dashboard() {
 
           {/* ABOUT Page */}
           {currentPage === "ABOUT" && (
-            <PoliciesPage onBack={() => setCurrentPage("HOME")} />
+            <PoliciesPage onBack={() => navigate("/app/dashboard")} />
           )}
         </div>
       </div>

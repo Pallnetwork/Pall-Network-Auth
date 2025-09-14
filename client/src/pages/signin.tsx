@@ -40,7 +40,7 @@ export default function SignIn() {
       });
       
       console.log("✅ User signed in successfully:", user.uid);
-      navigate("/app/dashboard");
+      navigate("/app/dashboard", { replace: true });
     } catch (err: any) {
       console.error("❌ Signin error:", err);
       
