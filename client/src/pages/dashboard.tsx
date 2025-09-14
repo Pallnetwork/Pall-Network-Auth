@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, Menu, X, Home, User, Users, CreditCard, Info, Wallet, Shield, Pickaxe, Zap } from "lucide-react";
 import MiningDashboard from "@/components/MiningDashboard";
+import UpgradePage from "@/components/UpgradePage";
 import PoliciesPage from "@/components/PoliciesPage";
 
 interface User {
@@ -877,6 +878,11 @@ export default function Dashboard() {
                 )}
               </CardContent>
             </Card>
+          )}
+
+          {/* UPGRADE Page */}
+          {currentPage === "UPGRADE" && user && (
+            <UpgradePage userId={user.id} />
           )}
 
           {/* WALLET Page */}
