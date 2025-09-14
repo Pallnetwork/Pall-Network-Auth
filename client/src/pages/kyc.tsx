@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, ArrowLeft, CheckCircle } from "lucide-react";
@@ -7,12 +9,17 @@ import { Shield, ArrowLeft, CheckCircle } from "lucide-react";
 export default function KYCPage() {
   const [, navigate] = useLocation();
 
-  // Check if user is logged in
+  // Check if user is logged in using Firebase Auth state
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
-      navigate("/app/signin");
-    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        // User is not authenticated, redirect to signin
+        navigate("/app/signin");
+      }
+    });
+    
+    // Cleanup the listener on unmount
+    return () => unsubscribe();
   }, [navigate]);
 
   const handleBackToDashboard = () => {

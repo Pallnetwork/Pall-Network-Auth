@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -176,23 +177,32 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
-      navigate("/signin");
-      return;
-    }
+    // Use Firebase Auth state listener for proper authentication persistence
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!firebaseUser) {
+        // User is not authenticated, redirect to signin
+        localStorage.removeItem("userId");
+        navigate("/app/signin");
+        return;
+      }
+      
+      // User is authenticated, sync localStorage and continue
+      const userId = firebaseUser.uid;
+      localStorage.setItem("userId", userId);
 
-    const fetchData = async () => {
-      try {
-        // Fetch user data
-        const userDoc = await getDoc(doc(db, "users", userId));
-        if (userDoc.exists()) {
-          setUser(userDoc.data() as User);
-        } else {
-          localStorage.removeItem("userId");
-          navigate("/signin");
-          return;
-        }
+      const fetchData = async () => {
+        try {
+          // Fetch user data
+          const userDoc = await getDoc(doc(db, "users", userId));
+          if (userDoc.exists()) {
+            setUser(userDoc.data() as User);
+          } else {
+            // User document doesn't exist, sign out and redirect
+            await signOut(auth);
+            localStorage.removeItem("userId");
+            navigate("/app/signin");
+            return;
+          }
 
         // Fetch profile data
         const profileDoc = await getDoc(doc(db, "profiles", userId));
@@ -269,16 +279,20 @@ export default function Dashboard() {
           console.error("Error fetching transactions:", error);
         }
 
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        localStorage.removeItem("userId");
-        navigate("/signin");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          // Don't automatically sign out on data fetch errors
+          // The user is still authenticated with Firebase
+        } finally {
+          setIsLoading(false);
+        }
+      };
 
-    fetchData();
+      fetchData();
+    });
+
+    // Cleanup the listener on unmount
+    return () => unsubscribe();
   }, [navigate]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -366,13 +380,24 @@ export default function Dashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("userId");
-    toast({
-      title: "Signed out",
-      description: "You have been signed out successfully.",
-    });
-    navigate("/signin");
+  const handleLogout = async () => {
+    try {
+      // Sign out from Firebase Auth (this will trigger the auth state listener)
+      await signOut(auth);
+      localStorage.removeItem("userId");
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully.",
+      });
+      navigate("/app/signin");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (timestamp: any) => {
