@@ -131,6 +131,7 @@ export default function Dashboard() {
   const [usdtBalance, setUsdtBalance] = useState(0);
   const [miningStatus, setMiningStatus] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [authInitialized, setAuthInitialized] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("HOME");
   const [form, setForm] = useState({
@@ -177,17 +178,41 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    let redirectTimeout: NodeJS.Timeout;
+    
     // Use Firebase Auth state listener for proper authentication persistence
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log('🔥 Firebase Auth state changed:', firebaseUser ? 'User logged in' : 'No user');
+      
+      // Clear any pending redirect timeout
+      if (redirectTimeout) {
+        clearTimeout(redirectTimeout);
+      }
+      
+      // Mark auth as initialized after first check
+      setAuthInitialized(true);
+      
       if (!firebaseUser) {
-        // User is not authenticated, redirect to signin
-        localStorage.removeItem("userId");
-        navigate("/app/signin");
+        console.log('⚠️ No Firebase user found, checking again in 500ms before redirecting...');
+        // Add a small delay before redirecting to allow Firebase Auth to settle
+        // This prevents redirects during browser back navigation or component re-renders
+        redirectTimeout = setTimeout(() => {
+          // Double-check current user before redirecting
+          const currentUser = auth.currentUser;
+          if (!currentUser) {
+            console.log('❌ Confirmed: No Firebase user after timeout, redirecting to signin');
+            localStorage.removeItem("userId");
+            navigate("/app/signin");
+          } else {
+            console.log('✅ False alarm: Firebase user found on double-check:', currentUser.uid);
+          }
+        }, 500);
         return;
       }
       
       // User is authenticated, sync localStorage and continue
       const userId = firebaseUser.uid;
+      console.log('✅ Firebase user authenticated:', userId);
       localStorage.setItem("userId", userId);
 
       const fetchData = async () => {
@@ -291,8 +316,13 @@ export default function Dashboard() {
       fetchData();
     });
 
-    // Cleanup the listener on unmount
-    return () => unsubscribe();
+    // Cleanup the listener and any pending timeouts on unmount
+    return () => {
+      unsubscribe();
+      if (redirectTimeout) {
+        clearTimeout(redirectTimeout);
+      }
+    };
   }, [navigate]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
