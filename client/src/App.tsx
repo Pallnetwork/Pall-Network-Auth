@@ -10,6 +10,7 @@ import SignIn from "@/pages/signin";
 import SignUp from "@/pages/signup";
 import ForgotPassword from "@/pages/forgot-password";
 import Dashboard from "@/pages/dashboard";
+import KYCPage from "@/pages/kyc";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/app/signup" component={SignUp} />
       <Route path="/app/forgot-password" component={ForgotPassword} />
       <Route path="/app/dashboard" component={Dashboard} />
+      <Route path="/app/kyc" component={KYCPage} />
       <Route path="/app/policies" component={() => <Dashboard />} />
       {/* Legacy routes redirect to /app */}
       <Route path="/signin" component={() => <Redirect to="/app/signin" />} />

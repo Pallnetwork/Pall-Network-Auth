@@ -489,9 +489,12 @@ export default function Dashboard() {
                 UPGRADE
               </Button>
               <Button
-                variant={currentPage === "KYC" ? "secondary" : "ghost"}
+                variant="ghost"
                 className="w-full justify-start"
-                onClick={() => { setCurrentPage("KYC"); setSidebarOpen(false); }}
+                onClick={() => { 
+                  setSidebarOpen(false);
+                  navigate("/app/kyc");
+                }}
                 data-testid="nav-kyc"
               >
                 <Shield className="w-4 h-4 mr-3" />
@@ -946,54 +949,6 @@ export default function Dashboard() {
 
 
 
-          {/* KYC Page */}
-          {currentPage === "KYC" && (
-            <Card>
-              <CardHeader>
-                <h2 className="text-2xl font-bold">Transaction History</h2>
-              </CardHeader>
-              <CardContent>
-                {transactions.length === 0 ? (
-                  <div className="text-center py-12">
-                    <CreditCard className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">No Transactions</h3>
-                    <p className="text-muted-foreground">
-                      Your package upgrades will appear here
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {transactions.map((tx) => (
-                      <div key={tx.id} className="border rounded-lg p-4 flex justify-between items-center">
-                        <div>
-                          <h3 className="font-semibold">{tx.package} Package</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {tx.speed}X Mining Speed • {tx.network}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(tx.createdAt.toDate ? tx.createdAt.toDate() : tx.createdAt).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-green-600">{tx.amount} USDT</p>
-                          <p className="text-xs text-muted-foreground capitalize">{tx.status}</p>
-                          <a 
-                            href={`https://bscscan.com/tx/${tx.txHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:underline"
-                            data-testid={`link-tx-${tx.id}`}
-                          >
-                            View on BscScan
-                          </a>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
           {/* ABOUT Page */}
           {currentPage === "ABOUT" && (
