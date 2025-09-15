@@ -74,43 +74,49 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   useEffect(() => {
     let miningInterval: NodeJS.Timeout;
     let timerInterval: NodeJS.Timeout;
+    let saveInterval: NodeJS.Timeout;
     
     if (mining && lastStart) {
+      let localBalance = balance;
+      
       // Update balance every second
-      miningInterval = setInterval(async () => {
-        const newBalance = balance + baseMiningRate;
-        setBalance(newBalance);
-        
-        // Save to Firestore every 10 seconds to reduce API calls
-        const now = new Date();
-        if (Math.floor(now.getSeconds()) % 10 === 0) {
-          try {
-            await setDoc(doc(db, "wallets", userId), {
-              pallBalance: newBalance
-            }, { merge: true });
-          } catch (error) {
-            console.error("Error saving balance:", error);
-          }
-        }
+      miningInterval = setInterval(() => {
+        localBalance += baseMiningRate;
+        setBalance(localBalance);
       }, 1000);
+      
+      // Save to Firestore every 10 seconds to reduce API calls
+      saveInterval = setInterval(async () => {
+        try {
+          await setDoc(doc(db, "wallets", userId), {
+            pallBalance: localBalance
+          }, { merge: true });
+        } catch (error) {
+          console.error("Error saving balance:", error);
+        }
+      }, 10000);
       
       // Update countdown timer and check for auto-stop
       timerInterval = setInterval(async () => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
             // 24 hours completed - auto-stop mining
+            // Clear intervals first to prevent double-counting
+            if (miningInterval) clearInterval(miningInterval);
+            if (saveInterval) clearInterval(saveInterval);
+            if (timerInterval) clearInterval(timerInterval);
+            
             setMining(false);
             setCanStartMining(true);
             setLastStart(null);
             
-            // Final balance save and stop mining in Firestore
-            const finalBalance = balance + baseMiningRate;
-            setBalance(finalBalance);
+            // Final balance save without adding extra - localBalance already has the correct amount
+            setBalance(localBalance);
             
             (async () => {
               try {
                 await setDoc(doc(db, "wallets", userId), {
-                  pallBalance: finalBalance,
+                  pallBalance: localBalance,
                   miningActive: false,
                   miningStopTime: new Date()
                 }, { merge: true });
@@ -129,8 +135,9 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     return () => {
       if (miningInterval) clearInterval(miningInterval);
       if (timerInterval) clearInterval(timerInterval);
+      if (saveInterval) clearInterval(saveInterval);
     };
-  }, [mining, lastStart, balance, baseMiningRate, userId]);
+  }, [mining, lastStart, baseMiningRate, userId]);
 
   const startMining = async () => {
     if (!canStartMining) return;
@@ -228,30 +235,35 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           </div>
         </div>
 
-        {/* Mining Button */}
-        {mining ? (
-          <div className="space-y-2">
-            <div className="w-full p-3 bg-green-100 dark:bg-green-900/30 rounded-lg text-center">
-              <p className="text-sm font-semibold text-green-700 dark:text-green-400">
-                🔥 Mining in Progress
-              </p>
-              <p className="text-xs text-green-600 dark:text-green-500 mt-1">
-                Earning {baseMiningRate.toFixed(8)} PALL/second
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Mining will auto-stop after 24 hours
-              </p>
-            </div>
+        {/* Mining Button - Always Visible */}
+        <Button 
+          onClick={mining ? undefined : startMining}
+          disabled={mining || !canStartMining}
+          className={`w-full text-white ${
+            mining 
+              ? 'bg-orange-500 cursor-default' 
+              : canStartMining 
+                ? 'bg-green-500 hover:bg-green-600' 
+                : 'bg-gray-400 cursor-not-allowed'
+          }`}
+          data-testid={mining ? "button-mining-active" : "button-start-mining"}
+        >
+          {mining ? `Mining in Progress ⛏ (${formatTime(Math.floor(timeRemaining))} remaining)` 
+            : canStartMining 
+              ? 'Start Mining ⛏' 
+              : '⏳ Ready for Next Session'}
+        </Button>
+        
+        {/* Mining Status Info */}
+        {mining && (
+          <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+              Earning {baseMiningRate.toFixed(8)} PALL/second
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Mining will auto-stop after 24 hours
+            </p>
           </div>
-        ) : (
-          <Button 
-            onClick={startMining} 
-            disabled={!canStartMining}
-            className={`w-full text-white ${canStartMining ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 cursor-not-allowed'}`}
-            data-testid="button-start-mining"
-          >
-            {canStartMining ? '⛏️ Start Mining' : '⏳ Mining Completed - Ready for Next Session'}
-          </Button>
         )}
 
         {/* Stats */}
@@ -263,9 +275,9 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         </div>
 
         {!canStartMining && !mining && (
-          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <p className="text-sm text-blue-700 dark:text-blue-400">
-              ✅ Mining session completed! Click "Start Mining" to begin next 24-hour cycle
+          <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <p className="text-sm text-green-700 dark:text-green-400">
+              ✅ 24-hour mining session completed! Ready to start next cycle.
             </p>
           </div>
         )}
