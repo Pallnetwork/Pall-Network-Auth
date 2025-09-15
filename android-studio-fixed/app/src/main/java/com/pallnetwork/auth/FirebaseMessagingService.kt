@@ -1,4 +1,4 @@
-package com.pallnetwork
+package com.pallnetwork.auth
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

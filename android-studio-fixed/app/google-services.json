@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:469337844389:android:d38ebd6ab70bd798927b4c",
         "android_client_info": {
-          "package_name": "com.pallnetwork"
+          "package_name": "com.pallnetwork.auth"
         }
       },
       "oauth_client": [],

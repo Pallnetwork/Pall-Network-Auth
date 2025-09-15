@@ -36,6 +36,9 @@ ext {
     minSdkVersion = 24
     buildToolsVersion = "34.0.0"
     
+    // JDK 19 Support
+    javaVersion = JavaVersion.VERSION_19
+    
     firebaseVersion = "32.7.0"
     androidxVersion = "1.11.0"
     materialVersion = "1.10.0"

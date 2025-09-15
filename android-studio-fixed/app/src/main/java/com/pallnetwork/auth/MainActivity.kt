@@ -1,4 +1,4 @@
-package com.pallnetwork
+package com.pallnetwork.auth
 
 import android.annotation.SuppressLint
 import android.content.Intent
