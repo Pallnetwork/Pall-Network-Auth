@@ -1,7 +1,9 @@
 package com.pallnetwork.auth
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -9,6 +11,8 @@ import android.view.View
 import android.webkit.*
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
@@ -23,8 +27,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var firestore: FirebaseFirestore
     
     companion object {
-        private const val WEB_APP_URL = "https://pallnetworkcommerce.com"
         private const val SCHEME_PALLNETWORK = "pallnetwork"
+        private const val PERMISSION_REQUEST_CODE = 100
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -157,13 +161,55 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onPermissionRequest(request: PermissionRequest?) {
-                // Handle camera/microphone permissions for Web3 features
-                request?.grant(request.resources)
+                request?.let { permissionRequest ->
+                    // Verify origin is our trusted domain
+                    val origin = permissionRequest.origin.toString()
+                    if (!origin.startsWith("https://pallnetworkcommerce.com")) {
+                        permissionRequest.deny()
+                        return
+                    }
+                    
+                    // Check requested resources and Android permissions
+                    val requestedResources = permissionRequest.resources
+                    val grantedResources = mutableListOf<String>()
+                    
+                    for (resource in requestedResources) {
+                        when (resource) {
+                            PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
+                                if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) 
+                                    == PackageManager.PERMISSION_GRANTED) {
+                                    grantedResources.add(resource)
+                                } else {
+                                    ActivityCompat.requestPermissions(this@MainActivity, 
+                                        arrayOf(Manifest.permission.CAMERA), PERMISSION_REQUEST_CODE)
+                                }
+                            }
+                            PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
+                                if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) 
+                                    == PackageManager.PERMISSION_GRANTED) {
+                                    grantedResources.add(resource)
+                                } else {
+                                    ActivityCompat.requestPermissions(this@MainActivity, 
+                                        arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
+                                }
+                            }
+                            else -> {
+                                // Only grant known/safe resources
+                            }
+                        }
+                    }
+                    
+                    if (grantedResources.isNotEmpty()) {
+                        permissionRequest.grant(grantedResources.toTypedArray())
+                    } else {
+                        permissionRequest.deny()
+                    }
+                }
             }
         }
 
         // Load the web app
-        webView.loadUrl(WEB_APP_URL)
+        webView.loadUrl(BuildConfig.WEB_APP_URL)
     }
 
     private fun loadErrorPage() {
@@ -224,7 +270,7 @@ class MainActivity : AppCompatActivity() {
             when (data.scheme) {
                 SCHEME_PALLNETWORK -> {
                     // Handle custom scheme: pallnetwork://
-                    val url = "$WEB_APP_URL${data.path ?: ""}"
+                    val url = "${BuildConfig.WEB_APP_URL}${data.path ?: ""}"
                     webView.loadUrl(url)
                 }
                 "https" -> {
@@ -261,6 +307,14 @@ class MainActivity : AppCompatActivity() {
             webView.goBack()
         } else {
             super.onBackPressed()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            // Permissions granted/denied - WebView will handle re-requesting if needed
+            // The permission request callback will be triggered again if user grants permission
         }
     }
 
