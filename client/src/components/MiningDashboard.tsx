@@ -12,58 +12,56 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const [balance, setBalance] = useState(0);
   const [mining, setMining] = useState(false);
   const [lastStart, setLastStart] = useState<Date | null>(null);
-  const [baseMiningRate, setBaseMiningRate] = useState(1 / (24 * 60 * 60)); // Exactly 1 token per 24 hours
+  const [baseMiningRate] = useState(0.00001157); // Exactly 0.00001157 PALL/second = 1 PALL per 24 hours
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [canStartMining, setCanStartMining] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Load settings first and force correct mining rate
-        const correctRate = 1 / (24 * 60 * 60); // Exactly 1 PALL per 24 hours
-        setBaseMiningRate(correctRate);
-        
-        // Update Firestore settings to ensure correct rate is stored
-        try {
-          await setDoc(doc(db, "settings", "config"), {
-            mining: { baseRate: correctRate }
-          }, { merge: true });
-        } catch (error) {
-          console.log("Settings update:", error);
-        }
-
-        // Load wallet data
+        // Load wallet data from Firestore
         const snap = await getDoc(doc(db, "wallets", userId));
         if (snap.exists()) {
           const data = snap.data();
           setBalance(data.pallBalance || 0);
-          setLastStart(data.lastStart ? data.lastStart.toDate() : null);
-          setMining(data.miningActive || false);
           
-          // Check if 24 hours have passed since last mining session
-          if (data.lastStart) {
+          // Check mining state and timing
+          if (data.lastStart && data.miningActive) {
             const lastStartTime = data.lastStart.toDate();
             const now = new Date();
-            const timeDiff = now.getTime() - lastStartTime.getTime();
-            const hoursElapsed = timeDiff / (1000 * 60 * 60);
+            const secondsElapsed = Math.floor((now.getTime() - lastStartTime.getTime()) / 1000);
+            const maxMiningSeconds = 24 * 60 * 60; // 24 hours in seconds
             
-            if (hoursElapsed >= 24) {
-              // Auto-stop mining after 24 hours
-              if (data.miningActive) {
-                await setDoc(doc(db, "wallets", userId), {
-                  miningActive: false
-                }, { merge: true });
-                setMining(false);
-              }
+            if (secondsElapsed >= maxMiningSeconds) {
+              // 24 hours completed - auto-stop mining
+              await setDoc(doc(db, "wallets", userId), {
+                miningActive: false,
+                miningStopTime: now
+              }, { merge: true });
+              setMining(false);
               setCanStartMining(true);
               setTimeRemaining(0);
-            } else if (data.miningActive) {
-              // Mining is still active within 24 hours
-              const remaining = 24 - hoursElapsed;
-              setTimeRemaining(remaining * 60 * 60); // Convert to seconds
+              setLastStart(null);
+            } else {
+              // Mining still active within 24 hours
+              setMining(true);
               setCanStartMining(false);
+              setLastStart(lastStartTime);
+              setTimeRemaining(maxMiningSeconds - secondsElapsed);
             }
+          } else {
+            // No active mining session
+            setMining(false);
+            setCanStartMining(true);
+            setTimeRemaining(0);
+            setLastStart(null);
           }
+        } else {
+          // Create new wallet document if doesn't exist
+          await setDoc(doc(db, "wallets", userId), {
+            pallBalance: 0,
+            miningActive: false
+          });
         }
       } catch (error) {
         console.error("Error fetching mining data:", error);
@@ -77,24 +75,50 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     let miningInterval: NodeJS.Timeout;
     let timerInterval: NodeJS.Timeout;
     
-    if (mining) {
+    if (mining && lastStart) {
       // Update balance every second
       miningInterval = setInterval(async () => {
-        setBalance(prev => {
-          const newBalance = prev + baseMiningRate;
-          saveBalance(newBalance);
-          return newBalance;
-        });
+        const newBalance = balance + baseMiningRate;
+        setBalance(newBalance);
+        
+        // Save to Firestore every 10 seconds to reduce API calls
+        const now = new Date();
+        if (Math.floor(now.getSeconds()) % 10 === 0) {
+          try {
+            await setDoc(doc(db, "wallets", userId), {
+              pallBalance: newBalance
+            }, { merge: true });
+          } catch (error) {
+            console.error("Error saving balance:", error);
+          }
+        }
       }, 1000);
       
-      // Update countdown timer
-      timerInterval = setInterval(() => {
+      // Update countdown timer and check for auto-stop
+      timerInterval = setInterval(async () => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
-            // Time's up - stop mining
+            // 24 hours completed - auto-stop mining
             setMining(false);
             setCanStartMining(true);
-            stopMining();
+            setLastStart(null);
+            
+            // Final balance save and stop mining in Firestore
+            const finalBalance = balance + baseMiningRate;
+            setBalance(finalBalance);
+            
+            (async () => {
+              try {
+                await setDoc(doc(db, "wallets", userId), {
+                  pallBalance: finalBalance,
+                  miningActive: false,
+                  miningStopTime: new Date()
+                }, { merge: true });
+              } catch (error) {
+                console.error("Error stopping mining:", error);
+              }
+            })();
+            
             return 0;
           }
           return prev - 1;
@@ -103,52 +127,38 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     }
     
     return () => {
-      clearInterval(miningInterval);
-      clearInterval(timerInterval);
+      if (miningInterval) clearInterval(miningInterval);
+      if (timerInterval) clearInterval(timerInterval);
     };
-  }, [mining, baseMiningRate]);
-
-  const saveBalance = async (newBalance: number) => {
-    try {
-      await setDoc(doc(db, "wallets", userId), {
-        pallBalance: newBalance,
-        miningActive: mining,
-        lastStart: new Date()
-      }, { merge: true });
-    } catch (error) {
-      console.error("Error saving mining data:", error);
-    }
-  };
+  }, [mining, lastStart, balance, baseMiningRate, userId]);
 
   const startMining = async () => {
     if (!canStartMining) return;
     
+    const now = new Date();
+    const miningDurationSeconds = 24 * 60 * 60; // Exactly 24 hours
+    
+    // Update local state
     setMining(true);
     setCanStartMining(false);
-    const now = new Date();
     setLastStart(now);
-    setTimeRemaining(24 * 60 * 60); // 24 hours in seconds
+    setTimeRemaining(miningDurationSeconds);
     
     try {
+      // Save mining start to Firestore
       await setDoc(doc(db, "wallets", userId), {
         pallBalance: balance,
         miningActive: true,
-        lastStart: now
+        lastStart: now,
+        miningStartTime: now
       }, { merge: true });
     } catch (error) {
       console.error("Error starting mining:", error);
-    }
-  };
-
-  const stopMining = async () => {
-    setMining(false);
-    try {
-      await setDoc(doc(db, "wallets", userId), {
-        pallBalance: balance,
-        miningActive: false
-      }, { merge: true });
-    } catch (error) {
-      console.error("Error stopping mining:", error);
+      // Reset state on error
+      setMining(false);
+      setCanStartMining(true);
+      setLastStart(null);
+      setTimeRemaining(0);
     }
   };
 
@@ -221,16 +231,17 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         {/* Mining Button */}
         {mining ? (
           <div className="space-y-2">
-            <Button 
-              onClick={stopMining} 
-              className="w-full bg-red-500 hover:bg-red-600 text-white"
-              data-testid="button-stop-mining"
-            >
-              ⛔ Stop Mining
-            </Button>
-            <p className="text-xs text-green-600">
-              Earning {baseMiningRate.toFixed(8)} PALL/second
-            </p>
+            <div className="w-full p-3 bg-green-100 dark:bg-green-900/30 rounded-lg text-center">
+              <p className="text-sm font-semibold text-green-700 dark:text-green-400">
+                🔥 Mining in Progress
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                Earning {baseMiningRate.toFixed(8)} PALL/second
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Mining will auto-stop after 24 hours
+              </p>
+            </div>
           </div>
         ) : (
           <Button 
@@ -239,7 +250,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
             className={`w-full text-white ${canStartMining ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 cursor-not-allowed'}`}
             data-testid="button-start-mining"
           >
-            {canStartMining ? '⛏️ Start Mining (24h)' : '⏳ Mining Cooldown'}
+            {canStartMining ? '⛏️ Start Mining' : '⏳ Mining Completed - Ready for Next Session'}
           </Button>
         )}
 
@@ -252,9 +263,9 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         </div>
 
         {!canStartMining && !mining && (
-          <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-            <p className="text-sm text-yellow-700 dark:text-yellow-400">
-              ⏰ Next mining session available after 24 hours
+          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <p className="text-sm text-blue-700 dark:text-blue-400">
+              ✅ Mining session completed! Click "Start Mining" to begin next 24-hour cycle
             </p>
           </div>
         )}
