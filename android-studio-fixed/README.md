@@ -4,11 +4,13 @@ This is the complete Android Studio project for the Pall Network crypto mining s
 
 ## Recent Updates (September 15, 2025)
 - ✅ **Package Name Updated**: Consistently set to `com.pallnetwork.auth` across all files
-- ✅ **JDK 19 Support**: Updated to support JDK 19 with proper Gradle configuration
-- ✅ **gradle.properties Added**: Missing gradle.properties file created with optimization settings
+- ✅ **JDK 17 Support**: Updated to JDK 17 (compatible with AGP 8.1.2 and Kotlin 1.9.10)
+- ✅ **gradle.properties Fixed**: Cross-platform compatible configuration without hardcoded JDK paths
 - ✅ **Firebase Configuration**: Updated google-services.json to align with new package name
 - ✅ **Source Files Refactored**: All Java/Kotlin files moved to correct package structure
-- ✅ **Build Configuration Fixed**: Gradle sync issues resolved
+- ✅ **Security Fixes**: WebView permission handling now properly verifies origins and requests Android permissions
+- ✅ **Build Configuration**: Uses BuildConfig.WEB_APP_URL instead of hardcoded values
+- ✅ **Cross-Platform Ready**: Removed Linux-specific JDK paths for better compatibility
 
 ## Package Structure
 - **Package Name**: `com.pallnetwork.auth`
@@ -16,9 +18,9 @@ This is the complete Android Studio project for the Pall Network crypto mining s
 - **Firebase Config**: Aligned with package name
 
 ## JDK Requirements
-- **JDK Version**: 19 (configured in gradle.properties and build.gradle)
-- **Kotlin Target**: JVM 19
-- **Java Compatibility**: VERSION_19
+- **JDK Version**: 17 (compatible with AGP 8.1.2)
+- **Kotlin Target**: JVM 17
+- **Java Compatibility**: VERSION_17
 
 ## Project Structure
 - `app/` - Android application module
