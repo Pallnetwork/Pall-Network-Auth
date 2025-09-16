@@ -33,17 +33,36 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
             const maxMiningSeconds = 24 * 60 * 60; // 24 hours in seconds
             
             if (secondsElapsed >= maxMiningSeconds) {
-              // 24 hours completed - auto-stop mining
+              // 24 hours completed - auto-stop mining and add final earnings
+              const finalEarnings = maxMiningSeconds * baseMiningRate; // Exactly 24 hours worth
+              const finalBalance = (data.pallBalance || 0) + finalEarnings;
+              
               await setDoc(doc(db, "wallets", userId), {
+                pallBalance: finalBalance,
                 miningActive: false,
                 miningStopTime: now
               }, { merge: true });
+              
+              setBalance(finalBalance);
               setMining(false);
               setCanStartMining(true);
               setTimeRemaining(0);
               setLastStart(null);
             } else {
-              // Mining still active within 24 hours
+              // Mining still active within 24 hours - add accrued earnings
+              const accruedEarnings = secondsElapsed * baseMiningRate;
+              const newBalance = (data.pallBalance || 0) + accruedEarnings;
+              
+              // Update balance to include earnings while app was closed
+              if (accruedEarnings > 0) {
+                await setDoc(doc(db, "wallets", userId), {
+                  pallBalance: newBalance
+                }, { merge: true });
+                setBalance(newBalance);
+              } else {
+                setBalance(data.pallBalance || 0);
+              }
+              
               setMining(true);
               setCanStartMining(false);
               setLastStart(lastStartTime);
