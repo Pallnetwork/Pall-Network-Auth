@@ -474,8 +474,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Top Bar */}
-      <div className="flex justify-between items-center bg-green-600 text-white p-4 shadow-lg">
+      {/* Top Bar with Safe Area */}
+      <div className="flex justify-between items-center bg-green-600 text-white p-4 pt-8 shadow-lg" style={{paddingTop: 'max(2rem, env(safe-area-inset-top, 2rem))'}}>
         <div className="flex items-center space-x-3">
           <img src="/logo192.png" alt="Pall Network" className="w-8 h-8 rounded-full" />
           <h1 className="text-xl font-bold">Pall Network</h1>
@@ -506,82 +506,82 @@ export default function Dashboard() {
                 <X className="w-5 h-5" />
               </Button>
             </div>
-            <nav className="space-y-2">
+            <nav className="space-y-4">
               <Button
                 variant={currentPage === "HOME" ? "secondary" : "ghost"}
-                className="w-full justify-start"
+                className="w-full justify-start py-3 text-base font-medium"
                 onClick={() => { navigate("/app/dashboard"); setSidebarOpen(false); }}
                 data-testid="nav-home"
               >
-                <Home className="w-4 h-4 mr-3" />
+                <Home className="w-5 h-5 mr-3" />
                 HOME
               </Button>
               <Button
                 variant={currentPage === "PROFILE" ? "secondary" : "ghost"}
-                className="w-full justify-start"
+                className="w-full justify-start py-3 text-base font-medium"
                 onClick={() => { navigate("/app/dashboard/profile"); setSidebarOpen(false); }}
                 data-testid="nav-profile"
               >
-                <User className="w-4 h-4 mr-3" />
+                <User className="w-5 h-5 mr-3" />
                 PROFILE
               </Button>
               <Button
                 variant={currentPage === "REFERRAL" ? "secondary" : "ghost"}
-                className="w-full justify-start"
+                className="w-full justify-start py-3 text-base font-medium"
                 onClick={() => { navigate("/app/dashboard/referral"); setSidebarOpen(false); }}
                 data-testid="nav-referral"
               >
-                <Users className="w-4 h-4 mr-3" />
+                <Users className="w-5 h-5 mr-3" />
                 REFERRAL TEAM
               </Button>
               <Button
                 variant={currentPage === "WALLET" ? "secondary" : "ghost"}
-                className="w-full justify-start"
+                className="w-full justify-start py-3 text-base font-medium"
                 onClick={() => { navigate("/app/dashboard/wallet"); setSidebarOpen(false); }}
                 data-testid="nav-wallet"
               >
-                <Wallet className="w-4 h-4 mr-3" />
+                <Wallet className="w-5 h-5 mr-3" />
                 WALLET
               </Button>
               <Button
                 variant={currentPage === "UPGRADE" ? "secondary" : "ghost"}
-                className="w-full justify-start"
+                className="w-full justify-start py-3 text-base font-medium"
                 onClick={() => { navigate("/app/dashboard/upgrade"); setSidebarOpen(false); }}
                 data-testid="nav-upgrade"
               >
-                <Zap className="w-4 h-4 mr-3" />
+                <Zap className="w-5 h-5 mr-3" />
                 UPGRADE
               </Button>
               <Button
                 variant="ghost"
-                className="w-full justify-start"
+                className="w-full justify-start py-3 text-base font-medium"
                 onClick={() => { 
                   setSidebarOpen(false);
                   navigate("/app/kyc");
                 }}
                 data-testid="nav-kyc"
               >
-                <Shield className="w-4 h-4 mr-3" />
+                <Shield className="w-5 h-5 mr-3" />
                 KYC VERIFICATION
               </Button>
               <Button
                 variant={currentPage === "ABOUT" ? "secondary" : "ghost"}
-                className="w-full justify-start"
+                className="w-full justify-start py-3 text-base font-medium"
                 onClick={() => { navigate("/app/dashboard/policies"); setSidebarOpen(false); }}
                 data-testid="nav-about"
               >
-                <Info className="w-4 h-4 mr-3" />
+                <Info className="w-5 h-5 mr-3" />
                 POLICIES
               </Button>
             </nav>
-            <div className="mt-8 pt-8 border-t">
+            <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
               <Button
                 variant="destructive"
                 onClick={handleLogout}
-                className="w-full"
+                className="w-full py-3 text-base font-bold rounded-xl hover:bg-red-600 transition-colors"
                 data-testid="button-logout"
               >
-                <LogOut className="w-4 h-4 mr-2" />
+                <LogOut className="w-5 h-5 mr-3" />
                 Sign Out
               </Button>
             </div>
@@ -616,31 +616,31 @@ export default function Dashboard() {
               </div>
 
               {/* Quick Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <h3 className="text-xl font-bold text-blue-600">{pallBalance.toFixed(4)}</h3>
-                    <p className="text-sm text-muted-foreground">PALL Balance</p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+                  <CardContent className="p-6 text-center">
+                    <h3 className="text-2xl font-bold text-blue-600 mb-2">{pallBalance.toFixed(4)}</h3>
+                    <p className="text-sm font-medium text-muted-foreground">PALL Balance</p>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <h3 className="text-xl font-bold text-green-600">{referrals.length}</h3>
-                    <p className="text-sm text-muted-foreground">Total Referrals</p>
+                <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
+                  <CardContent className="p-6 text-center">
+                    <h3 className="text-2xl font-bold text-green-600 mb-2">{referrals.length}</h3>
+                    <p className="text-sm font-medium text-muted-foreground">Total Referrals</p>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <h3 className="text-xl font-bold text-purple-600">{(totalF1 + totalF2).toFixed(2)}</h3>
-                    <p className="text-sm text-muted-foreground">USDT Earnings</p>
+                <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
+                  <CardContent className="p-6 text-center">
+                    <h3 className="text-2xl font-bold text-purple-600 mb-2">{(totalF1 + totalF2).toFixed(2)}</h3>
+                    <p className="text-sm font-medium text-muted-foreground">USDT Earnings</p>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="p-4 text-center">
-                    <h3 className={`text-xl font-bold ${miningStatus ? 'text-green-600' : 'text-gray-500'}`}>
+                <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20">
+                  <CardContent className="p-6 text-center">
+                    <h3 className={`text-2xl font-bold mb-2 ${miningStatus ? 'text-green-600' : 'text-gray-500'}`}>
                       {miningStatus ? '⚡ Active' : '⛏ Idle'}
                     </h3>
-                    <p className="text-sm text-muted-foreground">Mining Status</p>
+                    <p className="text-sm font-medium text-muted-foreground">Mining Status</p>
                   </CardContent>
                 </Card>
               </div>
@@ -648,55 +648,55 @@ export default function Dashboard() {
 
               {/* Referral Code & Invitation Links */}
               {user.referralCode && (
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="font-semibold mb-4">Your Referral Code</h3>
-                    <div className="flex items-center justify-between bg-muted p-4 rounded-lg mb-4">
-                      <code className="font-mono text-lg">{user.referralCode}</code>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(user.referralCode || "");
-                          toast({
-                            title: "Copied!",
-                            description: "Referral code copied to clipboard",
-                          });
-                        }}
-                        data-testid="button-copy-code"
-                      >
-                        Copy Code
-                      </Button>
-                    </div>
+                <Card className="rounded-2xl shadow-md border-0">
+                  <CardContent className="p-8">
+                    <h3 className="text-xl font-bold mb-6 text-center text-gray-800 dark:text-gray-200">Share & Earn 🎯</h3>
                     
-                    <h3 className="font-semibold mb-4">Invitation Share Link</h3>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
-                      <p className="text-sm font-mono break-all mb-3 text-blue-700 dark:text-blue-300">
-                        {generateShareLink(user.referralCode)}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl mb-6 border border-blue-100 dark:border-blue-800">
+                      <p className="text-sm font-medium text-muted-foreground mb-3 text-center">Your Referral Code:</p>
+                      <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                        <code className="font-mono text-xl font-bold text-blue-600">{user.referralCode}</code>
                         <Button
                           variant="outline"
                           size="sm"
+                          className="rounded-lg font-bold hover:scale-105 transition-all duration-200"
+                          onClick={() => {
+                            navigator.clipboard.writeText(user.referralCode || "");
+                            toast({
+                              title: "Copied!",
+                              description: "Referral code copied to clipboard",
+                            });
+                          }}
+                          data-testid="button-copy-code"
+                        >
+                          📋 Copy Code
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <h3 className="text-lg font-bold mb-4 text-center">Share Your Link</h3>
+                    <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 p-6 rounded-xl mb-6 border border-green-100 dark:border-green-800">
+                      <p className="text-sm font-mono break-all mb-4 text-center text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 p-3 rounded-lg">
+                        {generateShareLink(user.referralCode)}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <Button
                           onClick={copyShareLink}
+                          className="w-full py-3 font-bold rounded-xl hover:scale-105 transition-all duration-200"
                           data-testid="button-copy-link"
                         >
                           📋 Copy Link
                         </Button>
                         <Button
-                          variant="outline"
-                          size="sm"
                           onClick={shareViaWhatsApp}
-                          className="bg-green-500 hover:bg-green-600 text-white"
+                          className="w-full py-3 font-bold rounded-xl bg-green-500 hover:bg-green-600 text-white hover:scale-105 transition-all duration-200"
                           data-testid="button-share-whatsapp"
                         >
                           📱 WhatsApp
                         </Button>
                         <Button
-                          variant="outline"
-                          size="sm"
                           onClick={shareViaTelegram}
-                          className="bg-blue-500 hover:bg-blue-600 text-white"
+                          className="w-full py-3 font-bold rounded-xl bg-blue-500 hover:bg-blue-600 text-white hover:scale-105 transition-all duration-200"
                           data-testid="button-share-telegram"
                         >
                           ✈️ Telegram
@@ -704,11 +704,13 @@ export default function Dashboard() {
                       </div>
                     </div>
                     
-                    <p className="text-sm text-muted-foreground">
-                      💰 Share your unique link to earn commissions from referrals!<br/>
-                      🎯 Direct referrals (F1): 5% commission<br/>
-                      🔗 Indirect referrals (F2): 2.5% commission
-                    </p>
+                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 p-6 rounded-xl text-center">
+                      <p className="text-base font-medium text-gray-700 dark:text-gray-300 leading-relaxed">
+                        💰 Earn commissions from every referral!<br/>
+                        🎯 <span className="font-bold text-green-600">Direct referrals (F1): 5% commission</span><br/>
+                        🔗 <span className="font-bold text-blue-600">Indirect referrals (F2): 2.5% commission</span>
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               )}

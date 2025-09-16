@@ -181,15 +181,15 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const progressPercentage = timeRemaining > 0 ? ((24 * 60 * 60 - timeRemaining) / (24 * 60 * 60)) * 100 : 0;
 
   return (
-    <Card className="max-w-md mx-auto">
-      <CardHeader>
-        <h2 className="text-2xl font-bold text-center text-blue-600">Pall Mining</h2>
+    <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
+      <CardHeader className="pb-4">
+        <h2 className="text-3xl font-bold text-center text-blue-600">Pall Mining ⛏️</h2>
       </CardHeader>
-      <CardContent className="text-center space-y-6">
+      <CardContent className="text-center space-y-6 px-6 pb-8">
         {/* Balance Display */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-4 rounded-lg">
-          <p className="text-sm text-muted-foreground">Current Balance</p>
-          <p className="text-2xl font-bold text-blue-600">{balance.toFixed(8)} PALL</p>
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
+          <p className="text-3xl font-bold text-blue-600">{balance.toFixed(8)} PALL</p>
         </div>
 
         {/* Pi Network Style Circular Mining Interface */}
@@ -215,7 +215,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           )}
           
           {/* Center Content */}
-          <div className="absolute inset-4 bg-white dark:bg-card rounded-full flex flex-col items-center justify-center shadow-lg border-2 border-blue-100">
+          <div className="absolute inset-4 bg-white dark:bg-card rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
             {mining ? (
               <>
                 <div className="text-3xl mb-2">⛏️</div>
@@ -239,11 +239,11 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         <Button 
           onClick={mining ? undefined : startMining}
           disabled={mining || !canStartMining}
-          className={`w-full text-white ${
+          className={`w-full py-4 text-lg font-bold rounded-xl text-white hover:scale-105 transition-all duration-200 ${
             mining 
-              ? 'bg-orange-500 cursor-default' 
+              ? 'bg-orange-500 cursor-default shadow-lg' 
               : canStartMining 
-                ? 'bg-green-500 hover:bg-green-600' 
+                ? 'bg-green-500 hover:bg-green-600 shadow-lg' 
                 : 'bg-gray-400 cursor-not-allowed'
           }`}
           data-testid={mining ? "button-mining-active" : "button-start-mining"}
@@ -256,27 +256,27 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         
         {/* Mining Status Info */}
         {mining && (
-          <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+          <div className="text-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-100 dark:border-green-800">
+            <p className="text-base text-green-700 dark:text-green-400 font-bold mb-1">
               Earning {baseMiningRate.toFixed(8)} PALL/second
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground">
               Mining will auto-stop after 24 hours
             </p>
           </div>
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-1 gap-4 text-sm">
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-center">
-            <p className="text-muted-foreground">Mining Rate</p>
-            <p className="font-bold text-blue-600">1 PALL / 24 hours</p>
+        <div className="grid grid-cols-1 gap-4">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl text-center border border-blue-100 dark:border-blue-800">
+            <p className="text-sm font-medium text-muted-foreground mb-1">Mining Rate</p>
+            <p className="text-lg font-bold text-blue-600">1 PALL / 24 hours</p>
           </div>
         </div>
 
         {!canStartMining && !mining && (
-          <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <p className="text-sm text-green-700 dark:text-green-400">
+          <div className="text-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-100 dark:border-green-800">
+            <p className="text-base text-green-700 dark:text-green-400 font-bold">
               ✅ 24-hour mining session completed! Ready to start next cycle.
             </p>
           </div>
