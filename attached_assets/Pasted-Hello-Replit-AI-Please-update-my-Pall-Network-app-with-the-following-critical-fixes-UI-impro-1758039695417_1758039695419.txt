@@ -1,0 +1,171 @@
+Hello Replit AI 👋
+
+Please update my “Pall Network” app with the following critical fixes + UI improvements and provide me with a fresh Android Studio–ready ZIP file.
+
+
+---
+
+1. Firebase Auth Persistence (Auto Logout Fix)
+
+Currently, after login:
+
+If the app is closed and reopened → user is logged out.
+
+If the mobile back button is pressed → user is logged out.
+
+
+✅ Required Fix:
+
+In firebase.ts or auth.ts, ensure:
+
+
+import { setPersistence, browserLocalPersistence } from "firebase/auth";
+setPersistence(auth, browserLocalPersistence);
+
+Session must stay active until user explicitly signs out.
+
+Closing/reopening app should auto-restore the session.
+
+Logout only when user taps the Sign Out button in the sidebar.
+
+
+
+---
+
+2. Dashboard UI Safe Area (Top Cut Issue)
+
+On Android, the dashboard content is cut off by the status bar.
+
+✅ Required Fix:
+
+Add safe-area padding (e.g., pt-8 or paddingTop: env(safe-area-inset-top)).
+
+Ensure UI is fully visible on Android and iOS.
+
+
+
+---
+
+3. Mining Button Logic (Visibility + 24h Cycle)
+
+The mining button is not showing or functioning correctly.
+
+✅ Required Fix:
+
+Always show “Start Mining ⛏” button on dashboard.
+
+Logic:
+
+1. On click → mining starts.
+
+
+2. Runs for 24 hours (86,400 seconds).
+
+
+3. Rate: 1 Pall Token / 24h = 0.00001157 PALL/sec.
+
+
+4. Balance updates in Firestore (pallBalance) live.
+
+
+5. After 24h → mining auto-stops.
+
+
+6. Button resets to “Start Mining ⛏”.
+
+
+
+Must not auto-restart without user action.
+
+Fully Play Store policy compliant.
+
+
+
+---
+
+4. UI Polish & UX Improvements
+
+Please improve overall UI consistency:
+
+Sidebar Menu
+
+Add spacing between menu items.
+
+Make all menu items same font size & weight.
+
+Ensure Sign Out button is clearly separated at bottom.
+
+
+Dashboard Cards
+
+Add padding inside cards so text/icons don’t touch edges.
+
+Use consistent font sizes (heading vs balance text).
+
+Apply soft shadows & rounded corners (rounded-2xl, shadow-md).
+
+
+Buttons
+
+Ensure all buttons (Mining, Copy Address, etc.) use consistent style:
+
+Rounded corners
+
+Bold text
+
+Hover/tap feedback
+
+Primary color consistent with app theme
+
+
+
+Text Alignment
+
+Align all headings to center/top with enough spacing.
+
+Prevent overlap with system status bar.
+
+
+Responsiveness
+
+Test on both mobile & desktop/PWA.
+
+Sidebar + dashboard must look clean on small screens.
+
+
+
+
+---
+
+5. Deliverables
+
+Fresh ZIP file with all fixes + UI polish.
+
+Project must:
+
+Open directly in Android Studio (no Gradle/JDK issues).
+
+Generate APK & AAB smoothly.
+
+Behave correctly on Android + iOS.
+
+
+
+✅ Testing Checklist:
+
+Login → close app → reopen → still logged in
+
+Back button → no auto logout
+
+Logout only via Sign Out button
+
+Dashboard UI not cut off, looks polished
+
+Mining button visible, works for exactly 24h cycle
+
+Sidebar neat & responsive
+
+
+
+---
+I was hopeful that you would listen to me and do as I wish, and I will continue to work with you, but I have many complaints with you, I have to tell you one thing again and again, and you do not do that thing as I wish unless I tell you a thing 3 to 4 times, today is the last time I am telling you, watch this video and fix my application and give me the correct zip file, this time also if you do the same as every time, I will stop using Replit because I am very angry with you because of your attitude. Thank you.
