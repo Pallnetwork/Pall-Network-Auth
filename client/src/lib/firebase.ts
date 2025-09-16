@@ -1,7 +1,12 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { 
+  getAuth, 
+  setPersistence, 
+  browserLocalPersistence 
+} from "firebase/auth";
 
+// ✅ Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCs16TI4UyJiT8vE5c7mT0XhMa8l-cx1MU",
   authDomain: "pall-network-auth-7b89e.firebaseapp.com",
@@ -12,12 +17,21 @@ const firebaseConfig = {
   measurementId: "G-26FCXHBLWY",
 };
 
+// ✅ Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// ✅ Firestore reference
 export const db = getFirestore(app);
+
+// ✅ Auth reference
 export const auth = getAuth(app);
 
-// Set Firebase Auth to use browserLocalPersistence for persistent sessions
-// This ensures users stay logged in across browser refreshes and app reopens
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.error('Error setting Firebase Auth persistence:', error);
-});
+// ✅ Ensure persistence (user stays logged in after refresh / reopen)
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("🔥 Firebase Auth persistence set to browserLocalPersistence");
+  })
+  .catch((error) => {
+    console.error("❌ Error setting Firebase Auth persistence:", error);
+  });
+

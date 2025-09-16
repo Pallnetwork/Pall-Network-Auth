@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { db, auth } from "@/lib/firebase";
 import { doc, setDoc, getDocs, query, collection, where } from "firebase/firestore";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile, onAuthStateChanged } from "firebase/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,17 @@ export default function SignUp() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
+  // ✅ Agar user already login hai to redirect
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log("🔄 User already signed in:", user.uid);
+        navigate("/app/dashboard", { replace: true });
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError("");
@@ -33,16 +44,16 @@ export default function SignUp() {
 
   const handlePackageChange = (value: string) => {
     const packagePrices = {
-      "Basic": 25,
-      "Silver": 20,
-      "Gold": 56,
-      "Diamond": 100,
-      "Premium": 100
+      Basic: 25,
+      Silver: 20,
+      Gold: 56,
+      Diamond: 100,
+      Premium: 100,
     };
-    setForm({ 
-      ...form, 
-      package: value, 
-      packagePrice: packagePrices[value as keyof typeof packagePrices] 
+    setForm({
+      ...form,
+      package: value,
+      packagePrice: packagePrices[value as keyof typeof packagePrices],
     });
   };
 
@@ -52,7 +63,7 @@ export default function SignUp() {
     setError("");
 
     try {
-      // Check if invitation code exists and is valid (if provided)
+      // ✅ Invitation code check (optional)
       let referredBy = null;
       if (form.invitation) {
         const q = query(
@@ -69,19 +80,24 @@ export default function SignUp() {
         }
       }
 
-      // Create Firebase Authentication user
-      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      // ✅ Firebase Auth user create
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        form.email,
+        form.password
+      );
       const user = userCredential.user;
 
-      // Update user profile with display name
+      // ✅ Profile update with full name
       await updateProfile(user, {
-        displayName: form.name
+        displayName: form.name,
       });
 
-      // Generate referral code for the new user
-      const referralCode = form.username.toLowerCase() + "-" + user.uid.slice(0, 5);
+      // ✅ Generate referral code
+      const referralCode =
+        form.username.toLowerCase() + "-" + user.uid.slice(0, 5);
 
-      // Create user document in Firestore
+      // ✅ User Firestore document
       await setDoc(doc(db, "users", user.uid), {
         email: form.email,
         name: form.name,
@@ -94,7 +110,7 @@ export default function SignUp() {
         createdAt: new Date(),
       });
 
-      // Create wallet document with default balance
+      // ✅ Wallet Firestore document
       await setDoc(doc(db, "wallets", user.uid), {
         userId: user.uid,
         pallBalance: 0,
@@ -108,30 +124,26 @@ export default function SignUp() {
         createdAt: new Date(),
       });
 
-      // Store userId in localStorage for immediate access
+      // ✅ LocalStorage save
       localStorage.setItem("userId", user.uid);
-      
+
       toast({
         title: "Success",
-        description: referredBy 
+        description: referredBy
           ? `Account created successfully! Referred by ${referredBy}.`
           : "Account created successfully!",
       });
-      
-      console.log("✅ User created in Firebase Auth:", user.uid);
-      console.log("✅ User document created in Firestore");
-      console.log("✅ Wallet document created with default balance");
-      
-      navigate("/app/dashboard");
+
+      console.log("✅ User created:", user.uid);
+      navigate("/app/dashboard", { replace: true });
     } catch (err: any) {
       console.error("❌ Signup error:", err);
-      
-      // Handle specific Firebase Auth errors
-      if (err.code === 'auth/email-already-in-use') {
+
+      if (err.code === "auth/email-already-in-use") {
         setError("This email is already registered. Please use a different email or sign in.");
-      } else if (err.code === 'auth/weak-password') {
+      } else if (err.code === "auth/weak-password") {
         setError("Password is too weak. Please use at least 6 characters.");
-      } else if (err.code === 'auth/invalid-email') {
+      } else if (err.code === "auth/invalid-email") {
         setError("Invalid email address. Please check and try again.");
       } else {
         setError("Failed to create account. Please try again.");
@@ -220,7 +232,11 @@ export default function SignUp() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="package">Package</Label>
-              <Select value={form.package} onValueChange={handlePackageChange} data-testid="select-package">
+              <Select
+                value={form.package}
+                onValueChange={handlePackageChange}
+                data-testid="select-package"
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a package" />
                 </SelectTrigger>
@@ -252,7 +268,11 @@ export default function SignUp() {
 
             <div className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/app/signin" className="text-primary hover:underline" data-testid="link-signin">
+              <Link
+                href="/app/signin"
+                className="text-primary hover:underline"
+                data-testid="link-signin"
+              >
                 Sign In
               </Link>
             </div>

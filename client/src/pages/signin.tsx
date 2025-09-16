@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { auth } from "@/lib/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,17 @@ export default function SignIn() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
+  // ✅ Agar user already logged in hai to redirect
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log("🔄 User already signed in:", user.uid);
+        navigate("/app/dashboard", { replace: true });
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError("");
@@ -27,31 +38,29 @@ export default function SignIn() {
     setError("");
 
     try {
-      // Use Firebase Authentication to sign in
       const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 
-      // Store userId in localStorage for immediate access
+      // LocalStorage me save (extra layer)
       localStorage.setItem("userId", user.uid);
-      
+
       toast({
         title: "Success",
         description: "You have been signed in successfully!",
       });
-      
+
       console.log("✅ User signed in successfully:", user.uid);
       navigate("/app/dashboard", { replace: true });
     } catch (err: any) {
       console.error("❌ Signin error:", err);
-      
-      // Handle specific Firebase Auth errors
-      if (err.code === 'auth/user-not-found') {
+
+      if (err.code === "auth/user-not-found") {
         setError("No account found with this email. Please check your email or create an account.");
-      } else if (err.code === 'auth/wrong-password') {
+      } else if (err.code === "auth/wrong-password") {
         setError("Incorrect password. Please try again.");
-      } else if (err.code === 'auth/invalid-email') {
+      } else if (err.code === "auth/invalid-email") {
         setError("Invalid email address. Please check and try again.");
-      } else if (err.code === 'auth/too-many-requests') {
+      } else if (err.code === "auth/too-many-requests") {
         setError("Too many failed attempts. Please try again later.");
       } else {
         setError("Sign in failed. Please try again.");
@@ -106,12 +115,7 @@ export default function SignIn() {
               </div>
             )}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-              data-testid="button-signin"
-            >
+            <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-signin">
               {isLoading ? "Signing In..." : "Sign In"}
             </Button>
 

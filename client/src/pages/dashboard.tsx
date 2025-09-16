@@ -38,6 +38,37 @@ interface Profile {
   createdAt: any;
 }
 
+// ---- AUTH EXPIRY: 24 HOURS ----
+const AUTH_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours in ms
+const AUTH_TIMESTAMP_KEY = "authTimestamp";
+
+function setAuthTimestampNow() {
+  try {
+    localStorage.setItem(AUTH_TIMESTAMP_KEY, String(Date.now()));
+  } catch (e) {
+    console.warn("Could not set auth timestamp:", e);
+  }
+}
+
+function clearAuthTimestamp() {
+  try {
+    localStorage.removeItem(AUTH_TIMESTAMP_KEY);
+  } catch (e) {
+    console.warn("Could not clear auth timestamp:", e);
+  }
+}
+
+function isAuthExpired(): boolean {
+  try {
+    const ts = Number(localStorage.getItem(AUTH_TIMESTAMP_KEY));
+    if (!ts || Number.isNaN(ts)) return false; // no ts -> not expired by this logic
+    return Date.now() - ts > AUTH_EXPIRY_MS;
+  } catch (e) {
+    console.warn("Error checking auth expiry:", e);
+    return false;
+  }
+}
+
 // F2 Referrals Component
 function F2Referrals({ userId, onTotalChange }: { userId: string; onTotalChange?: (total: number) => void }) {
   const [f2Referrals, setF2Referrals] = useState<User[]>([]);
@@ -66,7 +97,7 @@ function F2Referrals({ userId, onTotalChange }: { userId: string; onTotalChange?
         }
 
         setF2Referrals(f2List);
-        
+
         // Calculate total F2 commission
         const total = f2List.reduce((sum, r) => sum + (0.025 * (r.packagePrice || 100)), 0);
         onTotalChange?.(total);
@@ -161,7 +192,7 @@ export default function Dashboard() {
   // Real-time balance sync for mining dashboard
   useEffect(() => {
     let balanceInterval: NodeJS.Timeout;
-    
+
     const syncBalance = async () => {
       const userId = localStorage.getItem("userId");
       if (userId) {
@@ -188,29 +219,28 @@ export default function Dashboard() {
 
   useEffect(() => {
     let redirectTimeout: NodeJS.Timeout;
-    
-    // Use Firebase Auth state listener for proper authentication persistence
+
+    // Authentication state listener
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       console.log('🔥 Firebase Auth state changed:', firebaseUser ? 'User logged in' : 'No user');
-      
+
       // Clear any pending redirect timeout
       if (redirectTimeout) {
         clearTimeout(redirectTimeout);
       }
-      
+
       // Mark auth as initialized after first check
       setAuthInitialized(true);
-      
+
+      // If no firebase user -> wait a moment then redirect (existing logic)
       if (!firebaseUser) {
         console.log('⚠️ No Firebase user found, checking again in 500ms before redirecting...');
-        // Add a small delay before redirecting to allow Firebase Auth to settle
-        // This prevents redirects during browser back navigation or component re-renders
         redirectTimeout = setTimeout(() => {
-          // Double-check current user before redirecting
           const currentUser = auth.currentUser;
           if (!currentUser) {
             console.log('❌ Confirmed: No Firebase user after timeout, redirecting to signin');
             localStorage.removeItem("userId");
+            clearAuthTimestamp();
             navigate("/app/signin");
           } else {
             console.log('✅ False alarm: Firebase user found on double-check:', currentUser.uid);
@@ -218,11 +248,18 @@ export default function Dashboard() {
         }, 500);
         return;
       }
-      
-      // User is authenticated, sync localStorage and continue
+
+      // If user is present, set userId and timestamp then fetch data
       const userId = firebaseUser.uid;
       console.log('✅ Firebase user authenticated:', userId);
-      localStorage.setItem("userId", userId);
+      try {
+        localStorage.setItem("userId", userId);
+      } catch (e) {
+        console.warn("Could not set userId in localStorage:", e);
+      }
+
+      // Set auth timestamp now (login time / refresh)
+      setAuthTimestampNow();
 
       const fetchData = async () => {
         try {
@@ -234,84 +271,88 @@ export default function Dashboard() {
             // User document doesn't exist, sign out and redirect
             await signOut(auth);
             localStorage.removeItem("userId");
+            clearAuthTimestamp();
             navigate("/app/signin");
             return;
           }
 
-        // Fetch profile data
-        const profileDoc = await getDoc(doc(db, "profiles", userId));
-        if (profileDoc.exists()) {
-          setProfile(profileDoc.data() as Profile);
-        }
-
-        // Fetch referrals (people referred by this user)
-        const q = query(
-          collection(db, "users"),
-          where("referredBy", "==", userDoc.data()?.username)
-        );
-        const referralSnap = await getDocs(q);
-        const referralList = referralSnap.docs.map(doc => doc.data() as User);
-        setReferrals(referralList);
-
-        // Fetch mining data
-        try {
-          const walletSnap = await getDoc(doc(db, "wallets", userId));
-          if (walletSnap.exists()) {
-            const walletData = walletSnap.data();
-            setPallBalance(walletData.pallBalance || 0);
-            setUsdtBalance(walletData.usdtBalance || 0);
-            setMiningStatus(walletData.miningActive || false);
+          // Fetch profile data
+          const profileDoc = await getDoc(doc(db, "profiles", userId));
+          if (profileDoc.exists()) {
+            setProfile(profileDoc.data() as Profile);
           }
-        } catch (error) {
-          console.error("Error fetching mining data:", error);
-        }
 
-        // Fetch referral data
-        try {
-          const referralSnap = await getDoc(doc(db, "referrals", userId));
-          if (referralSnap.exists()) {
-            const refData = referralSnap.data();
-            setReferralData({
-              f1Commission: refData.f1Commission || 0,
-              f2Commission: refData.f2Commission || 0,
-              totalCommission: refData.totalCommission || 0,
-              referredUsers: refData.referredUsers || []
-            });
-          } else {
-            // Initialize referral document if it doesn't exist
-            await setDoc(doc(db, "referrals", userId), {
-              referredUsers: [],
-              f1Commission: 0,
-              f2Commission: 0,
-              totalCommission: 0
-            });
-            setReferralData({
-              f1Commission: 0,
-              f2Commission: 0,
-              totalCommission: 0,
-              referredUsers: []
-            });
-          }
-        } catch (error) {
-          console.error("Error fetching referral data:", error);
-        }
-
-        // Fetch transaction history
-        try {
-          const transactionQuery = query(
-            collection(db, "transactions"),
-            where("userId", "==", userId),
-            orderBy("createdAt", "desc")
+          // Fetch referrals (people referred by this user)
+          const q = query(
+            collection(db, "users"),
+            where("referredBy", "==", userDoc.data()?.username)
           );
-          const transactionSnap = await getDocs(transactionQuery);
-          const transactionList = transactionSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setTransactions(transactionList);
-        } catch (error) {
-          console.error("Error fetching transactions:", error);
-        }
+          const referralSnap = await getDocs(q);
+          const referralList = referralSnap.docs.map(doc => doc.data() as User);
+          setReferrals(referralList);
+
+          // Fetch mining data
+          try {
+            const walletSnap = await getDoc(doc(db, "wallets", userId));
+            if (walletSnap.exists()) {
+              const walletData = walletSnap.data();
+              setPallBalance(walletData.pallBalance || 0);
+              setUsdtBalance(walletData.usdtBalance || 0);
+              setMiningStatus(walletData.miningActive || false);
+            }
+          } catch (error) {
+            console.error("Error fetching mining data:", error);
+          }
+
+          // Fetch referral data
+          try {
+            const referralSnap = await getDoc(doc(db, "referrals", userId));
+            if (referralSnap.exists()) {
+              const refData = referralSnap.data();
+              setReferralData({
+                f1Commission: refData.f1Commission || 0,
+                f2Commission: refData.f2Commission || 0,
+                totalCommission: refData.totalCommission || 0,
+                referredUsers: refData.referredUsers || []
+              });
+            } else {
+              // Initialize referral document if it doesn't exist
+              await setDoc(doc(db, "referrals", userId), {
+                referredUsers: [],
+                f1Commission: 0,
+                f2Commission: 0,
+                totalCommission: 0
+              });
+              setReferralData({
+                f1Commission: 0,
+                f2Commission: 0,
+                totalCommission: 0,
+                referredUsers: []
+              });
+            }
+          } catch (error) {
+            console.error("Error fetching referral data:", error);
+          }
+
+          // Fetch transaction history
+          try {
+            const transactionQuery = query(
+              collection(db, "transactions"),
+              where("userId", "==", userId),
+              orderBy("createdAt", "desc")
+            );
+            const transactionSnap = await getDocs(transactionQuery);
+            const transactionList = transactionSnap.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            setTransactions(transactionList);
+          } catch (error) {
+            console.error("Error fetching transactions:", error);
+          }
+
+          // Refresh auth timestamp after successful data fetch so active users stay logged in
+          setAuthTimestampNow();
 
         } catch (error) {
           console.error("Error fetching data:", error);
@@ -331,6 +372,50 @@ export default function Dashboard() {
       if (redirectTimeout) {
         clearTimeout(redirectTimeout);
       }
+    };
+  }, [navigate]);
+
+  // Expiry checker: run on mount, every 60s, and when window gains focus
+  useEffect(() => {
+    let expiryInterval: NodeJS.Timeout | null = null;
+
+    const checkExpiryAndSignOut = async () => {
+      try {
+        // Only act if expiry has a timestamp and it is expired
+        if (isAuthExpired()) {
+          console.log("⏰ Auth expired by timestamp, signing out user.");
+          // Sign out
+          try {
+            await signOut(auth);
+          } catch (e) {
+            console.warn("Error during signOut:", e);
+          }
+          try {
+            localStorage.removeItem("userId");
+            clearAuthTimestamp();
+          } catch (e) {
+            console.warn("Could not clear localStorage during expiry signout:", e);
+          }
+          // navigate to signin
+          navigate("/app/signin");
+        }
+      } catch (e) {
+        console.warn("Error checking expiry:", e);
+      }
+    };
+
+    // immediate check
+    checkExpiryAndSignOut();
+
+    // periodic check every 60 seconds
+    expiryInterval = setInterval(checkExpiryAndSignOut, 60 * 1000);
+
+    // also check when window/tab gets focus (user comes back)
+    window.addEventListener("focus", checkExpiryAndSignOut);
+
+    return () => {
+      if (expiryInterval) clearInterval(expiryInterval);
+      window.removeEventListener("focus", checkExpiryAndSignOut);
     };
   }, [navigate]);
 
@@ -409,6 +494,8 @@ export default function Dashboard() {
         title: "Success",
         description: "Profile saved successfully!",
       });
+      // refresh timestamp - user performed an action
+      setAuthTimestampNow();
     } catch (error) {
       console.error("Error saving profile:", error);
       toast({
@@ -424,6 +511,7 @@ export default function Dashboard() {
       // Sign out from Firebase Auth (this will trigger the auth state listener)
       await signOut(auth);
       localStorage.removeItem("userId");
+      clearAuthTimestamp();
       toast({
         title: "Signed out",
         description: "You have been signed out successfully.",
@@ -645,13 +733,12 @@ export default function Dashboard() {
                 </Card>
               </div>
 
-
               {/* Referral Code & Invitation Links */}
               {user.referralCode && (
                 <Card className="rounded-2xl shadow-md border-0">
                   <CardContent className="p-8">
                     <h3 className="text-xl font-bold mb-6 text-center text-gray-800 dark:text-gray-200">Share & Earn 🎯</h3>
-                    
+
                     <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl mb-6 border border-blue-100 dark:border-blue-800">
                       <p className="text-sm font-medium text-muted-foreground mb-3 text-center">Your Referral Code:</p>
                       <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
@@ -673,7 +760,7 @@ export default function Dashboard() {
                         </Button>
                       </div>
                     </div>
-                    
+
                     <h3 className="text-lg font-bold mb-4 text-center">Share Your Link</h3>
                     <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 p-6 rounded-xl mb-6 border border-green-100 dark:border-green-800">
                       <p className="text-sm font-mono break-all mb-4 text-center text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 p-3 rounded-lg">
@@ -697,13 +784,12 @@ export default function Dashboard() {
                         <Button
                           onClick={shareViaTelegram}
                           className="w-full py-3 font-bold rounded-xl bg-blue-500 hover:bg-blue-600 text-white hover:scale-105 transition-all duration-200"
-                          data-testid="button-share-telegram"
                         >
                           ✈️ Telegram
                         </Button>
                       </div>
                     </div>
-                    
+
                     <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 p-6 rounded-xl text-center">
                       <p className="text-base font-medium text-gray-700 dark:text-gray-300 leading-relaxed">
                         💰 Earn commissions from every referral!<br/>
@@ -958,7 +1044,7 @@ export default function Dashboard() {
           {currentPage === "WALLET" && (
             <div className="bg-white dark:bg-card p-6 rounded shadow-md max-w-md mx-auto">
               <h2 className="text-2xl font-bold mb-4">💳 Wallet</h2>
-              
+
               {/* Balance Display */}
               <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
                 <p className="text-lg mb-2">💰 <strong>PALL Balance:</strong> {pallBalance.toFixed(4)} PALL</p>
@@ -968,13 +1054,13 @@ export default function Dashboard() {
 
               {/* Wallet Connection Status */}
               <div className="mb-4 p-3 border rounded-lg">
-                {typeof window !== 'undefined' && window.ethereum ? (
+                {typeof window !== 'undefined' && (window as any).ethereum ? (
                   <div className="text-center">
                     <div className="text-green-600 dark:text-green-400 mb-2">✅ Web3 Wallet Detected</div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {window.ethereum.isMetaMask ? "MetaMask" : 
-                       window.ethereum.isTrust ? "Trust Wallet" : 
-                       window.ethereum.isCoinbaseWallet ? "Coinbase Wallet" : "Web3 Wallet"} is installed
+                      {(window as any).ethereum.isMetaMask ? "MetaMask" : 
+                       (window as any).ethereum.isTrust ? "Trust Wallet" : 
+                       (window as any).ethereum.isCoinbaseWallet ? "Coinbase Wallet" : "Web3 Wallet"} is installed
                     </p>
                   </div>
                 ) : (
