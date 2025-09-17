@@ -30,7 +30,7 @@ export default function Home() {
           {/* Header Section */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary to-blue-600 mb-6 shadow-lg overflow-hidden">
-              <img src="/src/assets/app-icon.png" alt="Pall Network Logo" className="w-full h-full object-cover" />
+              <img src="/app-icon.png" alt="Pall Network Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-4xl font-bold mb-4">Pall Network</h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
