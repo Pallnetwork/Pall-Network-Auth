@@ -27,7 +27,9 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           if (data.lastStart && data.miningActive) {
             const lastStartTime = data.lastStart.toDate();
             const now = new Date();
-            const secondsElapsed = Math.floor((now.getTime() - lastStartTime.getTime()) / 1000);
+            const secondsElapsed = Math.floor(
+              (now.getTime() - lastStartTime.getTime()) / 1000
+            );
             const maxMiningSeconds = 24 * 60 * 60;
 
             if (secondsElapsed >= maxMiningSeconds) {
@@ -158,6 +160,24 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const startMining = async () => {
     if (!canStartMining) return;
 
+    try {
+      // Show rewarded ad before starting mining
+      // ⚠️ Works only in Android build, not Replit preview
+      // @ts-ignore
+      if (window.AdMob && window.AdMob.rewardVideo) {
+        await window.AdMob.rewardVideo.load({
+          id: {
+            android: "ca-app-pub-4127419795292376/8725268175", // ✅ Your Real Rewarded ID
+          },
+        });
+
+        await window.AdMob.rewardVideo.show();
+      }
+    } catch (adError) {
+      console.error("Rewarded Ad failed:", adError);
+    }
+
+    // Continue mining logic after ad
     const now = new Date();
     const miningDurationSeconds = 24 * 60 * 60;
 
@@ -246,13 +266,15 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
             {mining ? (
               <>
                 <div className="text-3xl mb-2">⛏️</div>
-                <p className="text-base font-bold text-green-600">Mining Active</p>
+                <p className="text-base font-bold text-green-600">
+                  Mining Active
+                </p>
                 <p className="text-base font-bold text-muted-foreground">
-             Standard Rate
-               </p>
+                  Standard Rate
+                </p>
                 <p className="text-base font-mono font-bold text-blue-600 mt-1">
-                {formatTime(Math.floor(timeRemaining))}
-              </p>
+                  {formatTime(Math.floor(timeRemaining))}
+                </p>
               </>
             ) : (
               <>
@@ -282,7 +304,9 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           data-testid={mining ? "button-mining-active" : "button-start-mining"}
         >
           {mining
-            ? `Mining in Progress ⛏ (${formatTime(Math.floor(timeRemaining))})`
+            ? `Mining in Progress ⛏ (${formatTime(
+                Math.floor(timeRemaining)
+              )})`
             : canStartMining
             ? "Start Mining ⛏"
             : "⏳ Ready for Next Session"}
@@ -306,7 +330,9 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
             <p className="text-sm font-medium text-muted-foreground mb-1">
               Mining Rate
             </p>
-            <p className="text-lg font-bold text-blue-600">1 PALL / 24 hours</p>
+            <p className="text-lg font-bold text-blue-600">
+              1 PALL / 24 hours
+            </p>
           </div>
         </div>
 
