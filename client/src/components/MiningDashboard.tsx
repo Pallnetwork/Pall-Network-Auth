@@ -16,6 +16,14 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [canStartMining, setCanStartMining] = useState(true);
 
+  // ✅ Expose function for Android App
+  useEffect(() => {
+    // @ts-ignore
+    window.startMiningFromApp = () => {
+      startMining();
+    };
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -167,7 +175,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       if (window.AdMob && window.AdMob.rewardVideo) {
         await window.AdMob.rewardVideo.load({
           id: {
-            android: "ca-app-pub-4127419795292376/8725268175", // ✅ Your Real Rewarded ID
+            android: "ca-app-pub-3940256099942544/5224354917", // 🔹 Test Rewarded ID
           },
         });
 
@@ -238,7 +246,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           </p>
         </div>
 
-        {/* Circular Mining UI */}
+        {/* Mining UI */}
         <div className="relative w-48 h-48 mx-auto">
           <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
 
@@ -261,7 +269,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
             </svg>
           )}
 
-          {/* Center Content */}
           <div className="absolute inset-4 bg-white dark:bg-card rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
             {mining ? (
               <>
@@ -311,38 +318,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
             ? "Start Mining ⛏"
             : "⏳ Ready for Next Session"}
         </Button>
-
-        {/* Mining Status Info */}
-        {mining && (
-          <div className="text-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-100 dark:border-green-800">
-            <p className="text-base text-green-700 dark:text-green-400 font-bold mb-1">
-              Earning {baseMiningRate.toFixed(8)} PALL/second
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Mining will auto-stop after 24 hours
-            </p>
-          </div>
-        )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 gap-4">
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl text-center border border-blue-100 dark:border-blue-800">
-            <p className="text-sm font-medium text-muted-foreground mb-1">
-              Mining Rate
-            </p>
-            <p className="text-lg font-bold text-blue-600">
-              1 PALL / 24 hours
-            </p>
-          </div>
-        </div>
-
-        {!canStartMining && !mining && (
-          <div className="text-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-100 dark:border-green-800">
-            <p className="text-base text-green-700 dark:text-green-400 font-bold">
-              ✅ 24-hour mining session completed! Ready to start next cycle.
-            </p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
