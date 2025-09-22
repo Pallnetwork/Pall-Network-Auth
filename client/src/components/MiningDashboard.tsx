@@ -3,6 +3,21 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+
+// AdMob interface for TypeScript
+declare global {
+  interface Window {
+    AdMob?: {
+      rewardVideo?: {
+        load: (options: { id: { android: string } }) => Promise<void>;
+        show: () => Promise<void>;
+        on: (event: string, callback: () => void) => void;
+        off: (event: string, callback: () => void) => void;
+      };
+    };
+  }
+}
 
 interface MiningDashboardProps {
   userId: string;
@@ -15,6 +30,19 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const [baseMiningRate] = useState(0.00001157); // Exactly 1 PALL / 24h
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [canStartMining, setCanStartMining] = useState(true);
+  
+  // ✅ Rewarded Ad State Management
+  const [adLoaded, setAdLoaded] = useState(false);
+  const [adLoading, setAdLoading] = useState(false);
+  const [showingAd, setShowingAd] = useState(false);
+  const { toast } = useToast();
+  
+  const REWARDED_AD_ID = "ca-app-pub-3940256099942544/5224354917"; // Test Rewarded ID
+
+  // ✅ Preload rewarded ad on app start
+  useEffect(() => {
+    loadRewardedAd();
+  }, []);
 
   // ✅ Expose function for Android App
   useEffect(() => {
@@ -165,27 +193,87 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     };
   }, [mining, lastStart, baseMiningRate, userId]);
 
-  const startMining = async () => {
-    if (!canStartMining) return;
+  // ✅ Load rewarded ad function
+  const loadRewardedAd = async () => {
+    if (!window.AdMob?.rewardVideo || adLoading) return;
 
     try {
-      // Show rewarded ad before starting mining
-      // ⚠️ Works only in Android build, not Replit preview
-      // @ts-ignore
-      if (window.AdMob && window.AdMob.rewardVideo) {
-        await window.AdMob.rewardVideo.load({
-          id: {
-            android: "ca-app-pub-3940256099942544/5224354917", // 🔹 Test Rewarded ID
-          },
-        });
+      setAdLoading(true);
+      await window.AdMob.rewardVideo.load({
+        id: { android: REWARDED_AD_ID }
+      });
+      setAdLoaded(true);
+      console.log("✅ Rewarded ad loaded successfully");
+    } catch (error) {
+      console.error("❌ Failed to load rewarded ad:", error);
+      setAdLoaded(false);
+    } finally {
+      setAdLoading(false);
+    }
+  };
 
-        await window.AdMob.rewardVideo.show();
-      }
-    } catch (adError) {
-      console.error("Rewarded Ad failed:", adError);
+  // ✅ Show rewarded ad and start mining after completion
+  const showRewardedAdAndStartMining = async () => {
+    if (!adLoaded) {
+      toast({
+        title: "Ad Not Ready",
+        description: "Ad not loaded yet, please try again.",
+        variant: "destructive"
+      });
+      return;
     }
 
-    // Continue mining logic after ad
+    if (!window.AdMob?.rewardVideo) {
+      // If AdMob not available, start mining directly (for testing)
+      startMiningProcess();
+      return;
+    }
+
+    try {
+      setShowingAd(true);
+      
+      // Setup ad completion callback
+      const onAdComplete = () => {
+        console.log("✅ Rewarded ad completed, starting mining...");
+        setShowingAd(false);
+        setAdLoaded(false); // Mark as used
+        startMiningProcess();
+        loadRewardedAd(); // Preload next ad
+        window.AdMob?.rewardVideo?.off("rewardVideo.reward", onAdComplete);
+      };
+
+      const onAdClosed = () => {
+        console.log("❌ Rewarded ad closed without completion");
+        setShowingAd(false);
+        toast({
+          title: "Ad Closed",
+          description: "Please watch the complete ad to start mining.",
+          variant: "destructive"
+        });
+        window.AdMob?.rewardVideo?.off("rewardVideo.close", onAdClosed);
+      };
+
+      // Register callbacks
+      window.AdMob.rewardVideo.on("rewardVideo.reward", onAdComplete);
+      window.AdMob.rewardVideo.on("rewardVideo.close", onAdClosed);
+      
+      // Show the ad
+      await window.AdMob.rewardVideo.show();
+      
+    } catch (error) {
+      console.error("❌ Failed to show rewarded ad:", error);
+      setShowingAd(false);
+      toast({
+        title: "Ad Error",
+        description: "Failed to show ad. Starting mining anyway.",
+        variant: "destructive"
+      });
+      startMiningProcess();
+    }
+  };
+
+  // ✅ Actual mining start process (called after ad completion)
+  const startMiningProcess = async () => {
     const now = new Date();
     const miningDurationSeconds = 24 * 60 * 60;
 
@@ -205,13 +293,29 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         },
         { merge: true }
       );
+      
+      toast({
+        title: "Mining Started! ⛏️",
+        description: "You're now earning PALL tokens!",
+      });
     } catch (error) {
       console.error("Error starting mining:", error);
       setMining(false);
       setCanStartMining(true);
       setLastStart(null);
       setTimeRemaining(0);
+      toast({
+        title: "Mining Error",
+        description: "Failed to start mining. Please try again.",
+        variant: "destructive"
+      });
     }
+  };
+
+  // ✅ Updated start mining function to show ad first
+  const startMining = async () => {
+    if (!canStartMining || showingAd) return;
+    showRewardedAdAndStartMining();
   };
 
   const formatTime = (seconds: number) => {
@@ -295,29 +399,49 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           </div>
         </div>
 
+        {/* Ad Loading Status */}
+        {adLoading && (
+          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-600 dark:text-blue-400">🔄 Loading reward ad...</p>
+          </div>
+        )}
+
         {/* Mining Button */}
         <Button
           onClick={mining ? undefined : startMining}
-          disabled={mining || !canStartMining}
+          disabled={mining || !canStartMining || showingAd}
           className={`w-full py-4 text-lg font-bold rounded-xl text-white hover:scale-105 transition-all duration-200 
             ${
               mining
                 ? "bg-orange-500 cursor-default shadow-lg"
+                : showingAd
+                ? "bg-blue-500 cursor-default shadow-lg"
                 : canStartMining
                 ? "bg-green-500 hover:bg-green-600 shadow-lg"
                 : "bg-gray-400 cursor-not-allowed"
             } 
             overflow-hidden whitespace-nowrap text-ellipsis text-center`}
-          data-testid={mining ? "button-mining-active" : "button-start-mining"}
+          data-testid={mining ? "button-mining-active" : showingAd ? "button-showing-ad" : "button-start-mining"}
         >
           {mining
             ? `Mining in Progress ⛏ (${formatTime(
                 Math.floor(timeRemaining)
               )})`
+            : showingAd
+            ? "📺 Showing Reward Ad..."
             : canStartMining
-            ? "Start Mining ⛏"
+            ? adLoaded
+              ? "Start Mining ⛏ (Ad Ready)"
+              : "Start Mining ⛏ (Loading Ad...)"
             : "⏳ Ready for Next Session"}
         </Button>
+
+        {/* Ad Status Indicator */}
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">
+            Ad Status: {adLoaded ? "✅ Ready" : adLoading ? "🔄 Loading..." : "❌ Not Loaded"}
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
