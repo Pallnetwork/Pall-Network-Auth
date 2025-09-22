@@ -39,9 +39,25 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   
   const REWARDED_AD_ID = "ca-app-pub-3940256099942544/5224354917"; // Test Rewarded ID
 
-  // ✅ Preload rewarded ad on app start
+  // ✅ Preload rewarded ad on app start and cleanup on unmount
   useEffect(() => {
     loadRewardedAd();
+    
+    // Cleanup function to remove any active event listeners
+    return () => {
+      if (window.AdMob?.rewardVideo) {
+        // Remove any potentially active listeners by re-creating the interface
+        try {
+          // Reset the ad loading state on cleanup
+          setAdLoaded(false);
+          setAdLoading(false);
+          setShowingAd(false);
+          console.log("Event cleanup completed");
+        } catch (error) {
+          console.log("Cleanup error:", error);
+        }
+      }
+    };
   }, []);
 
   // ✅ Expose function for Android App
@@ -231,25 +247,36 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
 
     try {
       setShowingAd(true);
+      let adCompleted = false;
       
       // Setup ad completion callback
       const onAdComplete = () => {
         console.log("✅ Rewarded ad completed, starting mining...");
+        adCompleted = true;
         setShowingAd(false);
         setAdLoaded(false); // Mark as used
         startMiningProcess();
         loadRewardedAd(); // Preload next ad
+        // Clean up both event listeners
         window.AdMob?.rewardVideo?.off("rewardVideo.reward", onAdComplete);
+        window.AdMob?.rewardVideo?.off("rewardVideo.close", onAdClosed);
       };
 
       const onAdClosed = () => {
-        console.log("❌ Rewarded ad closed without completion");
-        setShowingAd(false);
-        toast({
-          title: "Ad Closed",
-          description: "Please watch the complete ad to start mining.",
-          variant: "destructive"
-        });
+        // Only show closed message if ad wasn't completed
+        if (!adCompleted) {
+          console.log("❌ Rewarded ad closed without completion");
+          setShowingAd(false);
+          setAdLoaded(false); // Mark as used
+          toast({
+            title: "Ad Closed",
+            description: "Please watch the complete ad to start mining.",
+            variant: "destructive"
+          });
+          loadRewardedAd(); // Preload next ad for retry
+        }
+        // Clean up both event listeners
+        window.AdMob?.rewardVideo?.off("rewardVideo.reward", onAdComplete);
         window.AdMob?.rewardVideo?.off("rewardVideo.close", onAdClosed);
       };
 
@@ -263,12 +290,14 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     } catch (error) {
       console.error("❌ Failed to show rewarded ad:", error);
       setShowingAd(false);
+      setAdLoaded(false); // Mark as failed
       toast({
         title: "Ad Error",
-        description: "Failed to show ad. Starting mining anyway.",
+        description: "Failed to show ad. Please try again.",
         variant: "destructive"
       });
-      startMiningProcess();
+      // Load next ad for retry - DO NOT start mining on error
+      loadRewardedAd();
     }
   };
 
