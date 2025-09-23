@@ -37,7 +37,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const [showingAd, setShowingAd] = useState(false);
   const { toast } = useToast();
   
-  const REWARDED_AD_ID = "ca-app-pub-3940256099942544/5224354917"; // Test Rewarded ID
+  const REWARDED_AD_ID = "ca-app-pub-4127419795292376/8725268175"; // 🔹 Production Rewarded ID
 
   // ✅ Preload rewarded ad on app start and cleanup on unmount
   useEffect(() => {
@@ -228,21 +228,10 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     }
   };
 
-  // ✅ Show rewarded ad and start mining after completion
-  const showRewardedAdAndStartMining = async () => {
-    if (!adLoaded) {
-      toast({
-        title: "Ad Not Ready",
-        description: "Ad not loaded yet, please try again.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!window.AdMob?.rewardVideo) {
-      // If AdMob not available, start mining directly (for testing)
-      startMiningProcess();
-      return;
+  // ✅ Show rewarded ad AFTER mining has started
+  const showRewardedAdAfterMining = async () => {
+    if (!adLoaded || !window.AdMob?.rewardVideo) {
+      return; // Silently fail if ad not ready
     }
 
     try {
@@ -251,12 +240,15 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       
       // Setup ad completion callback
       const onAdComplete = () => {
-        console.log("✅ Rewarded ad completed, starting mining...");
+        console.log("✅ Rewarded ad completed after mining start!");
         adCompleted = true;
         setShowingAd(false);
         setAdLoaded(false); // Mark as used
-        startMiningProcess();
         loadRewardedAd(); // Preload next ad
+        toast({
+          title: "Ad Completed! 🎉",
+          description: "Thank you for watching! Keep mining.",
+        });
         // Clean up both event listeners
         window.AdMob?.rewardVideo?.off("rewardVideo.reward", onAdComplete);
         window.AdMob?.rewardVideo?.off("rewardVideo.close", onAdClosed);
@@ -268,11 +260,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           console.log("❌ Rewarded ad closed without completion");
           setShowingAd(false);
           setAdLoaded(false); // Mark as used
-          toast({
-            title: "Ad Closed",
-            description: "Please watch the complete ad to start mining.",
-            variant: "destructive"
-          });
           loadRewardedAd(); // Preload next ad for retry
         }
         // Clean up both event listeners
@@ -288,20 +275,15 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       await window.AdMob.rewardVideo.show();
       
     } catch (error) {
-      console.error("❌ Failed to show rewarded ad:", error);
+      console.error("❌ Failed to show rewarded ad after mining:", error);
       setShowingAd(false);
       setAdLoaded(false); // Mark as failed
-      toast({
-        title: "Ad Error",
-        description: "Failed to show ad. Please try again.",
-        variant: "destructive"
-      });
-      // Load next ad for retry - DO NOT start mining on error
+      // Load next ad for retry
       loadRewardedAd();
     }
   };
 
-  // ✅ Actual mining start process (called after ad completion)
+  // ✅ Actual mining start process (called immediately when button clicked)
   const startMiningProcess = async () => {
     const now = new Date();
     const miningDurationSeconds = 24 * 60 * 60;
@@ -341,10 +323,23 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     }
   };
 
-  // ✅ Updated start mining function to show ad first
+  // ✅ Updated start mining function to start mining first, then show ad
   const startMining = async () => {
     if (!canStartMining || showingAd) return;
-    showRewardedAdAndStartMining();
+    
+    // Start mining process immediately
+    await startMiningProcess();
+    
+    // Then show rewarded ad after mining starts
+    if (adLoaded && window.AdMob?.rewardVideo) {
+      showRewardedAdAfterMining();
+    } else if (!adLoaded) {
+      toast({
+        title: "Ad Not Ready",
+        description: "Ad not loaded yet, please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -459,16 +454,14 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
             : showingAd
             ? "📺 Showing Reward Ad..."
             : canStartMining
-            ? adLoaded
-              ? "Start Mining ⛏ (Ad Ready)"
-              : "Start Mining ⛏ (Loading Ad...)"
+            ? "Start Mining ⛏"
             : "⏳ Ready for Next Session"}
         </Button>
 
         {/* Ad Status Indicator */}
         <div className="text-center">
           <p className="text-xs text-muted-foreground">
-            Ad Status: {adLoaded ? "✅ Ready" : adLoading ? "🔄 Loading..." : "❌ Not Loaded"}
+            Reward Ad: {adLoaded ? "✅ Ready" : adLoading ? "🔄 Loading..." : "❌ Not Loaded"}
           </p>
         </div>
       </CardContent>
