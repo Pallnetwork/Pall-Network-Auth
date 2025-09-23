@@ -6,6 +6,21 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// ✅ Fix MIME type handling for JavaScript modules
+app.use((req, res, next) => {
+  // Set correct MIME types for static assets
+  if (req.url.endsWith('.js')) {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  } else if (req.url.endsWith('.mjs')) {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  } else if (req.url.endsWith('.css')) {
+    res.setHeader('Content-Type', 'text/css; charset=utf-8');
+  } else if (req.url.endsWith('.json')) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  }
+  next();
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
