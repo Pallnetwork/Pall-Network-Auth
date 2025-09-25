@@ -14,9 +14,18 @@ import KYCPage from "@/pages/kyc";
 import NotFound from "@/pages/not-found";
 
 function Router() {
+  // Check if this is Android app user
+  const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
+  
   return (
     <Switch>
-      <Route path="/" component={Homepage} />
+      <Route path="/" component={() => {
+        // For Android app users, redirect directly to signin
+        if (isAndroidApp) {
+          return <Redirect to="/app/signin" />;
+        }
+        return <Homepage />;
+      }} />
       <Route path="/app" component={Home} />
       <Route path="/app/signin" component={SignIn} />
       <Route path="/app/signup" component={SignUp} />
@@ -32,7 +41,15 @@ function Router() {
       <Route path="/signin" component={() => <Redirect to="/app/signin" />} />
       <Route path="/signup" component={() => <Redirect to="/app/signup" />} />
       <Route path="/dashboard" component={() => <Redirect to="/app/dashboard" />} />
-      <Route component={NotFound} />
+      <Route path="/forgot-password" component={() => <Redirect to="/app/forgot-password" />} />
+      <Route path="/kyc" component={() => <Redirect to="/app/kyc" />} />
+      {/* Fallback for unknown routes - redirect to signin for Android, 404 for web */}
+      <Route component={() => {
+        if (isAndroidApp) {
+          return <Redirect to="/app/signin" />;
+        }
+        return <NotFound />;
+      }} />
     </Switch>
   );
 }
