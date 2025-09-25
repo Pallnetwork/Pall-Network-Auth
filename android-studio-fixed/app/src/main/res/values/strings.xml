@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PALL NETWORK</string>
-    <string name="web_app_url">https://pallnetworkcommerce.com</string>
+    <string name="web_app_url">https://pallnetworkcommerce.com/app/signin</string>
     <string name="default_notification_channel_id">pall_network_notifications</string>
     <string name="loading">Loading...</string>
     <string name="connection_error">Connection Error</string>
