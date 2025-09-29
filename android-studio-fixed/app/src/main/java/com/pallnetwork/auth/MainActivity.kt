@@ -76,6 +76,10 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             cacheMode = WebSettings.LOAD_DEFAULT
             
+            // Enhanced Firebase authentication support
+            setSupportMultipleWindows(false)
+            javaScriptCanOpenWindowsAutomatically = false
+            
             // Enable zoom controls but hide zoom buttons
             setSupportZoom(true)
             builtInZoomControls = true
@@ -83,6 +87,11 @@ class MainActivity : AppCompatActivity() {
             
             // User agent for better compatibility
             userAgentString = userAgentString + " PallNetworkApp/1.0.0 (Mobile; Android)"
+            
+            // Enhanced storage and session persistence for Firebase
+            setAppCacheEnabled(true)
+            setAppCachePath(applicationContext.cacheDir.absolutePath)
+            setAppCacheMaxSize(8 * 1024 * 1024) // 8MB
         }
 
         // Enable dark mode support if available
@@ -128,7 +137,7 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 
-                // Inject CSS for better mobile experience
+                // Inject CSS for better mobile experience and Firebase compatibility
                 val css = """
                     javascript:(function() {
                         var style = document.createElement('style');
@@ -141,6 +150,13 @@ class MainActivity : AppCompatActivity() {
                             .replit-banner { display: none !important; }
                         `;
                         document.head.appendChild(style);
+                        
+                        // Enhanced Firebase initialization for WebView
+                        console.log('🔥 WebView page loaded - Firebase initialization ready');
+                        
+                        // Signal to web app that this is Android WebView
+                        window.isAndroidWebView = true;
+                        window.webViewReady = true;
                     })();
                 """.trimIndent()
                 view?.evaluateJavascript(css, null)

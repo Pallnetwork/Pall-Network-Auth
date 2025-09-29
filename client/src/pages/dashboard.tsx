@@ -219,10 +219,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     let redirectTimeout: NodeJS.Timeout;
+    let authCheckCount = 0;
 
     // Authentication state listener
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log('🔥 Firebase Auth state changed:', firebaseUser ? 'User logged in' : 'No user');
+      authCheckCount++;
+      console.log(`🔥 Firebase Auth state changed (check #${authCheckCount}):`, firebaseUser ? `User logged in: ${firebaseUser.uid}` : 'No user');
 
       // Clear any pending redirect timeout
       if (redirectTimeout) {
@@ -232,20 +234,22 @@ export default function Dashboard() {
       // Mark auth as initialized after first check
       setAuthInitialized(true);
 
-      // If no firebase user -> wait a moment then redirect (existing logic)
+      // If no firebase user -> wait longer for WebView/Android environment
       if (!firebaseUser) {
-        console.log('⚠️ No Firebase user found, checking again in 500ms before redirecting...');
+        console.log('⚠️ No Firebase user found, checking again in 3000ms before redirecting...');
+        
+        // Increased timeout for WebView environment - Android apps need more time
         redirectTimeout = setTimeout(() => {
           const currentUser = auth.currentUser;
           if (!currentUser) {
-            console.log('❌ Confirmed: No Firebase user after timeout, redirecting to signin');
+            console.log('❌ Confirmed: No Firebase user after extended timeout, redirecting to signin');
             localStorage.removeItem("userId");
             clearAuthTimestamp();
             navigate("/app/signin");
           } else {
             console.log('✅ False alarm: Firebase user found on double-check:', currentUser.uid);
           }
-        }, 500);
+        }, 3000); // Increased from 500ms to 3000ms for WebView stability
         return;
       }
 
@@ -375,12 +379,18 @@ export default function Dashboard() {
     };
   }, [navigate]);
 
-  // Expiry checker: run on mount, every 60s, and when window gains focus
+  // Expiry checker: run after auth is initialized, every 60s, and when window gains focus
   useEffect(() => {
     let expiryInterval: NodeJS.Timeout | null = null;
 
     const checkExpiryAndSignOut = async () => {
       try {
+        // Only check expiry if auth has been initialized and we have a user
+        if (!authInitialized || !auth.currentUser) {
+          console.log("🕐 Skipping expiry check - auth not initialized or no current user");
+          return;
+        }
+
         // Only act if expiry has a timestamp and it is expired
         if (isAuthExpired()) {
           console.log("⏰ Auth expired by timestamp, signing out user.");
@@ -404,11 +414,14 @@ export default function Dashboard() {
       }
     };
 
-    // immediate check
-    checkExpiryAndSignOut();
-
-    // periodic check every 60 seconds
-    expiryInterval = setInterval(checkExpiryAndSignOut, 60 * 1000);
+    // Skip immediate check - wait for auth to initialize first
+    if (authInitialized) {
+      // Delay first check by 5 seconds to allow full auth initialization
+      setTimeout(checkExpiryAndSignOut, 5000);
+      
+      // periodic check every 60 seconds
+      expiryInterval = setInterval(checkExpiryAndSignOut, 60 * 1000);
+    }
 
     // also check when window/tab gets focus (user comes back)
     window.addEventListener("focus", checkExpiryAndSignOut);
@@ -417,7 +430,7 @@ export default function Dashboard() {
       if (expiryInterval) clearInterval(expiryInterval);
       window.removeEventListener("focus", checkExpiryAndSignOut);
     };
-  }, [navigate]);
+  }, [navigate, authInitialized]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
