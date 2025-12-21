@@ -1,13 +1,30 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { db, auth } from "@/lib/firebase";
-import { doc, setDoc, getDocs, query, collection, where } from "firebase/firestore";
-import { createUserWithEmailAndPassword, updateProfile, onAuthStateChanged } from "firebase/auth";
+import {
+  doc,
+  setDoc,
+  getDocs,
+  query,
+  collection,
+  where,
+} from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  onAuthStateChanged,
+} from "firebase/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 
@@ -30,7 +47,6 @@ export default function SignUp() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        console.log("🔄 User already signed in:", user.uid);
         navigate("/app/dashboard", { replace: true });
       }
     });
@@ -63,24 +79,26 @@ export default function SignUp() {
     setError("");
 
     try {
-      // ✅ Invitation code check (optional)
-      let referredBy = null;
-      if (form.invitation) {
+      // ✅ Invitation code OPTIONAL & SAFE
+      let referredBy: string | null = null;
+
+      if (form.invitation && form.invitation.trim() !== "") {
         const q = query(
           collection(db, "users"),
-          where("referralCode", "==", form.invitation)
+          where("referralCode", "==", form.invitation.trim())
         );
         const snap = await getDocs(q);
-        if (!snap.empty) {
-          referredBy = snap.docs[0].data().username;
-        } else {
+
+        if (snap.empty) {
           setError("Invalid invitation code. Please check and try again.");
           setIsLoading(false);
           return;
         }
+
+        referredBy = snap.docs[0].data().username || null;
       }
 
-      // ✅ Firebase Auth user create
+      // ✅ Create Firebase Auth user
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         form.email,
@@ -88,7 +106,7 @@ export default function SignUp() {
       );
       const user = userCredential.user;
 
-      // ✅ Profile update with full name
+      // ✅ Update profile
       await updateProfile(user, {
         displayName: form.name,
       });
@@ -97,54 +115,51 @@ export default function SignUp() {
       const referralCode =
         form.username.toLowerCase() + "-" + user.uid.slice(0, 5);
 
-      // ✅ User Firestore document
+      // ✅ Save user document
       await setDoc(doc(db, "users", user.uid), {
+        id: user.uid,
         email: form.email,
         name: form.name,
         username: form.username,
-        id: user.uid,
-        referralCode: referralCode,
-        referredBy: referredBy || null,
+        referralCode,
+        referredBy,
         package: form.package,
         packagePrice: form.packagePrice,
         createdAt: new Date(),
       });
 
-      // ✅ Wallet Firestore document
+      // ✅ Create wallet document
       await setDoc(doc(db, "wallets", user.uid), {
         userId: user.uid,
         pallBalance: 0,
         usdtBalance: 0,
         currentPackage: form.package,
-        miningSpeed: 1,
-        packagePrice: form.packagePrice,
         miningActive: false,
         lastStart: null,
         totalEarnings: 0,
         createdAt: new Date(),
       });
 
-      // ✅ LocalStorage save
+      // ✅ Cache user id
       localStorage.setItem("userId", user.uid);
 
       toast({
         title: "Success",
         description: referredBy
-          ? `Account created successfully! Referred by ${referredBy}.`
+          ? `Account created! Referred by ${referredBy}`
           : "Account created successfully!",
       });
 
-      console.log("✅ User created:", user.uid);
       navigate("/app/dashboard", { replace: true });
     } catch (err: any) {
       console.error("❌ Signup error:", err);
 
       if (err.code === "auth/email-already-in-use") {
-        setError("This email is already registered. Please use a different email or sign in.");
+        setError("This email is already registered.");
       } else if (err.code === "auth/weak-password") {
-        setError("Password is too weak. Please use at least 6 characters.");
+        setError("Password must be at least 6 characters.");
       } else if (err.code === "auth/invalid-email") {
-        setError("Invalid email address. Please check and try again.");
+        setError("Invalid email address.");
       } else {
         setError("Failed to create account. Please try again.");
       }
@@ -156,124 +171,69 @@ export default function SignUp() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Create Account</h2>
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-          </div>
+        <CardHeader>
+          <h2 className="text-2xl font-semibold">Create Account</h2>
         </CardHeader>
+
         <CardContent className="space-y-4">
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                name="name"
-                type="text"
-                placeholder="Enter your full name"
-                value={form.name}
-                onChange={handleChange}
-                required
-                data-testid="input-name"
-              />
+              <Label>Full Name</Label>
+              <Input name="name" value={form.name} onChange={handleChange} required />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                name="username"
-                type="text"
-                placeholder="Choose a username"
-                value={form.username}
-                onChange={handleChange}
-                required
-                data-testid="input-username"
-              />
+              <Label>Username</Label>
+              <Input name="username" value={form.username} onChange={handleChange} required />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="Enter your email"
-                value={form.email}
-                onChange={handleChange}
-                required
-                data-testid="input-email"
-              />
+              <Label>Email</Label>
+              <Input name="email" type="email" value={form.email} onChange={handleChange} required />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="invitation">
+              <Label>
                 Invitation Code <span className="text-muted-foreground">(Optional)</span>
               </Label>
-              <Input
-                id="invitation"
-                name="invitation"
-                type="text"
-                placeholder="Enter invitation code if you have one"
-                value={form.invitation}
-                onChange={handleChange}
-                data-testid="input-invitation"
-              />
+              <Input name="invitation" value={form.invitation} onChange={handleChange} />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Create a strong password"
-                value={form.password}
-                onChange={handleChange}
-                required
-                data-testid="input-password"
-              />
+              <Label>Password</Label>
+              <Input name="password" type="password" value={form.password} onChange={handleChange} required />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="package">Package</Label>
-              <Select
-                value={form.package}
-                onValueChange={handlePackageChange}
-                data-testid="select-package"
-              >
+              <Label>Package</Label>
+              <Select value={form.package} onValueChange={handlePackageChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a package" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Basic">Basic - $25 USDT</SelectItem>
-                  <SelectItem value="Silver">Silver - $20 USDT</SelectItem>
-                  <SelectItem value="Gold">Gold - $56 USDT</SelectItem>
-                  <SelectItem value="Diamond">Diamond - $100 USDT</SelectItem>
-                  <SelectItem value="Premium">Premium - $100 USDT</SelectItem>
+                  <SelectItem value="Basic">Basic - $25</SelectItem>
+                  <SelectItem value="Silver">Silver - $20</SelectItem>
+                  <SelectItem value="Gold">Gold - $56</SelectItem>
+                  <SelectItem value="Diamond">Diamond - $100</SelectItem>
+                  <SelectItem value="Premium">Premium - $100</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {error && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive flex items-center">
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive flex items-center">
                 <AlertCircle className="w-4 h-4 mr-2" />
                 {error}
               </div>
             )}
 
-            <Button
-              type="submit"
-              className="w-full bg-green-500 hover:bg-green-600"
-              disabled={isLoading}
-              data-testid="button-signup"
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
 
-            <div className="text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <Link
-                href="/app/signin"
-                className="text-primary hover:underline"
-                data-testid="link-signin"
-              >
-                Sign In
+            <div className="text-center text-sm">
+              <Link href="/app/signin" className="text-primary">
+                Already have an account? Sign In
               </Link>
             </div>
           </form>
