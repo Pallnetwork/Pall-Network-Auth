@@ -63,22 +63,30 @@ export default function SignUp() {
     setError("");
 
     try {
-      // ✅ Invitation code check (optional)
-      let referredBy = null;
-      if (form.invitation) {
-        const q = query(
-          collection(db, "users"),
-          where("referralCode", "==", form.invitation)
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          referredBy = snap.docs[0].data().username;
-        } else {
-          setError("Invalid invitation code. Please check and try again.");
-          setIsLoading(false);
-          return;
-        }
-      }
+       // ✅ Invitation code check (optional)
+  let referredBy = null;
+
+  // 🔧 FIX: clean invitation code
+  const invitationCode = form.invitation.trim().toLowerCase();
+
+  if (invitationCode) {
+    const q = query(
+      collection(db, "users"),
+      where("referralCode", "==", invitationCode)
+    );
+
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      referredBy = snap.docs[0].data().username;
+    } else {
+      setError("Invalid invitation code. Please check and try again.");
+      setIsLoading(false);
+      return;
+    }
+  }
+
+  // signup continues...
 
       // ✅ Firebase Auth user create
       const userCredential = await createUserWithEmailAndPassword(
