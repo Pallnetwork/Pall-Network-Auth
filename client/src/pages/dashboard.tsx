@@ -705,7 +705,7 @@ export default function Dashboard() {
           {currentPage === "HOME" && (
             <div className="space-y-6">
               <div className="text-center">
-                <h2 className="text-3xl font-bold mb-2">A digital platform for rewards and innovative commerce! 🚀</h2>
+                <h2 className="text-3xl font-bold mb-2"></h2>
                 <p className="text-muted-foreground mb-6">
                 </p>
               </div>
