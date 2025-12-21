@@ -6,6 +6,7 @@ import {
   query,
   where,
   getDocs,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -13,7 +14,7 @@ import { db } from "./firebase";
 let F1_RATE = 0.05;
 let F2_RATE = 0.025;
 
-// Load commission rates from Firebase settings
+// 🔁 Load commission rates from Firebase settings
 const loadCommissionRates = async () => {
   try {
     const settingsDoc = await getDoc(doc(db, "settings", "config"));
@@ -29,7 +30,21 @@ const loadCommissionRates = async () => {
   }
 };
 
-// Call this AFTER user buys a package
+// 🚨 Prevent double commission
+const hasCommissionAlreadyPaid = async (
+  buyerId: string,
+  packagePrice: number
+): Promise<boolean> => {
+  const commissionRef = doc(db, "commissionLogs", buyerId);
+  const snap = await getDoc(commissionRef);
+
+  if (!snap.exists()) return false;
+
+  const data = snap.data();
+  return data?.packagePrice === packagePrice;
+};
+
+// ✅ MAIN FUNCTION
 export const distributeReferralCommission = async (
   buyerId: string,
   packagePrice: number
@@ -37,27 +52,29 @@ export const distributeReferralCommission = async (
   try {
     await loadCommissionRates();
 
-    // 1️⃣ Get buyer
-    const buyerRef = doc(db, "users", buyerId);
-    const buyerSnap = await getDoc(buyerRef);
+    // 🚫 Check duplicate payout
+    if (await hasCommissionAlreadyPaid(buyerId, packagePrice)) {
+      console.log("⚠️ Commission already paid for this purchase");
+      return { success: true, skipped: true };
+    }
 
+    // 1️⃣ Get buyer
+    const buyerSnap = await getDoc(doc(db, "users", buyerId));
     if (!buyerSnap.exists()) {
       console.log("❌ Buyer not found");
       return { success: false };
     }
 
     const buyerData = buyerSnap.data();
-
-    // ✅ FIX: correct field name
     const f1Username = buyerData.referredBy;
 
-    // ✅ Invitation OPTIONAL → safe exit
+    // ℹ No referral → no commission
     if (!f1Username) {
-      console.log("ℹ No referral found, skipping commission");
+      console.log("ℹ No referral found");
       return { success: true };
     }
 
-    // 2️⃣ Find F1 user
+    // 2️⃣ Find F1 user (by username)
     const f1Query = query(
       collection(db, "users"),
       where("username", "==", f1Username)
@@ -73,7 +90,7 @@ export const distributeReferralCommission = async (
     const f1Id = f1Doc.id;
     const f1Commission = packagePrice * F1_RATE;
 
-    // 3️⃣ Update F1 wallet
+    // 3️⃣ Pay F1
     const f1WalletRef = doc(db, "wallets", f1Id);
     const f1WalletSnap = await getDoc(f1WalletRef);
     const f1Balance = f1WalletSnap.exists()
@@ -86,7 +103,6 @@ export const distributeReferralCommission = async (
       { merge: true }
     );
 
-    // Track F1 commission
     const f1ReferralRef = doc(db, "referrals", f1Id);
     const f1ReferralSnap = await getDoc(f1ReferralRef);
 
@@ -107,9 +123,9 @@ export const distributeReferralCommission = async (
 
     console.log(`✅ F1 commission added: ${f1Commission} USDT`);
 
-    // 4️⃣ F2 logic (optional)
-    const f1Data = f1Doc.data();
+    // 4️⃣ F2 (optional)
     let f2Commission = 0;
+    const f1Data = f1Doc.data();
 
     if (f1Data.referredBy) {
       const f2Query = query(
@@ -157,11 +173,16 @@ export const distributeReferralCommission = async (
       }
     }
 
-    return {
-      success: true,
+    // 🧾 Save commission log (ANTI-DUPLICATE)
+    await setDoc(doc(db, "commissionLogs", buyerId), {
+      buyerId,
+      packagePrice,
       f1Commission,
       f2Commission,
-    };
+      createdAt: serverTimestamp(),
+    });
+
+    return { success: true, f1Commission, f2Commission };
   } catch (error: any) {
     console.error("🔥 Referral commission error:", error);
     return { success: false, error: error?.message || "Unknown error" };
