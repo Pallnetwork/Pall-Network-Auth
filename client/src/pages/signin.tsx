@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { auth } from "@/lib/firebase";
-import {
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-} from "firebase/auth";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,16 +16,30 @@ export default function SignIn() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  // ✅ AUTO LOGIN CHECK (Firebase persistence based – SAFE)
+  // ✅ Check if user already logged in with WebView considerations
   useEffect(() => {
+    let authCheckTimeout: NodeJS.Timeout;
+    
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        console.log("✅ User already authenticated:", user.uid);
-        navigate("/app/dashboard", { replace: true });
+        console.log("🔄 User already signed in:", user.uid);
+        
+        // For WebView/Android environment, add slight delay before navigation
+        const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
+        const delay = isAndroidApp ? 1000 : 100; // 1 second for Android, 100ms for web
+        
+        authCheckTimeout = setTimeout(() => {
+          navigate("/app/dashboard", { replace: true });
+        }, delay);
       }
     });
-
-    return () => unsubscribe();
+    
+    return () => {
+      unsubscribe();
+      if (authCheckTimeout) {
+        clearTimeout(authCheckTimeout);
+      }
+    };
   }, [navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,36 +53,40 @@ export default function SignIn() {
     setError("");
 
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        form.email,
-        form.password
-      );
-
+      const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 
-      // Optional local cache (no dependency)
+      // LocalStorage me save (extra layer)
       localStorage.setItem("userId", user.uid);
 
       toast({
         title: "Success",
-        description: "You are logged in successfully",
+        description: "You have been signed in successfully!",
       });
 
-      console.log("🔥 Login successful:", user.uid);
-
-      navigate("/app/dashboard", { replace: true });
+      console.log("✅ User signed in successfully:", user.uid);
+      
+      // For WebView/Android environment, add slight delay before navigation
+      const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
+      if (isAndroidApp) {
+        // Delay navigation for Android WebView to ensure auth state is fully set
+        setTimeout(() => {
+          navigate("/app/dashboard", { replace: true });
+        }, 1500);
+      } else {
+        navigate("/app/dashboard", { replace: true });
+      }
     } catch (err: any) {
-      console.error("❌ Sign in error:", err);
+      console.error("❌ Signin error:", err);
 
       if (err.code === "auth/user-not-found") {
-        setError("No account found with this email.");
+        setError("No account found with this email. Please check your email or create an account.");
       } else if (err.code === "auth/wrong-password") {
-        setError("Incorrect password.");
+        setError("Incorrect password. Please try again.");
       } else if (err.code === "auth/invalid-email") {
-        setError("Invalid email address.");
+        setError("Invalid email address. Please check and try again.");
       } else if (err.code === "auth/too-many-requests") {
-        setError("Too many attempts. Try again later.");
+        setError("Too many failed attempts. Please try again later.");
       } else {
         setError("Sign in failed. Please try again.");
       }
@@ -84,52 +99,61 @@ export default function SignIn() {
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <h2 className="text-2xl font-semibold">Sign In</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold">Sign In</h2>
+            <div className="w-3 h-3 rounded-full bg-primary"></div>
+          </div>
         </CardHeader>
-
         <CardContent className="space-y-4">
           <form onSubmit={handleSignin} className="space-y-4">
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
+                id="email"
                 name="email"
                 type="email"
+                placeholder="Enter your email"
                 value={form.email}
                 onChange={handleChange}
                 required
+                data-testid="input-email"
               />
             </div>
-
             <div className="space-y-2">
-              <Label>Password</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
+                id="password"
                 name="password"
                 type="password"
+                placeholder="Enter your password"
                 value={form.password}
                 onChange={handleChange}
                 required
+                data-testid="input-password"
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive flex items-center">
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive flex items-center">
                 <AlertCircle className="w-4 h-4 mr-2" />
                 {error}
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
+            <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-signin">
+              {isLoading ? "Signing In..." : "Sign In"}
             </Button>
 
-            <div className="text-center text-sm">
-              <Link href="/app/forgot-password" className="text-primary">
+            <div className="space-y-2 text-center">
+              <Link href="/app/forgot-password" className="text-sm text-primary hover:underline block" data-testid="link-forgot-password">
                 Forgot Password?
               </Link>
-              <br />
-              <Link href="/app/signup" className="text-primary">
-                Create Account
-              </Link>
+              <div className="text-sm text-muted-foreground">
+                Don't have an account?{" "}
+                <Link href="/app/signup" className="text-primary hover:underline" data-testid="link-signup">
+                  Create Account
+                </Link>
+              </div>
             </div>
           </form>
         </CardContent>
