@@ -1,3 +1,5 @@
+// client/src/pages/signup.tsx
+
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { db, auth } from "@/lib/firebase";
@@ -57,13 +59,9 @@ export default function SignUp() {
         );
         const snap = await getDocs(q);
 
-        console.log("Invitation code input:", invitationCode);
-        console.log("Firestore docs found:", snap.docs.length);
-
+        // ✅ Only set referredBy if code is valid
         if (!snap.empty) {
           referredBy = snap.docs[0].data().username;
-        } else {
-          console.warn("Invalid referral code, proceeding with free signup");
         }
       }
 
@@ -79,7 +77,7 @@ export default function SignUp() {
         displayName: form.name,
       });
 
-      // ✅ Generate referral code
+      // ✅ Generate referral code for new user
       const referralCode =
         form.username.toLowerCase() + "-" + user.uid.slice(0, 5);
 
@@ -90,7 +88,7 @@ export default function SignUp() {
         name: form.name,
         username: form.username,
         referralCode,
-        referredBy,
+        referredBy, // null if invalid
         package: "free",
         createdAt: new Date(),
       });
