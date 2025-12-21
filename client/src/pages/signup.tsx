@@ -28,12 +28,10 @@ export default function SignUp() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  // ✅ Agar user already login hai to redirect
+  // ✅ Redirect if already logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        navigate("/app/dashboard", { replace: true });
-      }
+      if (user) navigate("/app/dashboard", { replace: true });
     });
     return () => unsubscribe();
   }, [navigate]);
@@ -49,7 +47,6 @@ export default function SignUp() {
     setError("");
 
     try {
-      // ✅ Invitation code OPTIONAL (no fail)
       let referredBy: string | null = null;
       const invitationCode = form.invitation.trim().toLowerCase();
 
@@ -60,10 +57,14 @@ export default function SignUp() {
         );
         const snap = await getDocs(q);
 
+        console.log("Invitation code input:", invitationCode);
+        console.log("Firestore docs found:", snap.docs.length);
+
         if (!snap.empty) {
           referredBy = snap.docs[0].data().username;
+        } else {
+          console.warn("Invalid referral code, proceeding with free signup");
         }
-        // ❗ invalid code par bhi signup continue rahega
       }
 
       // ✅ Firebase Auth create user
@@ -82,19 +83,19 @@ export default function SignUp() {
       const referralCode =
         form.username.toLowerCase() + "-" + user.uid.slice(0, 5);
 
-      // ✅ User document (FREE account)
+      // ✅ User document
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         email: form.email,
         name: form.name,
         username: form.username,
-        referralCode: referralCode,
-        referredBy: referredBy,
+        referralCode,
+        referredBy,
         package: "free",
         createdAt: new Date(),
       });
 
-      // ✅ Wallet document (FREE mining)
+      // ✅ Wallet document
       await setDoc(doc(db, "wallets", user.uid), {
         userId: user.uid,
         pallBalance: 0,
