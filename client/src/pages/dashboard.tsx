@@ -705,9 +705,8 @@ export default function Dashboard() {
           {currentPage === "HOME" && (
             <div className="space-y-6">
               <div className="text-center">
-                <h2 className="text-3xl font-bold mb-2">Welcome to Pall Network Dashboard! 🚀</h2>
+                <h2 className="text-3xl font-bold mb-2">A digital platform focused on user rewards and innovative commerce experiences! 🚀</h2>
                 <p className="text-muted-foreground mb-6">
-                  A decentralized crypto mining and commerce platform
                 </p>
               </div>
 
