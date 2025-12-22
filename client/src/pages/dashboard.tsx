@@ -180,7 +180,17 @@ export default function Dashboard() {
   const [shareLink, setShareLink] = useState("");
   const [path, navigate] = useLocation();
   const { toast } = useToast();
+  const [invitationCode, setInvitationCode] = useState("");
 
+const handleSaveInvitation = async () => {
+  if (!userId || invitationCode.trim() === "") return;
+
+  await updateDoc(doc(db, "users", userId), {
+    referredBy: invitationCode.trim().toLowerCase(),
+  });
+
+  alert("Invitation code saved successfully!");
+};
   // Derive current page from URL path instead of internal state
   const currentPage = (() => {
     if (path === '/app/dashboard/profile') return 'PROFILE';
