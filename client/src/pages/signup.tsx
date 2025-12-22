@@ -1,14 +1,8 @@
-// client/src/pages/signup.tsx
-
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { db, auth } from "@/lib/firebase";
-import { doc, setDoc, getDocs, query, collection, where } from "firebase/firestore";
-import {
-  createUserWithEmailAndPassword,
-  updateProfile,
-  onAuthStateChanged,
-} from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { createUserWithEmailAndPassword, updateProfile, onAuthStateChanged } from "firebase/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +15,8 @@ export default function SignUp() {
     email: "",
     name: "",
     username: "",
-    invitation: "",
     password: "",
+    confirmPassword: "",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +24,6 @@ export default function SignUp() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  // ✅ Redirect if already logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) navigate("/app/dashboard", { replace: true });
@@ -48,52 +41,37 @@ export default function SignUp() {
     setIsLoading(true);
     setError("");
 
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      let referredBy: string | null = null;
-      const invitationCode = form.invitation.trim().toLowerCase();
-
-      if (invitationCode) {
-        const q = query(
-          collection(db, "users"),
-          where("referralCode", "==", invitationCode)
-        );
-        const snap = await getDocs(q);
-
-        // ✅ Only set referredBy if code is valid
-        if (!snap.empty) {
-          referredBy = snap.docs[0].data().username;
-        }
-      }
-
       // ✅ Firebase Auth create user
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        form.email,
-        form.password
-      );
+      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 
       await updateProfile(user, {
         displayName: form.name,
       });
 
-      // ✅ Generate referral code for new user
-      const referralCode =
-        form.username.toLowerCase() + "-" + user.uid.slice(0, 5);
+      // ✅ Generate referral code
+      const referralCode = form.username.toLowerCase() + "-" + user.uid.slice(0, 5);
 
-      // ✅ User document
+      // ✅ Create user document
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         email: form.email,
         name: form.name,
         username: form.username,
         referralCode,
-        referredBy, // null if invalid
+        referredBy: null, // invitation code optional, initially null
         package: "free",
         createdAt: new Date(),
       });
 
-      // ✅ Wallet document
+      // ✅ Create wallet document
       await setDoc(doc(db, "wallets", user.uid), {
         userId: user.uid,
         pallBalance: 0,
@@ -110,24 +88,17 @@ export default function SignUp() {
 
       toast({
         title: "Success",
-        description: referredBy
-          ? `Account created successfully! Referred by ${referredBy}.`
-          : "Account created successfully!",
+        description: "Account created successfully!",
       });
 
       navigate("/app/dashboard", { replace: true });
     } catch (err: any) {
       console.error("Signup error:", err);
 
-      if (err.code === "auth/email-already-in-use") {
-        setError("This email is already registered.");
-      } else if (err.code === "auth/weak-password") {
-        setError("Password must be at least 6 characters.");
-      } else if (err.code === "auth/invalid-email") {
-        setError("Invalid email address.");
-      } else {
-        setError("Failed to create account. Please try again.");
-      }
+      if (err.code === "auth/email-already-in-use") setError("This email is already registered.");
+      else if (err.code === "auth/weak-password") setError("Password must be at least 6 characters.");
+      else if (err.code === "auth/invalid-email") setError("Invalid email address.");
+      else setError("Failed to create account. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -157,25 +128,13 @@ export default function SignUp() {
             </div>
 
             <div>
-              <Label>
-                Invitation Code <span className="text-muted-foreground">(Optional)</span>
-              </Label>
-              <Input
-                name="invitation"
-                value={form.invitation}
-                onChange={handleChange}
-              />
+              <Label>Password</Label>
+              <Input type="password" name="password" value={form.password} onChange={handleChange} required />
             </div>
 
             <div>
-              <Label>Password</Label>
-              <Input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                required
-              />
+              <Label>Confirm Password</Label>
+              <Input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} required />
             </div>
 
             {error && (
