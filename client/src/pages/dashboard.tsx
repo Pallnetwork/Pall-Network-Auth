@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { db, auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, updateDoc } from "firebase/firestore";
 import { doc, getDoc, setDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -715,8 +717,33 @@ export default function Dashboard() {
                 {user && <MiningDashboard userId={user.id} />}
               </div>
 
+              {/* =============================== */}
+              {/* 🔗 Optional Invitation Code */}
+              {/* =============================== */}
+              <div className="mt-10 p-4 border rounded-lg bg-muted">
+                <h3 className="text-lg font-semibold mb-2">
+                  Invitation Code (Optional)
+                </h3>
+
+                <p className="text-sm text-muted-foreground mb-3">
+                  If you were referred by someone, you can enter their invitation code here.
+                  This step is optional.
+                </p>
+
+                <div className="flex gap-2 max-w-md">
+                  <Input
+                    placeholder="Enter invitation code"
+                    value={invitationCode}
+                    onChange={(e) => setInvitationCode(e.target.value)}
+                 />
+                 <Button onClick={handleSaveInvitation}>
+                   Save
+                 </Button>
+               </div>
+             </div>
+              
               {/* Quick Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6"> 
                 <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
                   <CardContent className="p-6 text-center">
                     <h3 className="text-2xl font-bold text-blue-600 mb-2">{pallBalance.toFixed(4)}</h3>
