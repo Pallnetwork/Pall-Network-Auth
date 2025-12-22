@@ -588,7 +588,7 @@ const handleSaveInvitation = async () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top Bar with Safe Area */}
-      <div className="flex justify-between items-center bg-green-600 text-white p-4 pt-8 shadow-lg" style={{paddingTop: 'max(2rem, env(safe-area-inset-top, 2rem))'}}>
+      <div className="flex justify-between items-center bg-green-600 text-white p-2 pt-8 shadow-lg" style={{paddingTop: 'max(2rem, env(safe-area-inset-top, 2rem))'}}>
         <div className="flex items-center space-x-3">
           <img src="/logo192.png" alt="Pall Network" className="w-8 h-8 rounded-full" />
           <h1 className="text-xl font-bold">Pall Network</h1>
