@@ -29,7 +29,7 @@ export default function KYCPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
       {/* Header */}
-      <div className="bg-green-600 text-white p-4 shadow-lg">
+      <div className="bg-green-600 text-white p-4 shadow-0.5g">
         <div className="flex items-center space-x-3">
           <Button
             variant="ghost"
