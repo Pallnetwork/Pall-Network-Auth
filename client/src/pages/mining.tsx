@@ -10,11 +10,16 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export default function MiningPage() {
   const [, navigate] = useLocation();
+
   const [userId, setUserId] = useState<string | null>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [miningProgress, setMiningProgress] = useState(0);
   const [loading, setLoading] = useState(false);
-  const timerRef = useRef<NodeJS.Timer | null>(null);
+
+  // 🔐 Guards
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rewardedHandledRef = useRef(false);
+  const miningRequestRef = useRef(false);
 
   // ===============================
   // ✅ AUTH CHECK
@@ -37,34 +42,44 @@ export default function MiningPage() {
   const fetchWallet = async (uid: string) => {
     const ref = doc(db, "wallets", uid);
     const snap = await getDoc(ref);
-    if (snap.exists()) setWallet(snap.data());
+    if (snap.exists()) {
+      setWallet(snap.data());
+    }
   };
 
   // ===============================
-  // ✅ START MINING (AFTER AD)
+  // ✅ START MINING (AFTER AD ONLY)
   // ===============================
   const startMining = async () => {
     if (!userId) return;
+    if (wallet?.miningActive) return;
+    if (miningRequestRef.current) return;
+
+    miningRequestRef.current = true;
 
     try {
       setLoading(true);
       const resp = await axios.post("/api/mining/start", { userId });
-      if (resp.data.success) {
+
+      if (resp.data?.success) {
+        rewardedHandledRef.current = false;
         await fetchWallet(userId);
-        startTimer();
       }
-    } catch {
-      alert("Failed to start mining");
+    } catch (e) {
+      alert("Failed to start mining. Please try again.");
     } finally {
+      miningRequestRef.current = false;
       setLoading(false);
     }
   };
 
   // ===============================
-  // ✅ LISTEN AD COMPLETE EVENT
+  // ✅ LISTEN REWARDED AD COMPLETE
   // ===============================
   useEffect(() => {
     const onRewarded = () => {
+      if (rewardedHandledRef.current) return;
+      rewardedHandledRef.current = true;
       startMining();
     };
 
@@ -72,7 +87,7 @@ export default function MiningPage() {
     return () => {
       window.removeEventListener("rewardedAdComplete", onRewarded);
     };
-  }, [userId]);
+  }, [userId, wallet]);
 
   // ===============================
   // ⏱️ TIMER
@@ -80,25 +95,38 @@ export default function MiningPage() {
   const startTimer = () => {
     if (!wallet?.lastStart) return;
 
-    clearInterval(timerRef.current!);
+    if (timerRef.current) clearInterval(timerRef.current);
+
     timerRef.current = setInterval(() => {
       const elapsed = Date.now() - wallet.lastStart.toMillis();
       const progress = Math.min((elapsed / ONE_DAY_MS) * 100, 100);
       setMiningProgress(progress);
-      if (progress >= 100) clearInterval(timerRef.current!);
+
+      if (progress >= 100 && timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     }, 1000);
   };
 
   useEffect(() => {
-    if (wallet?.miningActive) startTimer();
-    return () => clearInterval(timerRef.current!);
+    if (wallet?.miningActive) {
+      startTimer();
+    } else {
+      setMiningProgress(0);
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [wallet]);
 
   // ===============================
   // 🎁 CLAIM REWARD
   // ===============================
   const claimReward = async () => {
-    if (!userId || miningProgress < 100) return;
+    if (!userId) return;
+    if (miningProgress < 100) return;
 
     let reward = 1;
     if (wallet?.bonusActive) reward *= 2;
@@ -114,7 +142,7 @@ export default function MiningPage() {
     });
 
     alert(`🎉 You received ${reward} PALL`);
-    fetchWallet(userId);
+    await fetchWallet(userId);
     setMiningProgress(0);
   };
 
@@ -129,34 +157,45 @@ export default function MiningPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <p><strong>Balance:</strong> {wallet?.pallBalance || 0} PALL</p>
-          <p><strong>Mining Active:</strong> {wallet?.miningActive ? "Yes" : "No"}</p>
+          <p>
+            <strong>Balance:</strong> {wallet?.pallBalance || 0} PALL
+          </p>
+          <p>
+            <strong>Mining Active:</strong>{" "}
+            {wallet?.miningActive ? "Yes" : "No"}
+          </p>
 
           {!wallet?.miningActive && (
             <Button
               disabled={loading}
               onClick={() => {
-                if ((window as any).Android) {
+                rewardedHandledRef.current = false;
+
+                if ((window as any).Android?.showRewardedAd) {
                   (window as any).Android.showRewardedAd();
                 } else {
-                  alert("Rewarded Ad not available");
+                  alert("Rewarded Ad not available. Please try again.");
                 }
               }}
             >
-              Start Mining
+              {loading ? "Starting..." : "Start Mining"}
             </Button>
           )}
 
           {wallet?.miningActive && (
             <>
               <p>Progress: {miningProgress.toFixed(2)}%</p>
-              <progress value={miningProgress} max={100} className="w-full" />
+              <progress
+                value={miningProgress}
+                max={100}
+                className="w-full"
+              />
             </>
           )}
 
           <Button
             onClick={claimReward}
-            disabled={miningProgress < 100}
+            disabled={miningProgress < 100 || loading}
           >
             Claim Reward
           </Button>
