@@ -15,8 +15,8 @@ declare global {
         load: (options: { id: { android: string } }) => Promise<void>;
         show: () => Promise<void>;
         on: (event: string, callback: () => void) => void;
-        off: (event: string, callback: () => void): void;
-      }
+        off: (event: string, callback: () => void) => void; // ✅ Fixed here
+      };
     };
     startMiningFromApp?: () => void;
   }
@@ -32,15 +32,14 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const [lastStart, setLastStart] = useState<Date | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [canStartMining, setCanStartMining] = useState(true);
-  
+
   const [adLoaded, setAdLoaded] = useState(false);
   const [adLoading, setAdLoading] = useState(false);
   const [showingAd, setShowingAd] = useState(false);
-  
-  const { toast } = useToast();
 
+  const { toast } = useToast();
   const baseMiningRate = 0.00001157; // 1 PALL / 24h
-  const REWARDED_AD_UNIT_ID = "ca-app-pub-2948353344588284/3065938619"; // ✅ Rewarded Unit ID
+  const REWARDED_AD_UNIT_ID = "ca-app-pub-2948353344588284/3065938619"; // Rewarded Unit ID
 
   // -------------------------
   // Preload Rewarded Ad
@@ -62,7 +61,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
 
   useEffect(() => {
     loadRewardedAd();
-
     return () => {
       setAdLoaded(false);
       setAdLoading(false);
@@ -100,11 +98,11 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
               const finalEarnings = maxSec * baseMiningRate;
               const finalBalance = (data.pallBalance || 0) + finalEarnings;
 
-              await setDoc(doc(db, "wallets", userId), {
-                pallBalance: finalBalance,
-                miningActive: false,
-                miningStopTime: now,
-              }, { merge: true });
+              await setDoc(
+                doc(db, "wallets", userId),
+                { pallBalance: finalBalance, miningActive: false, miningStopTime: now },
+                { merge: true }
+              );
 
               setBalance(finalBalance);
               setMining(false);
@@ -132,10 +130,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
             setLastStart(null);
           }
         } else {
-          await setDoc(doc(db, "wallets", userId), {
-            pallBalance: 0,
-            miningActive: false,
-          });
+          await setDoc(doc(db, "wallets", userId), { pallBalance: 0, miningActive: false });
         }
       } catch (err) {
         console.error("Error fetching mining data:", err);
@@ -249,12 +244,11 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     setLastStart(now);
     setTimeRemaining(24 * 60 * 60);
 
-    await setDoc(doc(db, "wallets", userId), {
-      pallBalance: balance,
-      miningActive: true,
-      lastStart: now,
-      miningStartTime: now,
-    }, { merge: true });
+    await setDoc(
+      doc(db, "wallets", userId),
+      { pallBalance: balance, miningActive: true, lastStart: now, miningStartTime: now },
+      { merge: true }
+    );
 
     toast({ title: "Mining Started! ⛏️", description: "You're earning PALL tokens!" });
   };
