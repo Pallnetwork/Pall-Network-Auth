@@ -13,12 +13,22 @@ import KYCPage from "@/pages/kyc";
 import NotFound from "@/pages/not-found";
 
 import { auth } from "@/lib/firebase";
-import { useAuthState } from "react-firebase-hooks/auth";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { useEffect, useState } from "react";
 
 function Router() {
-  const [user, loading] = useAuthState(auth);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // ✅ Splash / loader (white screen fix)
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  // ✅ White screen fix (loader)
   if (loading) {
     return (
       <div style={{
@@ -35,12 +45,12 @@ function Router() {
   return (
     <Switch>
 
-      {/* Root always redirects */}
+      {/* Root */}
       <Route path="/">
         {user ? <Redirect to="/app/dashboard" /> : <Redirect to="/app/signin" />}
       </Route>
 
-      {/* Auth routes */}
+      {/* Auth */}
       <Route path="/app/signin">
         {user ? <Redirect to="/app/dashboard" /> : <SignIn />}
       </Route>
@@ -51,7 +61,7 @@ function Router() {
 
       <Route path="/app/forgot-password" component={ForgotPassword} />
 
-      {/* Protected routes */}
+      {/* Protected */}
       <Route path="/app/dashboard">
         {!user ? <Redirect to="/app/signin" /> : <Dashboard />}
       </Route>
@@ -60,7 +70,7 @@ function Router() {
         {!user ? <Redirect to="/app/signin" /> : <KYCPage />}
       </Route>
 
-      {/* Legacy redirects */}
+      {/* Legacy */}
       <Route path="/signin" component={() => <Redirect to="/app/signin" />} />
       <Route path="/signup" component={() => <Redirect to="/app/signup" />} />
       <Route path="/dashboard" component={() => <Redirect to="/app/dashboard" />} />
