@@ -16,7 +16,7 @@ declare global {
         show: () => Promise<void>;
         on: (event: string, callback: () => void) => void;
         off: (event: string, callback: () => void): void;
-      };
+      }
     };
     startMiningFromApp?: () => void;
   }
