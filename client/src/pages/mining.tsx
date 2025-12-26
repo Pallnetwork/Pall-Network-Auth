@@ -18,7 +18,6 @@ export default function MiningPage() {
 
   // 🔐 Guards
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const rewardedHandledRef = useRef(false);
   const miningRequestRef = useRef(false);
 
   // ===============================
@@ -48,7 +47,7 @@ export default function MiningPage() {
   };
 
   // ===============================
-  // ✅ START MINING (AFTER AD ONLY)
+  // ✅ START MINING (AFTER REWARDED AD COMPLETE)
   // ===============================
   const startMining = async () => {
     if (!userId) return;
@@ -56,16 +55,15 @@ export default function MiningPage() {
     if (miningRequestRef.current) return;
 
     miningRequestRef.current = true;
+    setLoading(true);
 
     try {
-      setLoading(true);
       const resp = await axios.post("/api/mining/start", { userId });
-
       if (resp.data?.success) {
-        rewardedHandledRef.current = false;
         await fetchWallet(userId);
+        startTimer();
       }
-    } catch (e) {
+    } catch (error) {
       alert("Failed to start mining. Please try again.");
     } finally {
       miningRequestRef.current = false;
@@ -74,12 +72,10 @@ export default function MiningPage() {
   };
 
   // ===============================
-  // ✅ LISTEN REWARDED AD COMPLETE
+  // ✅ REWARDED AD COMPLETE EVENT
   // ===============================
   useEffect(() => {
     const onRewarded = () => {
-      if (rewardedHandledRef.current) return;
-      rewardedHandledRef.current = true;
       startMining();
     };
 
@@ -94,7 +90,6 @@ export default function MiningPage() {
   // ===============================
   const startTimer = () => {
     if (!wallet?.lastStart) return;
-
     if (timerRef.current) clearInterval(timerRef.current);
 
     timerRef.current = setInterval(() => {
@@ -125,8 +120,7 @@ export default function MiningPage() {
   // 🎁 CLAIM REWARD
   // ===============================
   const claimReward = async () => {
-    if (!userId) return;
-    if (miningProgress < 100) return;
+    if (!userId || miningProgress < 100) return;
 
     let reward = 1;
     if (wallet?.bonusActive) reward *= 2;
@@ -169,12 +163,12 @@ export default function MiningPage() {
             <Button
               disabled={loading}
               onClick={() => {
-                rewardedHandledRef.current = false;
-
                 if ((window as any).Android?.showRewardedAd) {
                   (window as any).Android.showRewardedAd();
                 } else {
-                  alert("Rewarded Ad not available. Please try again.");
+                  alert(
+                    "Rewarded Ad not available. Please try again in a few seconds."
+                  );
                 }
               }}
             >
@@ -185,11 +179,7 @@ export default function MiningPage() {
           {wallet?.miningActive && (
             <>
               <p>Progress: {miningProgress.toFixed(2)}%</p>
-              <progress
-                value={miningProgress}
-                max={100}
-                className="w-full"
-              />
+              <progress value={miningProgress} max={100} className="w-full" />
             </>
           )}
 
