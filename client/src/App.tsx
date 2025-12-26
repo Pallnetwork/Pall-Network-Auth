@@ -4,8 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import Homepage from "@/pages/homepage";
-import Home from "@/pages/home";
+
 import SignIn from "@/pages/signin";
 import SignUp from "@/pages/signup";
 import ForgotPassword from "@/pages/forgot-password";
@@ -13,43 +12,62 @@ import Dashboard from "@/pages/dashboard";
 import KYCPage from "@/pages/kyc";
 import NotFound from "@/pages/not-found";
 
+import { auth } from "@/lib/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
+
 function Router() {
-  // Check if this is Android app user
-  const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
-  
+  const [user, loading] = useAuthState(auth);
+
+  // ✅ Splash / loader (white screen fix)
+  if (loading) {
+    return (
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center"
+      }}>
+        Loading Pall Network...
+      </div>
+    );
+  }
+
   return (
     <Switch>
-      <Route path="/" component={() => {
-        // For Android app users, redirect directly to signin
-        if (isAndroidApp) {
-          return <Redirect to="/app/signin" />;
-        }
-        return <Homepage />;
-      }} />
-      <Route path="/app" component={Home} />
-      <Route path="/app/signin" component={SignIn} />
-      <Route path="/app/signup" component={SignUp} />
+
+      {/* Root always redirects */}
+      <Route path="/">
+        {user ? <Redirect to="/app/dashboard" /> : <Redirect to="/app/signin" />}
+      </Route>
+
+      {/* Auth routes */}
+      <Route path="/app/signin">
+        {user ? <Redirect to="/app/dashboard" /> : <SignIn />}
+      </Route>
+
+      <Route path="/app/signup">
+        {user ? <Redirect to="/app/dashboard" /> : <SignUp />}
+      </Route>
+
       <Route path="/app/forgot-password" component={ForgotPassword} />
-      <Route path="/app/dashboard" component={Dashboard} />
-      <Route path="/app/dashboard/profile" component={Dashboard} />
-      <Route path="/app/dashboard/referral" component={Dashboard} />
-      <Route path="/app/dashboard/wallet" component={Dashboard} />
-      <Route path="/app/dashboard/upgrade" component={Dashboard} />
-      <Route path="/app/dashboard/policies" component={Dashboard} />
-      <Route path="/app/kyc" component={KYCPage} />
-      {/* Legacy routes redirect to /app */}
+
+      {/* Protected routes */}
+      <Route path="/app/dashboard">
+        {!user ? <Redirect to="/app/signin" /> : <Dashboard />}
+      </Route>
+
+      <Route path="/app/kyc">
+        {!user ? <Redirect to="/app/signin" /> : <KYCPage />}
+      </Route>
+
+      {/* Legacy redirects */}
       <Route path="/signin" component={() => <Redirect to="/app/signin" />} />
       <Route path="/signup" component={() => <Redirect to="/app/signup" />} />
       <Route path="/dashboard" component={() => <Redirect to="/app/dashboard" />} />
-      <Route path="/forgot-password" component={() => <Redirect to="/app/forgot-password" />} />
-      <Route path="/kyc" component={() => <Redirect to="/app/kyc" />} />
-      {/* Fallback for unknown routes - redirect to signin for Android, 404 for web */}
-      <Route component={() => {
-        if (isAndroidApp) {
-          return <Redirect to="/app/signin" />;
-        }
-        return <NotFound />;
-      }} />
+
+      {/* Fallback */}
+      <Route component={NotFound} />
+
     </Switch>
   );
 }
