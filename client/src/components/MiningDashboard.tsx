@@ -37,7 +37,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const [showingAd, setShowingAd] = useState(false);
   const { toast } = useToast();
   
-  const REWARDED_AD_ID = "ca-app-pub-4127419795292376/8725268175"; // 🔹 Production Rewarded ID
+  const REWARDED_AD_ID = "ca-app-pub-2948353344588284/3065938619"; // 🔹 Production Rewarded ID
 
   // ✅ Preload rewarded ad on app start and cleanup on unmount
   useEffect(() => {
