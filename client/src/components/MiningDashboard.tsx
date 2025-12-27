@@ -37,6 +37,17 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const isAndroidApp = typeof window !== "undefined" && !!window.Android;
 
   /* ===============================
+     APP OPEN AD AUTOMATICALLY
+  ================================ */
+  useEffect(() => {
+    if (isAndroidApp) {
+      setTimeout(() => {
+        window.Android?.showRewardedAd();
+      }, 1000); // 1 sec delay for app initialization
+    }
+  }, [isAndroidApp]);
+
+  /* ===============================
      FETCH WALLET DATA
   ================================ */
   useEffect(() => {
