@@ -13,7 +13,7 @@ export default function ForgotPassword() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     email: "",
-    username: "",
+    fullName: "",
     newPassword: "",
     confirmPassword: "",
   });
@@ -28,6 +28,9 @@ export default function ForgotPassword() {
     setError("");
   };
 
+  /* ===============================
+     STEP 1: VERIFY USER (Email + Full Name)
+  ================================ */
   const handleFindUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -37,10 +40,10 @@ export default function ForgotPassword() {
       const q = query(
         collection(db, "users"),
         where("email", "==", form.email),
-        where("username", "==", form.username)
+        where("fullName", "==", form.fullName)
       );
       const snap = await getDocs(q);
-      
+
       if (!snap.empty) {
         setUserId(snap.docs[0].id);
         setStep(2);
@@ -49,7 +52,7 @@ export default function ForgotPassword() {
           description: "Enter your new password below.",
         });
       } else {
-        setError("User not found. Please check your email and username.");
+        setError("User not found. Please check your Email and Full Name.");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
@@ -59,6 +62,9 @@ export default function ForgotPassword() {
     }
   };
 
+  /* ===============================
+     STEP 2: RESET PASSWORD
+  ================================ */
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -83,7 +89,7 @@ export default function ForgotPassword() {
         });
         toast({
           title: "Success",
-          description: "Password updated successfully!",
+          description: "Password updated successfully! Use Email + New Password to login.",
         });
         navigate("/app/signin");
       }
@@ -108,7 +114,7 @@ export default function ForgotPassword() {
           {step === 1 ? (
             <>
               <p className="text-muted-foreground">
-                Enter your email and username to verify your identity and reset your password.
+                Enter your email and full name to verify your identity.
               </p>
               <form onSubmit={handleFindUser} className="space-y-4">
                 <div className="space-y-2">
@@ -121,20 +127,18 @@ export default function ForgotPassword() {
                     value={form.email}
                     onChange={handleChange}
                     required
-                    data-testid="input-email"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="fullName">Full Name</Label>
                   <Input
-                    id="username"
-                    name="username"
+                    id="fullName"
+                    name="fullName"
                     type="text"
-                    placeholder="Enter your username"
-                    value={form.username}
+                    placeholder="Enter your full name"
+                    value={form.fullName}
                     onChange={handleChange}
                     required
-                    data-testid="input-username"
                   />
                 </div>
 
@@ -149,7 +153,6 @@ export default function ForgotPassword() {
                   type="submit"
                   className="w-full bg-purple-500 hover:bg-purple-600"
                   disabled={isLoading}
-                  data-testid="button-next"
                 >
                   {isLoading ? "Verifying..." : "Next Step"}
                 </Button>
@@ -171,7 +174,6 @@ export default function ForgotPassword() {
                     value={form.newPassword}
                     onChange={handleChange}
                     required
-                    data-testid="input-new-password"
                   />
                 </div>
                 <div className="space-y-2">
@@ -184,7 +186,6 @@ export default function ForgotPassword() {
                     value={form.confirmPassword}
                     onChange={handleChange}
                     required
-                    data-testid="input-confirm-password"
                   />
                 </div>
 
@@ -199,7 +200,6 @@ export default function ForgotPassword() {
                   type="submit"
                   className="w-full bg-green-500 hover:bg-green-600"
                   disabled={isLoading}
-                  data-testid="button-update-password"
                 >
                   {isLoading ? "Updating..." : "Update Password"}
                 </Button>
@@ -208,7 +208,7 @@ export default function ForgotPassword() {
           )}
 
           <div className="text-center">
-            <Link href="/app/signin" className="text-sm text-primary hover:underline" data-testid="link-signin">
+            <Link href="/app/signin" className="text-sm text-primary hover:underline">
               Back to Sign In
             </Link>
           </div>
