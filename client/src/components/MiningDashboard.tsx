@@ -49,7 +49,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   }, [isAndroidApp]);
 
   /* ===============================
-     FETCH WALLET DATA
+     FETCH WALLET DATA AND PRESERVE BALANCE
   ================================ */
   useEffect(() => {
     const fetchData = async () => {
@@ -57,19 +57,25 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       const snap = await getDoc(ref);
 
       if (!snap.exists()) {
-        await setDoc(ref, { pallBalance: 0, miningActive: false });
+        // Merge:true ensures document creation without overwriting if already exists
+        await setDoc(ref, { pallBalance: 0, miningActive: false }, { merge: true });
+        setBalance(0);
+        setMining(false);
+        setCanStartMining(true);
+        setTimeRemaining(0);
         return;
       }
 
       const data = snap.data();
-      setBalance(data.pallBalance || 0);
+      const savedBalance = data.pallBalance || 0;
+      setBalance(savedBalance);
 
       if (data.miningActive && data.lastStart) {
         const start = data.lastStart.toDate();
         const elapsed = Math.floor((new Date().getTime() - start.getTime()) / 1000);
 
         if (elapsed >= MAX_SECONDS) {
-          const finalBalance = (data.pallBalance || 0) + MAX_SECONDS * baseMiningRate;
+          const finalBalance = savedBalance + MAX_SECONDS * baseMiningRate;
           await setDoc(ref, { pallBalance: finalBalance, miningActive: false }, { merge: true });
           setBalance(finalBalance);
           setMining(false);
@@ -81,6 +87,10 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           setLastStart(start);
           setTimeRemaining(MAX_SECONDS - elapsed);
         }
+      } else {
+        setMining(false);
+        setCanStartMining(true);
+        setTimeRemaining(0);
       }
     };
 
@@ -140,6 +150,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     setLastStart(now);
     setTimeRemaining(MAX_SECONDS);
 
+    // Use merge:true to preserve already mined balance
     await setDoc(ref, { miningActive: true, lastStart: now, pallBalance: balance }, { merge: true });
 
     toast({ title: "Mining Started ⛏️", description: "You're now earning PALL" });
