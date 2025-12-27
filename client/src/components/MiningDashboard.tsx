@@ -13,6 +13,7 @@ declare global {
   interface Window {
     Android?: {
       showRewardedAd: () => void;
+      showInterstitialAd: () => void;
     };
   }
 }
@@ -37,13 +38,13 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const isAndroidApp = typeof window !== "undefined" && !!window.Android;
 
   /* ===============================
-     APP OPEN AD AUTOMATICALLY
+     APP OPEN INTERSTITIAL AD
   ================================ */
   useEffect(() => {
     if (isAndroidApp) {
       setTimeout(() => {
-        window.Android?.showRewardedAd();
-      }, 1000); // 1 sec delay for app initialization
+        window.Android?.showInterstitialAd();
+      }, 1000); // 1 sec delay
     }
   }, [isAndroidApp]);
 
@@ -128,7 +129,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   }, [mining, lastStart]);
 
   /* ===============================
-     START MINING AFTER AD
+     START MINING AFTER REWARDED AD
   ================================ */
   const startMiningProcess = async () => {
     const now = new Date();
@@ -144,9 +145,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     toast({ title: "Mining Started ⛏️", description: "You're now earning PALL" });
   };
 
-  /* ===============================
-     START MINING BUTTON CLICK
-  ================================ */
   const handleStartMining = () => {
     if (!isAndroidApp) {
       toast({ title: "Unavailable on Browser", description: "Mining is only available in Android App", variant: "destructive" });
@@ -160,7 +158,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   };
 
   /* ===============================
-     LISTEN AD COMPLETE EVENT
+     LISTEN REWARDED AD COMPLETE EVENT
   ================================ */
   useEffect(() => {
     const onAdComplete = () => {
