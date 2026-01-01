@@ -1,0 +1,80 @@
+Hello Replit AI 👋
+
+My app name is “Pall Network” and it is deployed at https://pallnetworkcommerce.com.  
+I need you to finalize the app and prepare production-ready deliverables. Please complete the following tasks:
+
+---
+
+✅ 1. Logo & Favicon Fix
+- Fix missing app logo and favicon after deployment.
+- Ensure correct favicon.ico, logo192.png, logo512.png in /public folder.
+- Update manifest.json with correct icon paths.
+- Confirm logo appears in browser tab, PWA install, Android/iOS builds.
+
+---
+
+✅ 2. Mining Speed Update
+- Adjust mining logic so users mine exactly *1 Pall token per 24 hours*.
+- When mining is active:
+  - Tokens accumulate continuously over 24 hours.
+  - Save balance in Firestore (wallets/{userId}/pallBalance).
+  - Countdown timer must show time remaining until next mining cycle.
+- After 24h, reset button to “Start Mining”.
+
+---
+
+✅ 3. Professional Homepage/Website
+- Create a homepage at root / that is public (no login required).
+- Homepage sections:
+  - Hero: App logo + tagline (“Pall Network — Web3 Mining Simulation”)
+  - About: Company “Pall Network Commerce”, project intro
+  - Features: Mining Simulation, Wallet Integration, PWA + Mobile Support
+  - Download Links: Web App, PWA install, Android APK/AAB, iOS (coming soon)
+  - Policies: Privacy Policy, Terms of Service, Disclaimer
+  - Blog/Updates placeholder section for future SEO + earnings
+- Style: modern, professional, responsive, mobile-friendly.
+- Link homepage to /app (dashboard login area).
+
+---
+
+✅ 4. Android Studio–Ready ZIP
+- Generate complete Android Studio project ZIP:
+  - android/build.gradle
+  - app/build.gradle
+  - settings.gradle
+  - gradle-wrapper
+  - AndroidManifest.xml
+  - MainActivity.java / MainActivity.kt
+  - Package: com.pallnetwork
+  - App name: PALL NETWORK
+  - Elephant icon as launcher
+- Firebase:
+  - Add google-services plugin in build.gradle
+  - Placeholder for google-services.json (I will upload my file to include)
+- Project must sync with Gradle without errors and allow “Build → Generate Signed APK/AAB”.
+
+---
+
+✅ 5. Deployment
+- If needed, redeploy the updated project so that:
+  - Logo shows correctly
+  - Homepage is live at https://pallnetworkcommerce.com
+  - Mining works with 24h = 1 PALL token speed
+  - Firebase Auth + Wallet integration unchanged
+
+---
+
+🛠 Deliverables:
+- Fixed + redeployed live app
+- Downloadable Android Studio ZIP file
+- Verified homepage + logo + mining speed
+- Debug checklist confirmation
+
+---
+
+⚡ Please implement all changes and confirm:
+- Logo/favicons appear correctly
+- Mining = 1 token per 24h
+- Homepage live at root domain
+- Firebase Auth + wallet working
+- Android Studio ZIP file ready for download

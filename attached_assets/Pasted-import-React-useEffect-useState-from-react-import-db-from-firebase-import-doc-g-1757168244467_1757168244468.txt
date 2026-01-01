@@ -1,0 +1,80 @@
+import React, { useEffect, useState } from "react";
+import { db } from "./firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+
+export default function MiningDashboard({ userId }) {
+  const [balance, setBalance] = useState(0);
+  const [mining, setMining] = useState(false);
+  const [lastStart, setLastStart] = useState(null);
+  const miningRate = 0.01; // 0.01 PALL per second
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const snap = await getDoc(doc(db, "wallets", userId));
+      if (snap.exists()) {
+        const data = snap.data();
+        setBalance(data.pallBalance || 0);
+        setLastStart(data.lastStart || null);
+        setMining(data.miningActive || false);
+      }
+    };
+    fetchData();
+  }, [userId]);
+
+  useEffect(() => {
+    let interval;
+    if (mining) {
+      interval = setInterval(async () => {
+        setBalance(prev => {
+          const newBalance = prev + miningRate;
+          saveBalance(newBalance);
+          return newBalance;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [mining]);
+
+  const saveBalance = async (newBalance) => {
+    await setDoc(doc(db, "wallets", userId), {
+      pallBalance: newBalance,
+      miningActive: mining,
+      lastStart: new Date()
+    }, { merge: true });
+  };
+
+  const startMining = async () => {
+    setMining(true);
+    setLastStart(new Date());
+    await setDoc(doc(db, "wallets", userId), {
+      pallBalance: balance,
+      miningActive: true,
+      lastStart: new Date()
+    }, { merge: true });
+  };
+
+  const stopMining = async () => {
+    setMining(false);
+    await setDoc(doc(db, "wallets", userId), {
+      pallBalance: balance,
+      miningActive: false
+    }, { merge: true });
+  };
+
+  return (
+    <div className="bg-white p-6 rounded shadow-md max-w-md text-center">
+      <h2 className="text-2xl font-bold mb-4">Pall Mining ⛏</h2>
+      <p className="text-lg mb-4">Current Balance: <b>{balance.toFixed(4)} PALL</b></p>
+
+      {mining ? (
+        <button onClick={stopMining} className="bg-red-500 text-white px-4 py-2 rounded">
+          Stop Mining
+        </button>
+      ) : (
+        <button onClick={startMining} className="bg-green-500 text-white px-4 py-2 rounded">
+          Start Mining
+        </button>
+      )}
+    </div>
+  );
+}

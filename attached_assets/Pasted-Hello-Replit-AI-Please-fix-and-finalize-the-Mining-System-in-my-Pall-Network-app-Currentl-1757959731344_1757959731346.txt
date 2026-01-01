@@ -1,0 +1,46 @@
+Hello Replit AI 👋
+
+Please fix and finalize the *Mining System* in my “Pall Network” app.  
+Currently, the *Start Mining ⛏ button is not showing* and the mining logic is not fully correct.  
+
+✅ Requirements:
+
+1. Mining Button Visibility
+- Ensure the Start Mining ⛏ button is always visible when a logged-in user opens /app/dashboard.
+- Button text states:
+   - “Start Mining ⛏” when mining is not running.
+   - “Mining in Progress ⛏ (hh:mm:ss remaining)” while mining is active.
+- After 24 hours, the button must reset back to “Start Mining ⛏”.
+
+2. Mining Logic
+- Mining must only start when the user presses the Start Mining button.
+- Mining runs for *exactly 24 hours (86,400 seconds)*.
+- Rate = *1 PALL token per 24 hours* (0.00001157 PALL/second).
+- Balance should increment in real-time and be saved in Firestore (wallets/{userId}/pallBalance).
+- After 24 hours:
+   - Mining auto-stops.
+   - Button resets back to Start Mining.
+   - Mining must NOT auto-restart unless the user presses the button again.
+
+3. Persistence & Compliance
+- Store mining state in Firestore (start time, remaining time, current balance) so that the mining progress continues if the user refreshes or logs in from another device.
+- Must follow Google Play Store policy:
+   - Mining should never auto-start without user clicking.
+   - User must always have control to start each cycle manually.
+   - Exactly 1 PALL token is earned every 24 hours, no more.
+
+🛠 Deliverables:
+- Update MiningDashboard.tsx (or equivalent component).
+- Make the Start Mining ⛏ button visible and functional.
+- Fix mining rate to *0.00001157 PALL/second*.
+- Ensure 24-hour mining cycle stops and resets correctly.
+- Verify Firestore balance updates in real time and persists.
+
+🚀 Expected Flow:
+1. User logs in → sees *Start Mining ⛏* button.
+2. User clicks → mining starts (0.00001157/sec).
+3. After 24 hours → mining auto-stops, button resets.
+4. User must click again to start a new cycle.
+5. Balance updates correctly in Firestore and shows in the UI.
+
+Thank you 🙏

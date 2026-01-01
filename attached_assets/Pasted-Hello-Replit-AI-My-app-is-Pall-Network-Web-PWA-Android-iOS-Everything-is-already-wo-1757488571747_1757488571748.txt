@@ -1,0 +1,70 @@
+Hello Replit AI 👋
+
+My app is “Pall Network” (Web + PWA + Android + iOS).  
+Everything is already working fine (Firebase Auth, Mining, Wallet, Policies, Dashboard).  
+Now I need you to prepare the *final deployable builds setup* for both *Android (Gradle) + iOS (Expo EAS / Xcode)* and deliver them as a single ZIP file.
+
+---
+
+✅ Requirements:
+
+1. *Android Build (Gradle)*
+   - Include android/ folder with full Gradle project structure.
+   - Include android/build.gradle, app/build.gradle, and proper package name.
+   - Integrate google-services.json (I will upload mine).
+   - Ensure "Sync Project with Gradle Files" works inside Android Studio.
+   - Make sure I can build .apk and .aab without errors.
+   - App icon, splash screen, and PWA logo must display correctly.
+
+2. *iOS Build (Expo EAS / Xcode)*
+   - Include ios/ folder with Xcode project files.
+   - Add app.json or app.config.js with correct iOS bundle identifier.
+   - Integrate Firebase for iOS using GoogleService-Info.plist (I will upload mine).
+   - Ensure app builds in Xcode simulator and Expo EAS (eas build -p ios).
+   - iOS app should have working icons, splash screen, and policies pages.
+
+3. *Mining & Wallet*
+   - Mining rate fixed to exactly *1 Pall Token per 24 hours* (already updated).
+   - Balance updates stored in Firestore wallet → pallBalance field.
+   - Wallet integration with MetaMask / Trust Wallet must work on production domain.
+
+4. *Homepage + Policies*
+   - Root path / should show new professional Homepage (with navigation, hero, about).
+   - Sidebar/footer links to Privacy Policy, Terms of Service, Disclaimer.
+   - All policies must be included for Play Store + App Store compliance.
+
+5. *PWA Compatibility*
+   - manifest.json and service worker included.
+   - App installable on Chrome/Edge/Safari.
+   - Icons properly included for web + PWA + mobile builds.
+
+---
+
+⚡ Deliverables:
+
+- Provide me with a *single ZIP file* containing:
+  - Full source code
+  - android/ folder (Gradle project)
+  - ios/ folder (Xcode / Expo project)
+  - Config files (google-services.json, GoogleService-Info.plist placeholders)
+  - Assets (logos, splash, icons)
+
+So that I can:
+- Open in *Android Studio* → Sync Gradle → Build .apk and .aab.
+- Open in *Xcode* or run eas build -p ios → Get iOS .ipa for App Store.
+- Deploy web + PWA build as before.
+
+---
+
+🔎 Debug Checklist:
+
+✅ Android project builds without Gradle errors in Android Studio  
+✅ iOS project builds without Xcode/EAS errors  
+✅ Logo + icons appear correctly in browser tab, PWA, Android & iOS  
+✅ Mining logic = 1 Pall Token per 24h  
+✅ Firebase Auth + Wallet working  
+✅ Homepage + Policies live  
+
+---
+
+Please prepare this *final ZIP export* with Android + iOS build setup ready for app store submission.

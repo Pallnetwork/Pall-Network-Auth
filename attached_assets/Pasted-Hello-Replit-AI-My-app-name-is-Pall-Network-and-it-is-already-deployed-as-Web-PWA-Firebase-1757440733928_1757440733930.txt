@@ -1,0 +1,55 @@
+Hello Replit AI 👋
+
+My app name is “Pall Network” and it is already deployed as Web + PWA + Firebase Auth + Wallet integration.  
+Now I need the final Android/iOS build setup.
+
+---
+
+✅ Task: Generate Android Studio–Ready Project ZIP
+
+1. Create a complete Android Studio–compatible project structure:
+   - android/build.gradle
+   - app/build.gradle
+   - settings.gradle
+   - gradle-wrapper.properties
+   - AndroidManifest.xml
+   - MainActivity.java / MainActivity.kt
+   - Package name: com.pallnetwork
+   - App name: PALL NETWORK
+   - App icon: use elephant icon (replace default launcher icon)
+
+2. Firebase Integration:
+   - Include Firebase Auth + Firestore (already working in my app)
+   - Add google-services plugin in build.gradle
+   - Prepare placeholder for google-services.json
+   - I will upload my actual google-services.json to Replit for you to include in app module
+
+3. Web + PWA integration:
+   - Bundle my existing PWA into Android wrapper (WebView or Trusted Web Activity)
+   - Make sure mining dashboard, wallet connect, Firebase auth, and policies pages work inside Android app
+
+4. iOS Support:
+   - Prepare project files compatible with Expo EAS or Xcode build (Info.plist, iOS configs)
+   - Make sure icons and splash screen are included for iOS as well
+
+5. Deliverables:
+   - Provide me with a downloadable *ZIP file* of the Android Studio project
+   - The project should open in Android Studio without errors
+   - “Sync Project with Gradle Files” should work correctly
+   - Build menu should allow me to generate APK and AAB for Google Play Store
+   - iOS folder should be compatible with Expo/Xcode builds
+
+---
+
+📌 Debug Checklist
+- android/build.gradle and app/build.gradle correctly configured
+- google-services.json integrated under app/ folder
+- Firebase Auth + Firestore initialized
+- App icon (elephant) used for launcher
+- APK/AAB build possible from Android Studio without errors
+- Web app features (mining, wallet, auth, policies) run smoothly inside native app
+
+---
+
+⚡ Please create this Android Studio + iOS project ZIP file and give me the download link.
+I will upload my google-services.json so you can include it in the final ZIP.

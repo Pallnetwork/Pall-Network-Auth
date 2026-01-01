@@ -1,0 +1,54 @@
+Hello Replit AI 👋
+
+My app name is “Pall Network”.  
+Everything is working fine (Firebase Auth, Wallet, Policies, PWA setup, APK build), but I need one important fix for the mining button UI and logic.
+
+---
+
+✅ Task: Mining Button Update
+
+1. Move the ⛏ Mining button from the sidebar → main dashboard screen.  
+   - When user logs in and opens dashboard, the mining section should be visible directly (no need to click sidebar).  
+   - Dashboard should show:
+     - Current Balance (from Firestore wallet → “pallBalance” field)
+     - Mining Button (⛏ Start Mining or Stop Mining)
+     - Mining Status (Active / Inactive)
+     - Countdown timer (hh:mm:ss) until next mining is available
+
+2. Mining Rules:
+   - A user can start mining once every 24 hours.
+   - When mining is started:
+     - Mining stays active for 24h continuously.
+     - Pall tokens keep accumulating and are saved in Firestore wallet balance (real-time or at interval).
+     - Mining button should be disabled during active period.
+   - After 24h completes → show “Start Mining” button again.
+
+3. Wallet Balance:
+   - In sidebar “Wallet” section → show the same “pallBalance” from Firestore.
+   - Balance should increase automatically while mining is active.
+
+---
+
+🛠 Deliverables from Replit AI
+
+- Update Dashboard UI to show the mining module (with button + timer + balance).
+- Remove mining button from sidebar (only dashboard should control mining).
+- Ensure mining session logic is stored in Firestore:
+  - Save miningStartTime for each user.
+  - Calculate next available mining start time = miningStartTime + 24h.
+- Update balance increment correctly in Firestore wallet document (wallets/{userId}/pallBalance).
+- Keep referral and reward system unchanged.
+
+---
+
+🔎 Debug Checklist
+
+✅ Mining ⛏ button visible on Dashboard only (not sidebar)  
+✅ Mining starts once every 24 hours only  
+✅ Mining balance is saved to Firestore wallet  
+✅ Countdown timer shows remaining time  
+✅ Wallet page shows updated Pall Balance  
+
+---
+
+⚡ Please implement these updates so the Mining button is fully on Dashboard with 24h restriction and wallet sync.

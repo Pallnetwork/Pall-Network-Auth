@@ -1,0 +1,141 @@
+Hello Replit AI, my app name is “Pall Network”.
+I need you to finalize the app with the following updates and compliance features so I can build Web + PWA + Android .apk and .aab files (for Google Play Store submission).
+
+
+---
+
+✅ Features & Fixes Needed
+
+1. Mining Button Update
+
+Move the ⛏ Mining button from the sidebar → dashboard main area.
+
+Rule: A user can start mining once every 24 hours only.
+
+After a click, mining should be disabled for 24h.
+
+Show countdown timer (hours:minutes:seconds) until next mining is available.
+
+
+
+2. Wallet Integration Fix
+
+When user clicks on Wallet, don’t show “Install Wallet” (since most users already have MetaMask or Trust Wallet).
+
+Instead:
+
+Detect if MetaMask / Trust Wallet is already installed.
+
+If installed → connect directly.
+
+If not installed → only then show “Install Wallet” option.
+
+
+
+
+3. About + Policies Page
+
+Add About & Policies page linked in sidebar/footer.
+
+Must include:
+
+Privacy Policy
+
+Terms of Service
+
+Disclaimer (crypto simulation, not financial advice)
+
+
+These pages must meet Google Play Store & App Store requirements.
+
+
+
+4. Cross-Platform Build Requirements
+
+App must run as:
+
+✅ Web App (with custom domain pallnetworkcommerce.com)
+
+✅ PWA (installable in Chrome, Edge, Safari, etc.)
+
+✅ Android Build (.apk + .aab) for Play Store upload
+
+✅ iOS Build (for App Store submission)
+
+
+Must follow Google Play Developer Policy (no deceptive behavior, working privacy policy, wallet integration safe, mining as simulation not real crypto).
+
+
+
+5. Firebase & Auth
+
+Keep Firebase Auth + Firestore wallet system as before:
+
+On signup → create Firebase Auth user
+
+Create wallet doc in Firestore with balance = 0
+
+Redirect user to dashboard
+
+
+Referral system + mining rewards must work.
+
+
+
+
+
+---
+
+🛠 Deliverables from Replit AI
+
+1. Fixed & updated full codebase with the changes above.
+
+
+2. Provide exported builds:
+
+Web + PWA working version
+
+Android .apk + .aab files (signed, ready for Play Store)
+
+iOS build instructions (Xcode / Expo EAS build ready).
+
+
+
+3. Make sure all Play Store & App Store policies are satisfied:
+
+App has a working Privacy Policy page
+
+No fake financial promises (state “simulation” clearly)
+
+Wallet integration is optional and transparent
+
+
+
+
+
+---
+
+🔎 Debug Checklist
+
+At the end, please confirm:
+
+✅ Mining button works on dashboard with 24h restriction + timer
+
+✅ Wallet connects if MetaMask / Trust Wallet installed, otherwise shows install link
+
+✅ Policies page is added & linked
+
+✅ Firebase signup creates user + wallet correctly
+
+✅ Web + PWA + .apk + .aab generated successfully
+
+✅ App is compliant with Google Play & App Store rules
+
+
+
+---
+
+⚡ Please implement all changes and prepare the final ready-to-publish Pall Network App.
+
+
+---

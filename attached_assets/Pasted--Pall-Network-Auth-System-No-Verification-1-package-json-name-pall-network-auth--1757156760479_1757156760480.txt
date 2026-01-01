@@ -1,0 +1,289 @@
+📦 Pall Network – Auth System (No Verification)
+
+1. package.json
+
+{
+  "name": "pall-network-auth",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "firebase": "^11.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.0.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^5.0.0"
+  }
+}
+
+
+---
+
+2. vite.config.js
+
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()]
+});
+
+
+---
+
+3. src/firebase.js
+
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_APP.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_APP.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+
+
+---
+
+4. src/App.jsx
+
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import Signup from "./Signup";
+import Signin from "./Signin";
+import ForgotPassword from "./ForgotPassword";
+import Dashboard from "./Dashboard";
+
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Navigate to="/signin" />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/signin" element={<Signin />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </Router>
+  );
+}
+
+
+---
+
+5. src/Signup.jsx
+
+import React, { useState } from "react";
+import { db } from "./firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
+
+export default function Signup() {
+  const [form, setForm] = useState({
+    email: "",
+    name: "",
+    username: "",
+    invitation: "",
+    password: ""
+  });
+  const navigate = useNavigate();
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    try {
+      const userId = uuidv4();
+      await setDoc(doc(db, "users", userId), {
+        ...form,
+        id: userId,
+        createdAt: new Date()
+      });
+      localStorage.setItem("userId", userId);
+      navigate("/dashboard");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      <form onSubmit={handleSignup} className="bg-white p-6 rounded-xl shadow-md w-96">
+        <h1 className="text-2xl font-bold mb-4">Create Account</h1>
+        <input type="text" name="name" placeholder="Name" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+        <input type="text" name="username" placeholder="Username" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+        <input type="email" name="email" placeholder="Email" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+        <input type="text" name="invitation" placeholder="Invitation Code (optional)" onChange={handleChange} className="w-full p-2 mb-2 border rounded"/>
+        <input type="password" name="password" placeholder="Password" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+        <button type="submit" className="w-full bg-green-500 text-white p-2 rounded">Create Account</button>
+      </form>
+    </div>
+  );
+}
+
+
+---
+
+6. src/Signin.jsx
+
+import React, { useState } from "react";
+import { db } from "./firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { useNavigate, Link } from "react-router-dom";
+
+export default function Signin() {
+  const [form, setForm] = useState({ identifier: "", password: "" });
+  const navigate = useNavigate();
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSignin = async (e) => {
+    e.preventDefault();
+    try {
+      const q = query(
+        collection(db, "users"),
+        where("username", "==", form.identifier)
+      );
+      const snap = await getDocs(q);
+
+      let user = null;
+      if (!snap.empty) {
+        user = snap.docs[0].data();
+      } else {
+        const q2 = query(collection(db, "users"), where("email", "==", form.identifier));
+        const snap2 = await getDocs(q2);
+        if (!snap2.empty) user = snap2.docs[0].data();
+      }
+
+      if (!user) throw new Error("User not found");
+      if (user.password !== form.password) throw new Error("Invalid password");
+
+      localStorage.setItem("userId", user.id);
+      navigate("/dashboard");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      <form onSubmit={handleSignin} className="bg-white p-6 rounded-xl shadow-md w-96">
+        <h1 className="text-2xl font-bold mb-4">Sign In</h1>
+        <input type="text" name="identifier" placeholder="Email or Username" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+        <input type="password" name="password" placeholder="Password" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+        <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded">Sign In</button>
+        <Link to="/forgot-password" className="text-sm text-blue-600 block mt-2">Forgot Password?</Link>
+        <Link to="/signup" className="text-sm text-gray-600 block mt-2">Create Account</Link>
+      </form>
+    </div>
+  );
+}
+
+
+---
+
+7. src/ForgotPassword.jsx
+
+import React, { useState } from "react";
+import { db } from "./firebase";
+import { collection, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+
+export default function ForgotPassword() {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({
+    email: "",
+    username: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [userId, setUserId] = useState(null);
+  const navigate = useNavigate();
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleFindUser = async (e) => {
+    e.preventDefault();
+    const q = query(
+      collection(db, "users"),
+      where("email", "==", form.email),
+      where("username", "==", form.username)
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      setUserId(snap.docs[0].id);
+      setStep(2);
+    } else {
+      alert("User not found");
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (form.newPassword !== form.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+    await updateDoc(doc(db, "users", userId), { password: form.newPassword });
+    alert("Password updated successfully!");
+    navigate("/signin");
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      {step === 1 ? (
+        <form onSubmit={handleFindUser} className="bg-white p-6 rounded-xl shadow-md w-96">
+          <h1 className="text-2xl font-bold mb-4">Forgot Password</h1>
+          <input type="email" name="email" placeholder="Enter your Email" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+          <input type="text" name="username" placeholder="Enter your Username" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+          <button type="submit" className="w-full bg-purple-500 text-white p-2 rounded">Next</button>
+        </form>
+      ) : (
+        <form onSubmit={handleResetPassword} className="bg-white p-6 rounded-xl shadow-md w-96">
+          <h1 className="text-2xl font-bold mb-4">Reset Password</h1>
+          <input type="password" name="newPassword" placeholder="New Password" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+          <input type="password" name="confirmPassword" placeholder="Confirm Password" onChange={handleChange} required className="w-full p-2 mb-2 border rounded"/>
+          <button type="submit" className="w-full bg-green-500 text-white p-2 rounded">Update Password</button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+
+---
+
+8. src/Dashboard.jsx
+
+import React from "react";
+import { useNavigate } from "react-router-dom";
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+
+  const logout = () => {
+    localStorage.removeItem("userId");
+    navigate("/signin");
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-green-50">
+      <h1 className="text-3xl font-bold mb-4">Welcome to Pall Network 🚀</h1>
+      <button onClick={logout} className="bg-red-500 text-white px-4 py-2 rounded">Logout</button>
+    </div>
+  );
+---

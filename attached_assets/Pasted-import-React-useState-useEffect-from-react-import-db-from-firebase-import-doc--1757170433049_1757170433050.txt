@@ -1,0 +1,160 @@
+import React, { useState, useEffect } from "react";
+import { db } from "./firebase"; 
+import { doc, getDoc, setDoc } from "firebase/firestore";
+
+export default function Dashboard({ userId }) {
+  const [balance, setBalance] = useState(0);
+  const [mining, setMining] = useState(false);
+  const [lastStart, setLastStart] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [packageInfo, setPackageInfo] = useState({ name: "Bronze", speed: 2 });
+
+  const BASE_RATE = 0.01; // 0.01 PALL/sec base mining rate
+  const MINING_DURATION = 24 * 60 * 60 * 1000; // 24 hours in ms
+
+  // ✅ Load user data from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
+      const snap = await getDoc(doc(db, "wallets", userId));
+      if (snap.exists()) {
+        const data = snap.data();
+        setBalance(data.pallBalance || 0);
+        setMining(data.miningActive || false);
+        setLastStart(data.lastStart ? new Date(data.lastStart.toDate()) : null);
+        setPackageInfo({
+          name: data.currentPackage || "Bronze",
+          speed: data.miningSpeed || 2
+        });
+      }
+    };
+    fetchData();
+  }, [userId]);
+
+  // ✅ Countdown Timer
+  useEffect(() => {
+    if (mining && lastStart) {
+      const interval = setInterval(() => {
+        const endTime = new Date(lastStart).getTime() + MINING_DURATION;
+        const now = Date.now();
+        const diff = endTime - now;
+
+        if (diff <= 0) {
+          stopMining();
+          clearInterval(interval);
+        } else {
+          setTimeLeft(diff);
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [mining, lastStart]);
+
+  // ✅ Mining loop
+  useEffect(() => {
+    let interval;
+    if (mining) {
+      interval = setInterval(async () => {
+        setBalance(prev => {
+          const newBalance = prev + BASE_RATE * packageInfo.speed;
+          saveBalance(newBalance);
+          return newBalance;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [mining, packageInfo]);
+
+  // ✅ Save balance to Firestore
+  const saveBalance = async (newBalance) => {
+    await setDoc(doc(db, "wallets", userId), {
+      pallBalance: newBalance,
+      miningActive: mining,
+      lastStart: lastStart,
+      currentPackage: packageInfo.name,
+      miningSpeed: packageInfo.speed
+    }, { merge: true });
+  };
+
+  // ✅ Start mining (24h lock)
+  const startMining = async () => {
+    const now = new Date();
+    setMining(true);
+    setLastStart(now);
+
+    await setDoc(doc(db, "wallets", userId), {
+      pallBalance: balance,
+      miningActive: true,
+      lastStart: now,
+      currentPackage: packageInfo.name,
+      miningSpeed: packageInfo.speed
+    }, { merge: true });
+  };
+
+  // ✅ Stop mining
+  const stopMining = async () => {
+    setMining(false);
+    setTimeLeft(0);
+    await setDoc(doc(db, "wallets", userId), {
+      pallBalance: balance,
+      miningActive: false
+    }, { merge: true });
+  };
+
+  // ✅ Format Timer (hh:mm:ss)
+  const formatTime = (ms) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return ${hours}h ${minutes}m ${seconds}s;
+  };
+
+  return (
+    <div className="bg-gray-100 min-h-screen p-6">
+      {/* Top Bar */}
+      <div className="flex justify-between items-center bg-blue-600 text-white p-4 rounded-lg mb-6">
+        <button className="text-2xl">☰</button>
+        <h1 className="text-xl font-bold">Pall Network</h1>
+      </div>
+
+      {/* Mining Section */}
+      <div className="bg-white shadow-lg rounded-xl p-6 text-center">
+        <h2 className="text-2xl font-bold mb-2">Pall Mining ⛏</h2>
+        <p className="mb-2 text-lg">Balance: <b>{balance.toFixed(4)} PALL</b></p>
+        <p className="mb-4 text-gray-600">
+          Current Package: <b>{packageInfo.name} ({packageInfo.speed}X)</b>
+        </p>
+
+        {mining ? (
+          <div>
+            <button
+              onClick={stopMining}
+              className="bg-red-500 text-white px-6 py-3 rounded-full text-lg mb-4"
+            >
+              ⛏ Mining Active
+            </button>
+            <p className="text-gray-700">Time Left: {formatTime(timeLeft)} ⌛</p>
+          </div>
+        ) : (
+          <button
+            onClick={startMining}
+            className="bg-green-500 text-white px-6 py-3 rounded-full text-lg"
+          >
+            ⛏ Start Mining
+          </button>
+        )}
+      </div>
+
+      {/* Shortcuts */}
+      <div className="mt-6 grid grid-cols-2 gap-4">
+        <button className="bg-yellow-500 text-white py-3 rounded-lg shadow">
+          Upgrade Package
+        </button>
+        <button className="bg-indigo-500 text-white py-3 rounded-lg shadow">
+          Go to Wallet
+        </button>
+      </div>
+    </div>
+  );
+}

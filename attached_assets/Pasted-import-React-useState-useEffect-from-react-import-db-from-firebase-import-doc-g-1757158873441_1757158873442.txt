@@ -1,0 +1,147 @@
+import React, { useState, useEffect } from "react";
+import { db } from "./firebase";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const userId = localStorage.getItem("userId");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [page, setPage] = useState("HOME");
+  const [profile, setProfile] = useState(null);
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    dob: "",
+    gender: "",
+    phone: "",
+    address: "",
+    photo: ""
+  });
+  const [referrals, setReferrals] = useState([]);
+
+  // Load profile
+  useEffect(() => {
+    if (!userId) navigate("/signin");
+    const fetchProfile = async () => {
+      const snap = await getDoc(doc(db, "profiles", userId));
+      if (snap.exists()) setProfile(snap.data());
+    };
+    fetchProfile();
+  }, [userId, navigate]);
+
+  // Load referrals
+  useEffect(() => {
+    const fetchReferrals = async () => {
+      const q = query(collection(db, "users"), where("referredBy", "==", userId));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(doc => doc.data());
+      setReferrals(list);
+    };
+    fetchReferrals();
+  }, [userId]);
+
+  const handleFormChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const saveProfile = async () => {
+    if (profile) return alert("Profile already filled, cannot edit again!");
+    await setDoc(doc(db, "profiles", userId), { ...form, userId, createdAt: new Date() });
+    setProfile(form);
+    alert("Profile Saved!");
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Top Bar */}
+      <div className="flex justify-between items-center bg-green-600 text-white p-4 shadow">
+        <h1 className="text-xl font-bold">Pall Network</h1>
+        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-2xl">☰</button>
+      </div>
+
+      {/* Sidebar */}
+      {sidebarOpen && (
+        <div className="fixed top-0 right-0 h-full w-60 bg-white shadow-lg p-4 z-50">
+          <button className="text-red-500 mb-4" onClick={() => setSidebarOpen(false)}>Close ✖</button>
+          <ul className="space-y-3">
+            <li><button onClick={() => setPage("HOME")}>🏠 Home</button></li>
+            <li><button onClick={() => setPage("PROFILE")}>👤 Profile</button></li>
+            <li><button onClick={() => setPage("REFERRAL")}>👥 Referral Team</button></li>
+            <li><button onClick={() => setPage("KYC")}>🪪 KYC Verification</button></li>
+            <li><button onClick={() => setPage("ABOUT")}>ℹ About</button></li>
+          </ul>
+        </div>
+      )}
+
+      {/* Page Content */}
+      <div className="flex-1 p-6 bg-gray-50">
+        {page === "HOME" && <h2 className="text-2xl">Welcome to Pall Network Dashboard 🚀</h2>}
+
+        {page === "PROFILE" && (
+          <div className="bg-white p-6 rounded shadow-md max-w-md">
+            <h2 className="text-xl font-bold mb-4">Profile Information</h2>
+            {profile ? (
+              <div>
+                <p><b>Name:</b> {profile.firstName} {profile.lastName}</p>
+                <p><b>DOB:</b> {profile.dob}</p>
+                <p><b>Gender:</b> {profile.gender}</p>
+                <p><b>Phone:</b> {profile.phone}</p>
+                <p><b>Address:</b> {profile.address}</p>
+              </div>
+            ) : (
+              <form>
+                <input type="text" name="firstName" placeholder="First Name" onChange={handleFormChange} className="w-full p-2 mb-2 border rounded"/>
+                <input type="text" name="lastName" placeholder="Last Name" onChange={handleFormChange} className="w-full p-2 mb-2 border rounded"/>
+                <input type="date" name="dob" onChange={handleFormChange} className="w-full p-2 mb-2 border rounded"/>
+                <select name="gender" onChange={handleFormChange} className="w-full p-2 mb-2 border rounded">
+                  <option value="">Select Gender</option>
+                  <option>Male</option>
+                  <option>Female</option>
+                  <option>Shemale</option>
+                  <option>Undecide</option>
+                </select>
+                <input type="text" name="phone" placeholder="Phone" onChange={handleFormChange} className="w-full p-2 mb-2 border rounded"/>
+                <input type="text" name="address" placeholder="Address" onChange={handleFormChange} className="w-full p-2 mb-2 border rounded"/>
+                <button type="button" onClick={saveProfile} className="w-full bg-green-500 text-white p-2 rounded">Save Profile</button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {page === "REFERRAL" && (
+          <div className="bg-white p-6 rounded shadow-md">
+            <h2 className="text-xl font-bold mb-4">Referral Team</h2>
+            {referrals.length === 0 ? (
+              <p>No referrals yet.</p>
+            ) : (
+              <ul>
+                {referrals.map((r, i) => (
+                  <li key={i} className="border-b p-2">
+                    Username: {r.username} | Reward: 1 USDT
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {page === "KYC" && (
+          <div className="bg-white p-6 rounded shadow-md">
+            <h2 className="text-xl font-bold">KYC Verification</h2>
+            <p className="text-gray-500">Coming Soon...</p>
+          </div>
+        )}
+
+        {page === "ABOUT" && (
+          <div className="bg-white p-6 rounded shadow-md">
+            <h2 className="text-xl font-bold mb-2">About Pall Network</h2>
+            <p>
+              Pall Network is a decentralized crypto mining and commerce platform where users
+              can mine Pall Tokens, invite others, and earn referral rewards. 
+              Our mission is to bring mining to everyone through web and mobile applications.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

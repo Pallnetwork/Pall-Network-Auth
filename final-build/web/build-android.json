@@ -1,0 +1,65 @@
+{
+  "name": "Pall Network",
+  "appId": "com.pallnetwork.mining",
+  "version": "1.0.0",
+  "buildNumber": 1,
+  "description": "Educational cloud mining simulation platform",
+  "author": "Pall Network Team",
+  "website": "https://pallnetworkcommerce.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pallnetwork/mining-app.git"
+  },
+  "android": {
+    "compileSdkVersion": 33,
+    "targetSdkVersion": 33,
+    "minSdkVersion": 21,
+    "packageName": "com.pallnetwork.mining",
+    "versionCode": 1,
+    "permissions": [
+      "android.permission.INTERNET",
+      "android.permission.ACCESS_NETWORK_STATE",
+      "android.permission.ACCESS_WIFI_STATE",
+      "android.permission.CAMERA",
+      "android.permission.VIBRATE"
+    ],
+    "icon": {
+      "src": "attached_assets/generated_images/Pall_Network_app_icon_d490e700.png",
+      "sizes": [72, 96, 128, 144, 152, 192, 384, 512]
+    },
+    "splash": {
+      "backgroundColor": "#2563EB",
+      "image": "attached_assets/generated_images/Pall_Network_app_icon_d490e700.png"
+    },
+    "intentFilters": [
+      {
+        "autoVerify": true,
+        "action": "android.intent.action.VIEW",
+        "category": [
+          "android.intent.category.DEFAULT",
+          "android.intent.category.BROWSABLE"
+        ],
+        "data": {
+          "scheme": "https",
+          "host": "pallnetworkcommerce.com"
+        }
+      }
+    ]
+  },
+  "playStore": {
+    "category": "EDUCATION",
+    "contentRating": "PEGI_7",
+    "privacyPolicyUrl": "https://pallnetworkcommerce.com/policies",
+    "keyFeatures": [
+      "Educational mining simulation",
+      "24-hour mining cycles",
+      "Referral system learning",
+      "Web3 wallet integration",
+      "Progressive Web App"
+    ],
+    "description": "Learn about cryptocurrency mining through Pall Network's educational simulation platform. Experience 24-hour mining cycles, understand referral systems, and practice with Web3 wallets in a safe, educational environment.",
+    "shortDescription": "Educational cryptocurrency mining simulation with 24-hour cycles and referral rewards.",
+    "screenshots": [],
+    "featureGraphic": null
+  }
+}

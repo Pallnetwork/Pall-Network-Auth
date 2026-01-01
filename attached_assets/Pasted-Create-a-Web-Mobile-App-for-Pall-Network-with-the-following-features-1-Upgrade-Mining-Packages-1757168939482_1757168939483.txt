@@ -1,0 +1,51 @@
+Create a Web + Mobile App for Pall Network with the following features:
+
+1. *Upgrade Mining Packages*
+   - Packages available:
+     - Bronze: 3 USDT → 2X Mining Speed
+     - Silver: 10 USDT → 6X Mining Speed
+     - Gold: 50 USDT → 15X Mining Speed
+     - Diamond: 120 USDT → 25X Mining Speed
+   - Payment only accepted in *USDT (BEP20)* on BNB Chain.
+   - Receiver wallet address: 0xAaE232DeFc1a7951C6b8a00EC46C6d451f605cCF
+   - Once purchased, package name and mining speed should be updated in user’s dashboard.
+   - Show *Current Package* in dashboard with speed multiplier.
+
+2. *Wallet Connect Integration*
+   - Add "Connect Wallet" button to allow users to connect any Web3 wallet (MetaMask, TrustWallet, Coinbase Wallet).
+   - After connecting, allow the user to buy any package.
+   - On purchase, a USDT BEP20 transfer should be triggered directly to the receiver address.
+   - After confirmation, mining speed should be updated in Firebase/Database.
+
+3. *Referral Commission System*
+   - F1 (Direct Referrals) = 5% USDT commission
+   - F2 (Indirect Referrals) = 2.5% USDT commission
+   - Commission should be displayed in the Wallet section in USDT.
+   - Add "Wallet" option in sidebar showing:
+     - PALL Balance (mined tokens)
+     - USDT Balance (Referral Earnings)
+     - Deposit (Coming Soon)
+     - Withdraw (Coming Soon)
+
+4. *Mining Simulation*
+   - Dashboard should show user’s current PALL Balance.
+   - Add a “Start Mining” button → balance auto-increases according to package speed (e.g. Bronze = 2X = 0.02/sec if base is 0.01).
+   - Mining session runs continuously until user stops or session expires (24h cycle).
+   - Save mining data in Firebase so it persists after logout.
+
+5. *UI/UX*
+   - Clean dashboard with Topbar + Sidebar.
+   - Sidebar options:
+     - Home (Dashboard)
+     - Profile (User info, saved once not editable again)
+     - Referral Team (show list of referrals + commission breakdown)
+     - Wallet (USDT balance + Pall balance)
+     - KYC Verification (Coming Soon)
+     - About (Pall Network Description)
+   - Upgrade Mining button visible in dashboard → takes user to packages page.
+   - Responsive UI for both Web (browser) and Mobile (Play Store app).
+
+6. *Tech*
+   - Use React + Tailwind for frontend.
+   - Use Firebase/Firestore for user accounts, balances, referral tracking.
+   - Use Ethers.js for Web3 wallet connect and USDT transfers.
