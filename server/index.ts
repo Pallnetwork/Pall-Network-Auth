@@ -94,8 +94,8 @@ setInterval(async () => {
   // Use PORT from .env or default 8080
   const port = parseInt(process.env.PORT || '8080', 10);
 
-  // Listen on localhost to avoid ENOTSUP error on 0.0.0.0
-  server.listen(port, "127.0.0.1", () => {
-    log(`serving on http://127.0.0.1:${port} ✅`);
+  // ✅ FINAL FIX: Listen on 0.0.0.0 for Render deployment
+  server.listen(port, "0.0.0.0", () => {
+    log(`serving on port ${port} ✅`);
   });
 })();
