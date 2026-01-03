@@ -1,13 +1,13 @@
 import { useEffect } from "react";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
+
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 import SignIn from "@/pages/signin";
 import SignUp from "@/pages/signup";
@@ -42,6 +42,7 @@ function Router() {
 }
 
 function App() {
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -56,6 +57,9 @@ function App() {
         localStorage.removeItem("firebaseToken");
       }
     });
+
+     return () => unsubscribe();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
