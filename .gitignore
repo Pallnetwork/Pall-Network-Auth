@@ -1,6 +1,11 @@
 node_modules
 dist
 .DS_Store
+# Environment variables
+.env
+
+# Firebase service account
+serviceAccountKey.json
 server/public
 vite.config.ts.*
 *.tar.gz
