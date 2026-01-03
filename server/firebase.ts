@@ -1,18 +1,22 @@
 // server/firebase.ts
 import admin from "firebase-admin";
-import fs from "fs";
+
+// ✅ Use environment variable for Firebase service account (Render safe)
+const serviceAccount = JSON.parse(
+  process.env.FIREBASE_SERVICE_ACCOUNT as string
+);
 
 if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(
-    fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_PATH!, "utf-8")
-  );
-
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });
 }
 
+// ✅ Firestore reference
 export const db = admin.firestore();
+
+// ✅ Firebase Auth reference
+export const auth = admin.auth();
 
 /* ===============================
    🔥 Cloud Function: mineToken
