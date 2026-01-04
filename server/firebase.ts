@@ -70,3 +70,5 @@ export async function mineTokenSecure(uid: string) {
 
   return { success: true };
 }
+
+export default admin;

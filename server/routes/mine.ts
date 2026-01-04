@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
-import admin from "../firebase";
 import { verifyFirebaseToken } from "../middleware/auth";
+import * as admin from "../firebase";
 
 const router = Router();
 
