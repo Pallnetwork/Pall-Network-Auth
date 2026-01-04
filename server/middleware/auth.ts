@@ -1,5 +1,6 @@
+// server/middleware/auth.ts
 import { Request, Response, NextFunction } from "express";
-import { auth } from "../firebase";
+import { auth } from "../firebase"; // ✅ Named import
 
 export async function verifyFirebaseToken(
   req: Request,
@@ -15,6 +16,7 @@ export async function verifyFirebaseToken(
 
     const idToken = authHeader.split("Bearer ")[1];
 
+    // 🔹 Use named auth export instead of admin
     const decodedToken = await auth.verifyIdToken(idToken);
 
     // 🔥 attach UID to request
