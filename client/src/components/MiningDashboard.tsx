@@ -1,5 +1,5 @@
 // client/src/components/MiningDashboard.tsx
-// 🔒 SESSION 3 — FIRESTORE SAFE + UI LIVE BALANCE + 24H MINING + CLOUD FUNCTION
+// 🔒 FINAL SESSION 3 — FIRESTORE SAFE + UI LIVE BALANCE + 24H MINING + CLOUD FUNCTION
 
 import React, { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
@@ -48,14 +48,12 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   ================================ */
   useEffect(() => {
     if (isAndroidApp) {
-      setTimeout(() => {
-        window.Android?.showInterstitialAd();
-      }, 1000);
+      setTimeout(() => window.Android?.showInterstitialAd(), 1000);
     }
   }, [isAndroidApp]);
 
   /* ===============================
-     🔥 FIRESTORE SINGLE SOURCE OF TRUTH
+     FIRESTORE SINGLE SOURCE OF TRUTH
   ================================ */
   useEffect(() => {
     const ref = doc(db, "wallets", userId);
@@ -149,9 +147,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     try {
       const now = new Date();
       const ref = doc(db, "wallets", userId);
-
       await setDoc(ref, { miningActive: true, lastStart: now }, { merge: true });
-
       toast({ title: "Mining Started ⛏️", description: "You're now earning PALL" });
     } catch {
       toast({ title: "Mining failed", variant: "destructive" });
@@ -165,30 +161,27 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     if (isAndroidApp && window.Android?.showRewardedAd) {
       window.Android.showRewardedAd();
 
-      // 🟡 FALLBACK: agar ad event na aaye
+      // 🟡 Fallback 5 sec
       setTimeout(async () => {
         if (waitingForAd) {
-          console.warn("Rewarded ad event not received, fallback start mining");
+          console.warn("Fallback: rewarded ad event not received");
+          setWaitingForAd(false);
           try {
             await mineForUser();
-            startMiningProcess();
           } catch (err) {
             console.error("Fallback mining failed:", err);
-          } finally {
-            setWaitingForAd(false);
           }
         }
       }, 5000);
+
     } else {
-      // 🧪 Web / Debug mode
+      // Web / debug mode
       setTimeout(async () => {
+        setWaitingForAd(false);
         try {
           await mineForUser();
-          startMiningProcess();
         } catch (err) {
           console.error("Web mining failed:", err);
-        } finally {
-          setWaitingForAd(false);
         }
       }, 1000);
     }
@@ -200,14 +193,14 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   useEffect(() => {
     const onAdComplete = async () => {
       console.log("Rewarded ad completed (Android event)");
+      setWaitingForAd(false);
 
       try {
-        await mineForUser(); // 🔹 backend call
-        startMiningProcess(); // UI + timer auto via snapshot
+        const result = await mineForUser();
+        console.log("Mining started backend:", result);
+        // Firestore snapshot handles UI timer & balance
       } catch (err) {
         console.error("Mining API failed:", err);
-      } finally {
-        setWaitingForAd(false);
       }
     };
 
