@@ -4,11 +4,13 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import cors from "cors";
 import { mineToken } from "./firebase";
+import mineRoute from "./routes/mine";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());
+app.use("/api", mineRoute);
 
 // MIME type handling
 app.use((req, res, next) => {
@@ -47,20 +49,6 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", message: "Mining backend running ✅" });
 });
 
-// Mine endpoint
-app.post("/api/mine", async (req: Request, res: Response) => {
-  try {
-    const { userId } = req.body;
-    if (!userId) return res.status(400).json({ error: "Missing userId" });
-
-    await mineToken(userId);
-    return res.status(200).json({ success: true });
-  } catch (err) {
-    console.error("Mine failed:", err);
-    return res.status(500).json({ error: "Mining failed" });
-  }
-});
-
 (async () => {
   const server = await registerRoutes(app);
 
@@ -77,6 +65,6 @@ app.post("/api/mine", async (req: Request, res: Response) => {
     serveStatic(app);
   }
 
-  const port = parseInt(process.env.PORT || "8080", 10);
+  const port = parseInt(process.env.PORT || "8082", 10);
   server.listen(port, "0.0.0.0", () => log(`serving on port ${port} ✅`));
 })();

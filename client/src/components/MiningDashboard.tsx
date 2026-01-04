@@ -7,6 +7,7 @@ import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { mineForUser } from "@/lib/mine";
 
 // 🔹 Cloud Function backend call
 // Ye function server/firebase.ts me define hoga
@@ -181,13 +182,26 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
      REWARDED AD COMPLETE EVENT
   ================================ */
   useEffect(() => {
-    const onAdComplete = () => {
-      setWaitingForAd(false);
+  const onAdComplete = async () => {
+    setWaitingForAd(false);
+
+    try {
+      // 🔥 SESSION 3 — backend mining start
+      const result = await mineForUser();
+      console.log("Mining backend response:", result);
+
+      // ✅ UI + Firestore mining start
       startMiningProcess();
-    };
-    window.addEventListener("rewardedAdComplete", onAdComplete);
-    return () => window.removeEventListener("rewardedAdComplete", onAdComplete);
-  }, []);
+    } catch (err) {
+      console.error("Mining API failed:", err);
+    }
+  };
+
+  window.addEventListener("rewardedAdComplete", onAdComplete);
+  return () =>
+    window.removeEventListener("rewardedAdComplete", onAdComplete);
+}, []);
+
 
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);

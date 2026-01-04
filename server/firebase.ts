@@ -1,34 +1,72 @@
 // server/firebase.ts
 import admin from "firebase-admin";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// ✅ Use environment variable for Firebase service account (Render safe)
-const serviceAccount = JSON.parse(
-  process.env.FIREBASE_SERVICE_ACCOUNT as string
-);
+// 🔹 ES module __dirname fix
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+// ✅ Determine service account
+let serviceAccount;
+
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT as string);
+} else {
+  const localPath = path.resolve(__dirname, "serviceAccountKey.json");
+  if (!fs.existsSync(localPath)) {
+    throw new Error(
+      `Local Firebase serviceAccountKey.json not found at ${localPath}`
+    );
+  }
+  serviceAccount = JSON.parse(fs.readFileSync(localPath, "utf-8"));
+}
+
+// ✅ Initialize Firebase Admin
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });
 }
 
-// ✅ Firestore reference
+// ✅ Export Auth & Firestore
+export const auth = admin.auth();
 export const db = admin.firestore();
 
-// ✅ Firebase Auth reference
-export const auth = admin.auth();
-
 /* ===============================
-   🔥 Cloud Function: mineToken
+   ⛏️ SESSION 3 — SECURE MINING
 =============================== */
-export async function mineToken(userId: string, rate = 0.0001157 * 10) {
-  const ref = db.collection("wallets").doc(userId);
+
+const COOLDOWN_MS = 24 * 60 * 60 * 1000; 
+// testing ke liye chaaho to: 60 * 1000
+
+export async function mineTokenSecure(uid: string) {
+  const ref = db.collection("wallets").doc(uid);
+  const snap = await ref.get();
+  const now = Date.now();
+
+  if (snap.exists) {
+    const data = snap.data();
+
+    if (
+      data?.cooldownUntil &&
+      data.cooldownUntil.toMillis() > now
+    ) {
+      throw new Error("Cooldown active");
+    }
+  }
 
   await ref.set(
     {
-      pallBalance: admin.firestore.FieldValue.increment(rate),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      pallBalance: admin.firestore.FieldValue.increment(1),
+      lastMinedAt: admin.firestore.Timestamp.now(),
+      cooldownUntil: admin.firestore.Timestamp.fromMillis(
+        now + COOLDOWN_MS
+      ),
     },
     { merge: true }
   );
+
+  return { success: true };
 }
