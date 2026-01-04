@@ -173,35 +173,65 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   };
 
   const handleStartMining = () => {
-    if (!isAndroidApp || waitingForAd || mining) return;
-    setWaitingForAd(true);
-    window.Android?.showRewardedAd();
-  };
+  if (waitingForAd || mining) return;
+
+  setWaitingForAd(true);
+
+  if (isAndroidApp && window.Android?.showRewardedAd) {
+    window.Android.showRewardedAd();
+
+    // 🟡 FALLBACK: agar ad complete event na aaye
+    setTimeout(async () => {
+      if (waitingForAd) {
+        console.warn("Rewarded ad event not received, fallback start mining");
+
+        try {
+          await mineForUser();
+          startMiningProcess();
+        } catch (err) {
+          console.error("Fallback mining failed:", err);
+        } finally {
+          setWaitingForAd(false);
+        }
+      }
+    }, 5000);
+  } else {
+    // 🧪 Web / Debug mode
+    setTimeout(async () => {
+      try {
+        await mineForUser();
+        startMiningProcess();
+      } catch (err) {
+        console.error("Web mining failed:", err);
+      } finally {
+        setWaitingForAd(false);
+      }
+    }, 1000);
+  }
+};
 
   /* ===============================
      REWARDED AD COMPLETE EVENT
   ================================ */
   useEffect(() => {
   const onAdComplete = async () => {
-    setWaitingForAd(false);
+    console.log("Rewarded ad completed (Android event)");
 
     try {
-      // 🔥 SESSION 3 — backend mining start
-      const result = await mineForUser();
-      console.log("Mining backend response:", result);
-
-      // ✅ UI + Firestore mining start
+      await mineForUser();
       startMiningProcess();
     } catch (err) {
       console.error("Mining API failed:", err);
+    } finally {
+      setWaitingForAd(false);
     }
   };
 
   window.addEventListener("rewardedAdComplete", onAdComplete);
-  return () =>
+  return () => {
     window.removeEventListener("rewardedAdComplete", onAdComplete);
+  };
 }, []);
-
 
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);

@@ -1,4 +1,4 @@
-import { auth } from "./firebase"; // path adjust agar firebase.ts kahin aur ho
+import { auth } from "./firebase"; // ✅ same path rakho
 
 export async function mineForUser() {
   const user = auth.currentUser;
@@ -10,12 +10,18 @@ export async function mineForUser() {
   // 🔥 FORCE FRESH TOKEN (MOST IMPORTANT)
   const token = await user.getIdToken(true);
 
+  // 🔥 POSTMAN TOKEN (FOR TESTING ONLY)
+  console.log("🔥 POSTMAN TOKEN START 🔥");
+  console.log(token);
+  console.log("🔥 POSTMAN TOKEN END 🔥");
+
   const res = await fetch("http://localhost:8082/api/mine", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
+    body: JSON.stringify({}),
   });
 
   return await res.json();
