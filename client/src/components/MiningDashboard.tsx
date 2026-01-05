@@ -38,7 +38,9 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
 
   // =============================== APP OPEN INTERSTITIAL ===============================
   useEffect(() => {
-    if (isAndroidApp) setTimeout(() => window.Android?.showInterstitialAd(), 1000);
+    if (isAndroidApp) {
+      setTimeout(() => window.Android?.showInterstitialAd(), 1000);
+    }
   }, [isAndroidApp]);
 
   // =============================== FIRESTORE SYNC ===============================
@@ -52,6 +54,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       }
 
       const data = snap.data();
+
       if (typeof data.pallBalance === "number") {
         setBalance(data.pallBalance);
         if (!mining) setUiBalance(data.pallBalance);
@@ -83,14 +86,17 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     });
 
     return () => unsub();
-  }, [userId]);
+  }, [userId, mining]);
 
   // =============================== MINING TIMER ===============================
   useEffect(() => {
     if (!mining || !lastStart) return;
+
     let localBalance = balance;
 
-    const uiInterval = setInterval(() => setUiBalance(prev => prev + baseMiningRate), 1000);
+    const uiInterval = setInterval(() => {
+      setUiBalance(prev => prev + baseMiningRate);
+    }, 1000);
 
     const cloudInterval = setInterval(async () => {
       try {
@@ -136,22 +142,30 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       setTimeout(async () => {
         if (waitingForAd) {
           setWaitingForAd(false);
-          try { await mineForUser(); } 
-          catch (err) { console.error("Fallback mining failed:", err); }
+          try {
+            await mineForUser();
+          } catch (err) {
+            console.error("Fallback mining failed:", err);
+          }
         }
       }, 5000);
     } else {
       setTimeout(async () => {
         setWaitingForAd(false);
-        try { await mineForUser(); } 
-        catch (err) { console.error("Web mining failed:", err); }
+        try {
+          await mineForUser();
+        } catch (err) {
+          console.error("Web mining failed:", err);
+        }
       }, 1000);
     }
   };
 
   // =============================== REWARDED AD COMPLETE ===============================
   useEffect(() => {
-    const handler = async () => { await mineForUser(); };
+    const handler = async () => {
+      await mineForUser();
+    };
     window.addEventListener("rewardedAdComplete", handler);
     return () => window.removeEventListener("rewardedAdComplete", handler);
   }, []);
@@ -161,28 +175,37 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
     return `${h.toString().padStart(2, "0")}:${m
-  .toString()
-  .padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+      .toString()
+      .padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
   // =============================== UI ===============================
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4">
-        <h2 className="text-3xl font-bold text-center text-blue-600">Pall Mining ⛏️</h2>
+        <h2 className="text-3xl font-bold text-center text-blue-600">
+          Pall Mining ⛏️
+        </h2>
       </CardHeader>
 
       <CardContent className="text-center space-y-6 px-6 pb-8">
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
-          <p className="text-3xl font-bold text-blue-600">{uiBalance.toFixed(8)} PALL</p>
+          <p className="text-sm font-medium text-muted-foreground mb-2">
+            Current Balance
+          </p>
+          <p className="text-3xl font-bold text-blue-600">
+            {uiBalance.toFixed(8)} PALL
+          </p>
         </div>
 
         <div className="relative w-48 h-48 mx-auto">
-          <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
+          <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700" />
 
           {mining && timeRemaining > 0 && (
-            <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+            <svg
+              className="absolute inset-0 w-full h-full transform -rotate-90"
+              viewBox="0 0 100 100"
+            >
               <circle
                 cx="50"
                 cy="50"
@@ -192,7 +215,10 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
                 fill="none"
                 className="text-blue-500"
                 strokeDasharray="264"
-                strokeDashoffset={264 - ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264}
+                strokeDashoffset={
+                  264 -
+                  ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264
+                }
                 strokeLinecap="round"
               />
             </svg>
@@ -202,15 +228,25 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
             {mining ? (
               <>
                 <div className="text-3xl mb-2">⛏️</div>
-                <p className="text-base font-bold text-green-600">Mining Active</p>
-                <p className="text-base font-bold text-muted-foreground">Standard Rate</p>
-                <p className="text-base font-mono font-bold text-blue-600 mt-1">{formatTime(timeRemaining)}</p>
+                <p className="text-base font-bold text-green-600">
+                  Mining Active
+                </p>
+                <p className="text-base font-bold text-muted-foreground">
+                  Standard Rate
+                </p>
+                <p className="text-base font-mono font-bold text-blue-600 mt-1">
+                  {formatTime(timeRemaining)}
+                </p>
               </>
             ) : (
               <>
                 <div className="text-4xl mb-2">💎</div>
-                <p className="text-sm font-semibold text-gray-600">Ready to Mine</p>
-                <p className="text-xs text-muted-foreground">Standard Mining</p>
+                <p className="text-sm font-semibold text-gray-600">
+                  Ready to Mine
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Standard Mining
+                </p>
               </>
             )}
           </div>
@@ -219,12 +255,12 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         <Button
           disabled={mining || waitingForAd || !canStartMining}
           onClick={handleStartMining}
-          className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500"
+          className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
         >
           {waitingForAd
             ? "📺 Showing Ad..."
             : mining
-            ? Mining ⛏ (${formatTime(timeRemaining)})
+            ? `Mining ⛏ (${formatTime(timeRemaining)})`
             : "Start Mining ⛏"}
         </Button>
       </CardContent>
