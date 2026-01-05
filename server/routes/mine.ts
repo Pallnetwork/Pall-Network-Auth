@@ -1,12 +1,12 @@
-import { Router, Request, Response } from "express";
+import express from "express";
 import { verifyFirebaseToken } from "../middleware/auth";
 import * as admin from "../firebase";
 
-const router = Router();
+const router = express.Router();
 const COOLDOWN_HOURS = 24;
 const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
 
-router.post("/mine", verifyFirebaseToken, async (req: Request, res: Response) => {
+router.post("/", verifyFirebaseToken, async (req, res) => {
   try {
     const uid = (req as any).user?.uid;
     if (!uid) return res.status(401).json({ error: "Unauthorized" });
@@ -30,10 +30,16 @@ router.post("/mine", verifyFirebaseToken, async (req: Request, res: Response) =>
     const lastStart = data.lastStart?.toDate?.() ?? null;
     const miningActive = data.miningActive === true;
 
-    if (miningActive) return res.status(400).json({ error: "Mining already active" });
+    if (miningActive)
+      return res.status(400).json({ error: "Mining already active" });
+
     if (lastStart && now - lastStart.getTime() < COOLDOWN_MS) {
-      const remainingMinutes = Math.ceil((COOLDOWN_MS - (now - lastStart.getTime())) / 60000);
-      return res.status(400).json({ error: "Cooldown active", remainingMinutes });
+      const remainingMinutes = Math.ceil(
+        (COOLDOWN_MS - (now - lastStart.getTime())) / 60000
+      );
+      return res
+        .status(400)
+        .json({ error: "Cooldown active", remainingMinutes });
     }
 
     await walletRef.update({

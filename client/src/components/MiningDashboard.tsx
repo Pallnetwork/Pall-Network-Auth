@@ -6,8 +6,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
 
-declare function mineToken(userId: string): Promise<void>;
-
 declare global {
   interface Window {
     Android?: {
@@ -83,21 +81,18 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     });
 
     return () => unsub();
-  }, [userId, mining]);
+  }, [userId]);
 
   // =============================== MINING TIMER ===============================
   useEffect(() => {
     if (!mining || !lastStart) return;
-
     let localBalance = balance;
 
-    const uiInterval = setInterval(() => {
-      setUiBalance(prev => prev + baseMiningRate);
-    }, 1000);
+    const uiInterval = setInterval(() => setUiBalance(prev => prev + baseMiningRate), 1000);
 
     const cloudInterval = setInterval(async () => {
       try {
-        await mineToken(userId);
+        await mineForUser();
         localBalance += baseMiningRate * 10;
         setBalance(localBalance);
       } catch (err) {
@@ -180,7 +175,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         </div>
 
         <div className="relative w-48 h-48 mx-auto">
-          <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
+          <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700" />
 
           {mining && timeRemaining > 0 && (
             <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -222,7 +217,11 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           onClick={handleStartMining}
           className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
         >
-          {waitingForAd ? "📺 Showing Ad..." : mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
+          {waitingForAd
+            ? "📺 Showing Ad..."
+            : mining
+            ? `Mining ⛏ (${formatTime(timeRemaining)})`
+            : "Start Mining ⛏"}
         </Button>
       </CardContent>
     </Card>

@@ -1,24 +1,32 @@
 import { auth } from "./firebase";
 
 export async function mineForUser() {
-  const user = auth.currentUser;
-  if (!user) throw new Error("User not logged in");
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not logged in");
 
-  const token = await user.getIdToken(true);
+    const token = await user.getIdToken(true);
 
-  const res = await fetch("https://pall-network-auth.onrender.com/api/mine", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
+    const res = await fetch(
+      "https://pall-network-auth.onrender.com/api/mine",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("Mine API failed:", text);
-    throw new Error("Mine API failed");
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Mine API failed:", text);
+      return { status: "error", message: text };
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.error("mineForUser failed:", err);
+    return { status: "error", message: err.message };
   }
-
-  return await res.json();
 }
