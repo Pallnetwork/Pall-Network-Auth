@@ -219,7 +219,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         <Button
           disabled={mining || waitingForAd || !canStartMining}
           onClick={handleStartMining}
-          className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
+          className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500"
         >
           {waitingForAd
             ? "📺 Showing Ad..."
