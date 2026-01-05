@@ -3,6 +3,7 @@ import { db } from "@/lib/firebase";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
 
 declare function mineToken(userId: string): Promise<void>;
@@ -21,6 +22,8 @@ interface MiningDashboardProps {
 }
 
 export default function MiningDashboard({ userId }: MiningDashboardProps) {
+  const { toast } = useToast();
+
   const [balance, setBalance] = useState(0);
   const [uiBalance, setUiBalance] = useState(0);
   const [mining, setMining] = useState(false);
@@ -33,14 +36,12 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const MAX_SECONDS = 24 * 60 * 60;
   const isAndroidApp = typeof window !== "undefined" && !!window.Android;
 
-  // ================= APP OPEN INTERSTITIAL =================
+  // =============================== APP OPEN INTERSTITIAL ===============================
   useEffect(() => {
-    if (isAndroidApp) {
-      setTimeout(() => window.Android?.showInterstitialAd(), 1000);
-    }
+    if (isAndroidApp) setTimeout(() => window.Android?.showInterstitialAd(), 1000);
   }, [isAndroidApp]);
 
-  // ================= FIRESTORE SYNC =================
+  // =============================== FIRESTORE SYNC ===============================
   useEffect(() => {
     const ref = doc(db, "wallets", userId);
 
@@ -51,7 +52,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       }
 
       const data = snap.data();
-
       if (typeof data.pallBalance === "number") {
         setBalance(data.pallBalance);
         if (!mining) setUiBalance(data.pallBalance);
@@ -85,7 +85,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     return () => unsub();
   }, [userId, mining]);
 
-  // ================= MINING TIMER =================
+  // =============================== MINING TIMER ===============================
   useEffect(() => {
     if (!mining || !lastStart) return;
 
@@ -101,7 +101,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         localBalance += baseMiningRate * 10;
         setBalance(localBalance);
       } catch (err) {
-        console.error("mineToken failed:", err);
+        console.error("Cloud Function mineToken failed:", err);
       }
     }, 10000);
 
@@ -128,7 +128,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     };
   }, [mining, lastStart, balance, userId]);
 
-  // ================= START MINING =================
+  // =============================== START MINING ===============================
   const handleStartMining = () => {
     if (waitingForAd || mining) return;
     setWaitingForAd(true);
@@ -152,7 +152,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     }
   };
 
-  // ================= REWARDED AD COMPLETE =================
+  // =============================== REWARDED AD COMPLETE ===============================
   useEffect(() => {
     const handler = async () => { await mineForUser(); };
     window.addEventListener("rewardedAdComplete", handler);
@@ -166,7 +166,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}:${sec.toString().padStart(2,"0")}`;
   };
 
-  // ================= UI =================
+  // =============================== UI ===============================
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4">

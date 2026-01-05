@@ -10,7 +10,6 @@ export async function mineForUser() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // 👇 Correct template literal with backticks
       Authorization: `Bearer ${token}`,
     },
   });
