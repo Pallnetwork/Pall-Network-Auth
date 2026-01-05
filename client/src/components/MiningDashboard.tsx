@@ -1,5 +1,5 @@
 // client/src/components/MiningDashboard.tsx
-// 🔒 SESSION 3 — CLEAN, SERVER-AUTHORITATIVE (UI UNCHANGED)
+// 🔒 FINAL SESSION 3 — CLEAN & SERVER-CONTROLLED
 
 import React, { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
@@ -28,13 +28,13 @@ interface MiningDashboardProps {
 export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const { toast } = useToast();
 
-  // 🔹 UI state (NO client mining logic)
   const [balance, setBalance] = useState(0);
   const [uiBalance, setUiBalance] = useState(0);
   const [mining, setMining] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [waitingForAd, setWaitingForAd] = useState(false);
 
+  const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;
   const isAndroidApp = typeof window !== "undefined" && !!window.Android;
 
@@ -48,11 +48,10 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   }, [isAndroidApp]);
 
   /* ===============================
-     FIRESTORE = SINGLE SOURCE OF TRUTH
+     🔑 FIRESTORE = SINGLE SOURCE
+     (READ ONLY — NO WRITES)
   ================================ */
   useEffect(() => {
-    if (!userId) return;
-
     const ref = doc(db, "wallets", userId);
 
     const unsub = onSnapshot(ref, snap => {
@@ -60,24 +59,24 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
 
       const data = snap.data();
 
-      // balance (display only)
       if (typeof data.pallBalance === "number") {
         setBalance(data.pallBalance);
-        setUiBalance(data.pallBalance);
+        if (!data.miningActive) {
+          setUiBalance(data.pallBalance);
+        }
       }
 
-      // mining state — ONLY from server
       if (data.miningActive && data.lastStart) {
         const start = data.lastStart.toDate();
         const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
 
-        if (elapsed < MAX_SECONDS) {
-          setMining(true);
-          setTimeRemaining(MAX_SECONDS - elapsed);
-        } else {
-          // server should end mining (future session)
+        if (elapsed >= MAX_SECONDS) {
           setMining(false);
           setTimeRemaining(0);
+          setUiBalance(data.pallBalance);
+        } else {
+          setMining(true);
+          setTimeRemaining(MAX_SECONDS - elapsed);
         }
       } else {
         setMining(false);
@@ -89,37 +88,51 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   }, [userId]);
 
   /* ===============================
-     START MINING (AD → API ONLY)
+     ⛏️ UI TIMER (DISPLAY ONLY)
   ================================ */
+  useEffect(() => {
+    if (!mining) return;
+
+    const uiInterval = setInterval(() => {
+      setUiBalance(prev => prev + baseMiningRate);
+      setTimeRemaining(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(uiInterval);
+  }, [mining]);
+
+  /* ===============================
+     START MINING (AFTER AD)
+     👉 SERVER ONLY
+  ================================ */
+  const startMining = async () => {
+    try {
+      await mineForUser();
+      toast({
+        title: "Mining Started ⛏️",
+        description: "24 hour mining session started",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Mining failed",
+        description: err?.message || "Try again later",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleStartMining = () => {
     if (waitingForAd || mining) return;
-
     setWaitingForAd(true);
 
     if (isAndroidApp && window.Android?.showRewardedAd) {
       window.Android.showRewardedAd();
-
-      // fallback (agar event miss ho jaye)
-      setTimeout(async () => {
-        setWaitingForAd(false);
-        try {
-          await mineForUser();
-        } catch (err) {
-          console.error("Mining API failed:", err);
-          toast({ title: "Mining failed", variant: "destructive" });
-        }
-      }, 5000);
     } else {
-      // web / debug
-      setTimeout(async () => {
+      // Web / debug
+      setTimeout(() => {
         setWaitingForAd(false);
-        try {
-          await mineForUser();
-        } catch (err) {
-          console.error("Mining API failed:", err);
-          toast({ title: "Mining failed", variant: "destructive" });
-        }
-      }, 1000);
+        startMining();
+      }, 800);
     }
   };
 
@@ -127,20 +140,15 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
      REWARDED AD COMPLETE EVENT
   ================================ */
   useEffect(() => {
-    const onAdComplete = async () => {
+    const onAdComplete = () => {
       setWaitingForAd(false);
-      try {
-        await mineForUser();
-      } catch (err) {
-        console.error("Mining API failed:", err);
-        toast({ title: "Mining failed", variant: "destructive" });
-      }
+      startMining();
     };
 
     window.addEventListener("rewardedAdComplete", onAdComplete);
     return () =>
       window.removeEventListener("rewardedAdComplete", onAdComplete);
-  }, [toast]);
+  }, []);
 
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
@@ -204,9 +212,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
                 <p className="text-base font-bold text-green-600">
                   Mining Active
                 </p>
-                <p className="text-base font-bold text-muted-foreground">
-                  Standard Rate
-                </p>
                 <p className="text-base font-mono font-bold text-blue-600 mt-1">
                   {formatTime(timeRemaining)}
                 </p>
@@ -216,9 +221,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
                 <div className="text-4xl mb-2">💎</div>
                 <p className="text-sm font-semibold text-gray-600">
                   Ready to Mine
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Standard Mining
                 </p>
               </>
             )}
