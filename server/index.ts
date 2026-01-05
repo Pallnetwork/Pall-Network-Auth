@@ -28,7 +28,7 @@ app.use((req, res, next) => {
   };
   res.on("finish", () => {
     if (req.path.startsWith("/api")) {
-      // 👇 Fix: template literal with backticks
+      // ✅ FIX: Backticks for template literal
       let line = `${req.method} ${req.path} ${res.statusCode} in ${Date.now() - start}ms`;
       if (capturedJson) line += ` :: ${JSON.stringify(capturedJson)}`;
       if (line.length > 80) line = line.slice(0, 79) + "…";
