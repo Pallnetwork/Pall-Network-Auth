@@ -1,5 +1,10 @@
-import { auth } from "./firebase"; // adjust path agar zaroorat ho
+import { auth } from "./firebase";
 
+/**
+ * mineForUser()
+ * Calls /api/mine backend with Firebase ID token.
+ * Throws if user not logged in or API fails.
+ */
 export async function mineForUser() {
   const user = auth.currentUser;
 
@@ -10,21 +15,32 @@ export async function mineForUser() {
 
   // 🔥 FORCE FRESH TOKEN
   const token = await user.getIdToken(true);
-  console.log("POSTMAN TOKEN:", token); // Postman testing ke liye
+  console.log("Mining token:", token);
 
-  const res = await fetch("http://localhost:8082/api/mine", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  // 🔹 Backend URL — use environment variable if available
+  const baseUrl =
+    import.meta.env.VITE_BACKEND_URL || "http://localhost:8082";
 
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("Mine API failed:", text);
-    throw new Error("Mine API failed");
+  try {
+    const res = await fetch(`${baseUrl}/api/mine`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Mine API failed:", text);
+      throw new Error(text || "Mine API failed");
+    }
+
+    const data = await res.json();
+    console.log("Mine API success:", data);
+    return data;
+  } catch (err: any) {
+    console.error("Mining request failed:", err.message || err);
+    throw new Error(err.message || "Mining request failed");
   }
-
-  return await res.json();
 }

@@ -9,16 +9,14 @@ const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
 
 /**
  * POST /api/mine
- * Protected — Firebase ID Token required
+ * Session-3 FINAL
  */
 router.post(
   "/mine",
   verifyFirebaseToken,
   async (req: Request, res: Response) => {
     try {
-      // ✅ UID comes ONLY from verified token
       const uid = (req as any).user?.uid;
-
       if (!uid) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -26,7 +24,6 @@ router.post(
       const db = admin.firestore();
       const walletRef = db.collection("wallets").doc(uid);
       const snap = await walletRef.get();
-
       const now = Date.now();
 
       // 🆕 First-time user
@@ -35,7 +32,7 @@ router.post(
           pallBalance: 0,
           miningActive: true,
           lastStart: admin.firestore.FieldValue.serverTimestamp(),
-          lastMinedAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastMinedAt: null, // ⬅️ important
         });
 
         return res.json({
@@ -45,8 +42,8 @@ router.post(
       }
 
       const data = snap.data()!;
-      const lastStart = data.lastStart?.toDate?.() ?? null;
       const miningActive = data.miningActive === true;
+      const lastMinedAt = data.lastMinedAt?.toDate?.() ?? null;
 
       // ❌ Already mining
       if (miningActive) {
@@ -55,9 +52,9 @@ router.post(
         });
       }
 
-      // ⏳ Cooldown check
-      if (lastStart) {
-        const diff = now - lastStart.getTime();
+      // ⏳ Cooldown check (ONLY lastMinedAt)
+      if (lastMinedAt) {
+        const diff = now - lastMinedAt.getTime();
         if (diff < COOLDOWN_MS) {
           const remainingMs = COOLDOWN_MS - diff;
           const remainingMinutes = Math.ceil(remainingMs / 60000);
@@ -69,11 +66,10 @@ router.post(
         }
       }
 
-      // ✅ START MINING SESSION
+      // ✅ START NEW MINING SESSION
       await walletRef.update({
         miningActive: true,
         lastStart: admin.firestore.FieldValue.serverTimestamp(),
-        lastMinedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       return res.json({

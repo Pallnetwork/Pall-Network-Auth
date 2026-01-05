@@ -1,5 +1,5 @@
 // client/src/components/MiningDashboard.tsx
-// 🔒 FINAL SESSION 3 — CLEAN & SERVER-CONTROLLED
+// 🔒 FINAL SESSION 3 — LOGIC FIX ONLY (DESIGN UNCHANGED)
 
 import React, { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
@@ -34,50 +34,46 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [waitingForAd, setWaitingForAd] = useState(false);
 
-  const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;
+  const baseMiningRate = 0.00001157;
   const isAndroidApp = typeof window !== "undefined" && !!window.Android;
 
   /* ===============================
-     APP OPEN INTERSTITIAL AD
+     APP OPEN INTERSTITIAL (SAFE)
   ================================ */
   useEffect(() => {
     if (isAndroidApp) {
-      setTimeout(() => window.Android?.showInterstitialAd(), 1000);
+      setTimeout(() => {
+        window.Android?.showInterstitialAd?.();
+      }, 1000);
     }
   }, [isAndroidApp]);
 
   /* ===============================
-     🔑 FIRESTORE = SINGLE SOURCE
-     (READ ONLY — NO WRITES)
+     FIRESTORE — READ ONLY (SERVER WRITES)
   ================================ */
   useEffect(() => {
+    if (!userId) return;
+
     const ref = doc(db, "wallets", userId);
 
-    const unsub = onSnapshot(ref, snap => {
+    const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) return;
 
       const data = snap.data();
 
       if (typeof data.pallBalance === "number") {
         setBalance(data.pallBalance);
-        if (!data.miningActive) {
-          setUiBalance(data.pallBalance);
-        }
+        if (!mining) setUiBalance(data.pallBalance);
       }
 
       if (data.miningActive && data.lastStart) {
         const start = data.lastStart.toDate();
         const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
+        const remaining = Math.max(0, MAX_SECONDS - elapsed);
 
-        if (elapsed >= MAX_SECONDS) {
-          setMining(false);
-          setTimeRemaining(0);
-          setUiBalance(data.pallBalance);
-        } else {
-          setMining(true);
-          setTimeRemaining(MAX_SECONDS - elapsed);
-        }
+        setMining(true);
+        setTimeRemaining(remaining);
       } else {
         setMining(false);
         setTimeRemaining(0);
@@ -85,70 +81,61 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     });
 
     return () => unsub();
-  }, [userId]);
+  }, [userId, mining]);
 
   /* ===============================
-     ⛏️ UI TIMER (DISPLAY ONLY)
+     UI TIMER ONLY (NO DB WRITE)
   ================================ */
   useEffect(() => {
-    if (!mining) return;
+    if (!mining || timeRemaining <= 0) return;
 
-    const uiInterval = setInterval(() => {
-      setUiBalance(prev => prev + baseMiningRate);
-      setTimeRemaining(prev => (prev > 0 ? prev - 1 : 0));
+    const uiTick = setInterval(() => {
+      setUiBalance((b) => b + baseMiningRate);
+      setTimeRemaining((t) => t - 1);
     }, 1000);
 
-    return () => clearInterval(uiInterval);
-  }, [mining]);
+    return () => clearInterval(uiTick);
+  }, [mining, timeRemaining]);
 
   /* ===============================
-     START MINING (AFTER AD)
-     👉 SERVER ONLY
+     START MINING (SESSION 3 WAY)
   ================================ */
   const startMining = async () => {
-    try {
-      await mineForUser();
-      toast({
-        title: "Mining Started ⛏️",
-        description: "24 hour mining session started",
-      });
-    } catch (err: any) {
-      toast({
-        title: "Mining failed",
-        description: err?.message || "Try again later",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleStartMining = () => {
     if (waitingForAd || mining) return;
     setWaitingForAd(true);
 
-    if (isAndroidApp && window.Android?.showRewardedAd) {
-      window.Android.showRewardedAd();
-    } else {
-      // Web / debug
-      setTimeout(() => {
+    const begin = async () => {
+      try {
+        await mineForUser(); // ✅ ONLY API CALL
+      } catch {
+        toast({
+          title: "Mining failed",
+          description: "Failed to fetch",
+          variant: "destructive",
+        });
+      } finally {
         setWaitingForAd(false);
-        startMining();
-      }, 800);
-    }
-  };
-
-  /* ===============================
-     REWARDED AD COMPLETE EVENT
-  ================================ */
-  useEffect(() => {
-    const onAdComplete = () => {
-      setWaitingForAd(false);
-      startMining();
+      }
     };
 
-    window.addEventListener("rewardedAdComplete", onAdComplete);
-    return () =>
-      window.removeEventListener("rewardedAdComplete", onAdComplete);
-  }, []);
+    if (isAndroidApp && window.Android?.showRewardedAd) {
+      window.Android.showRewardedAd();
+
+      const handler = () => {
+        window.removeEventListener("rewardedAdComplete", handler);
+        begin();
+      };
+
+      window.addEventListener("rewardedAdComplete", handler);
+
+      // fallback safety
+      setTimeout(() => {
+        if (waitingForAd) begin();
+      }, 5000);
+    } else {
+      begin();
+    }
+  };
 
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
@@ -160,7 +147,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   };
 
   /* ===============================
-     UI (UNCHANGED)
+     UI — ❌ NO CHANGE
   ================================ */
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
@@ -212,6 +199,9 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
                 <p className="text-base font-bold text-green-600">
                   Mining Active
                 </p>
+                <p className="text-base font-bold text-muted-foreground">
+                  Standard Rate
+                </p>
                 <p className="text-base font-mono font-bold text-blue-600 mt-1">
                   {formatTime(timeRemaining)}
                 </p>
@@ -222,6 +212,9 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
                 <p className="text-sm font-semibold text-gray-600">
                   Ready to Mine
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  Standard Mining
+                </p>
               </>
             )}
           </div>
@@ -229,7 +222,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
 
         <Button
           disabled={mining || waitingForAd}
-          onClick={handleStartMining}
+          onClick={startMining}
           className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
         >
           {waitingForAd
