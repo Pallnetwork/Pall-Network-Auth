@@ -1,10 +1,18 @@
+// server/middleware/auth.ts
+
 import { Request, Response, NextFunction } from "express";
 import { auth } from "../firebase";
 
-export async function verifyFirebaseToken(req: Request, res: Response, next: NextFunction) {
+export async function verifyFirebaseToken(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) return res.status(401).json({ error: "Missing Authorization token" });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing Authorization token" });
+    }
 
     const idToken = authHeader.split("Bearer ")[1];
     const decodedToken = await auth.verifyIdToken(idToken);
@@ -16,9 +24,9 @@ export async function verifyFirebaseToken(req: Request, res: Response, next: Nex
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 }
-✅ Firestore Rules (Final)
-Copy code
-Js
+
+/* 
+Firestore Rules (should NOT be in TS code):
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -27,3 +35,4 @@ service cloud.firestore {
     }
   }
 }
+*/
