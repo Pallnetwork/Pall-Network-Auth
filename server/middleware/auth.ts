@@ -1,30 +1,29 @@
-// server/middleware/auth.ts
 import { Request, Response, NextFunction } from "express";
-import { auth } from "../firebase"; // ✅ Named import
+import { auth } from "../firebase";
 
-export async function verifyFirebaseToken(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+export async function verifyFirebaseToken(req: Request, res: Response, next: NextFunction) {
   try {
     const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Missing Authorization token" });
-    }
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return res.status(401).json({ error: "Missing Authorization token" });
 
     const idToken = authHeader.split("Bearer ")[1];
-
-    // 🔹 Use named auth export instead of admin
     const decodedToken = await auth.verifyIdToken(idToken);
 
-    // 🔥 attach UID to request
     (req as any).user = decodedToken;
-
     next();
   } catch (error) {
     console.error("Token verify error:", error);
     return res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
+✅ Firestore Rules (Final)
+Copy code
+Js
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /wallets/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
