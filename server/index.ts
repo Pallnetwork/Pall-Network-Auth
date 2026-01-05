@@ -22,10 +22,14 @@ app.use((req, res, next) => {
   const start = Date.now();
   let capturedJson: any;
   const origJson = res.json;
-  res.json = function (body: any, ...args: any[]) { capturedJson = body; return origJson.apply(res, [body, ...args]); };
+  res.json = function (body: any, ...args: any[]) { 
+    capturedJson = body; 
+    return origJson.apply(res, [body, ...args]); 
+  };
   res.on("finish", () => {
     if (req.path.startsWith("/api")) {
-      let line = ${req.method} ${req.path} ${res.statusCode} in ${Date.now() - start}ms;
+      // 👇 Fix: template literal with backticks
+      let line = `${req.method} ${req.path} ${res.statusCode} in ${Date.now() - start}ms`;
       if (capturedJson) line += ` :: ${JSON.stringify(capturedJson)}`;
       if (line.length > 80) line = line.slice(0, 79) + "…";
       log(line);
@@ -49,5 +53,5 @@ app.get("/api/health", (_req, res) => res.json({ status: "ok", message: "Mining 
   else serveStatic(app);
 
   const port = parseInt(process.env.PORT || "8082", 10);
-  server.listen(port, "0.0.0.0", () => log(serving on port ${port} ✅));
+  server.listen(port, "0.0.0.0", () => log(`serving on port ${port} ✅`));
 })();
