@@ -38,8 +38,7 @@ export const db = admin.firestore();
    ⛏️ SESSION 3 — SECURE MINING
 =============================== */
 
-const COOLDOWN_MS = 24 * 60 * 60 * 1000; 
-// testing ke liye chaaho to: 60 * 1000
+const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h cooldown
 
 export async function mineTokenSecure(uid: string) {
   const ref = db.collection("wallets").doc(uid);
@@ -48,11 +47,7 @@ export async function mineTokenSecure(uid: string) {
 
   if (snap.exists) {
     const data = snap.data();
-
-    if (
-      data?.cooldownUntil &&
-      data.cooldownUntil.toMillis() > now
-    ) {
+    if (data?.cooldownUntil && data.cooldownUntil.toMillis() > now) {
       throw new Error("Cooldown active");
     }
   }
@@ -61,9 +56,7 @@ export async function mineTokenSecure(uid: string) {
     {
       pallBalance: admin.firestore.FieldValue.increment(1),
       lastMinedAt: admin.firestore.Timestamp.now(),
-      cooldownUntil: admin.firestore.Timestamp.fromMillis(
-        now + COOLDOWN_MS
-      ),
+      cooldownUntil: admin.firestore.Timestamp.fromMillis(now + COOLDOWN_MS),
     },
     { merge: true }
   );
