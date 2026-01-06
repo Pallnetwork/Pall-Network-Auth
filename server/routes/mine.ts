@@ -1,8 +1,9 @@
 import express from "express";
 import { verifyFirebaseToken } from "../middleware/auth";
-import * as admin from "../firebase";
+import admin, { db } from "../firebase";
 
 const router = express.Router();
+
 const COOLDOWN_HOURS = 24;
 const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
 
@@ -11,7 +12,6 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
     const uid = (req as any).user?.uid;
     if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
-    const db = admin.firestore();
     const walletRef = db.collection("wallets").doc(uid);
     const snap = await walletRef.get();
     const now = Date.now();
@@ -28,10 +28,10 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
 
     const data = snap.data()!;
     const lastStart = data.lastStart?.toDate?.() ?? null;
-    const miningActive = data.miningActive === true;
 
-    if (miningActive)
+    if (data.miningActive === true) {
       return res.status(400).json({ error: "Mining already active" });
+    }
 
     if (lastStart && now - lastStart.getTime() < COOLDOWN_MS) {
       const remainingMinutes = Math.ceil(
