@@ -1,3 +1,4 @@
+// client/src/pages/signin.tsx
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { auth } from "@/lib/firebase";
@@ -19,26 +20,24 @@ export default function SignIn() {
   // ✅ Check if user already logged in with WebView considerations
   useEffect(() => {
     let authCheckTimeout: NodeJS.Timeout;
-    
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log("🔄 User already signed in:", user.uid);
-        
-        // For WebView/Android environment, add slight delay before navigation
+        console.log("🔥 REAL AUTH USER:", auth.currentUser); // << Added here
+
         const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
-        const delay = isAndroidApp ? 1000 : 100; // 1 second for Android, 100ms for web
-        
+        const delay = isAndroidApp ? 1000 : 100;
+
         authCheckTimeout = setTimeout(() => {
           navigate("/app/dashboard", { replace: true });
         }, delay);
       }
     });
-    
+
     return () => {
       unsubscribe();
-      if (authCheckTimeout) {
-        clearTimeout(authCheckTimeout);
-      }
+      if (authCheckTimeout) clearTimeout(authCheckTimeout);
     };
   }, [navigate]);
 
@@ -56,7 +55,7 @@ export default function SignIn() {
       const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 
-      // LocalStorage me save (extra layer)
+      console.log("🔥 REAL AUTH USER:", auth.currentUser); // << Added here
       localStorage.setItem("userId", user.uid);
 
       toast({
@@ -65,11 +64,9 @@ export default function SignIn() {
       });
 
       console.log("✅ User signed in successfully:", user.uid);
-      
-      // For WebView/Android environment, add slight delay before navigation
+
       const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
       if (isAndroidApp) {
-        // Delay navigation for Android WebView to ensure auth state is fully set
         setTimeout(() => {
           navigate("/app/dashboard", { replace: true });
         }, 1500);
