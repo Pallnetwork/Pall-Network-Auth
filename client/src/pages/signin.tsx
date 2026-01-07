@@ -1,8 +1,9 @@
 // client/src/pages/signin.tsx
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,21 +21,30 @@ export default function SignIn() {
   // ✅ Check if user already logged in with WebView considerations
   useEffect(() => {
     let authCheckTimeout: NodeJS.Timeout;
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         console.log("🔄 User already signed in:", user.uid);
-        console.log("🔥 REAL AUTH USER:", auth.currentUser); // << Added here
+
+        // First-time login → ensure wallet exists
+        const walletRef = doc(db, "wallets", user.uid);
+        const walletSnap = await getDoc(walletRef);
+        if (!walletSnap.exists()) {
+          await setDoc(walletRef, {
+            pallBalance: 0,
+            miningActive: false,
+            lastStart: null,
+            lastMinedAt: null,
+          });
+          console.log("⚡ Wallet auto-created for first-time user");
+        }
 
         const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
-        const delay = isAndroidApp ? 1000 : 100;
-
-        authCheckTimeout = setTimeout(() => {
-          navigate("/app/dashboard", { replace: true });
-        }, delay);
+        const delay = isAndroidApp ? 1000 : 100; // 1s for Android WebView
+        authCheckTimeout = setTimeout(() => navigate("/app/dashboard", { replace: true }), delay);
       }
     });
-
+    
     return () => {
       unsubscribe();
       if (authCheckTimeout) clearTimeout(authCheckTimeout);
@@ -55,38 +65,35 @@ export default function SignIn() {
       const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 
-      console.log("🔥 REAL AUTH USER:", auth.currentUser); // << Added here
+      // LocalStorage save (extra layer)
       localStorage.setItem("userId", user.uid);
 
-      toast({
-        title: "Success",
-        description: "You have been signed in successfully!",
-      });
-
+      toast({ title: "Success", description: "You have been signed in successfully!" });
       console.log("✅ User signed in successfully:", user.uid);
 
-      const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
-      if (isAndroidApp) {
-        setTimeout(() => {
-          navigate("/app/dashboard", { replace: true });
-        }, 1500);
-      } else {
-        navigate("/app/dashboard", { replace: true });
+      // First-time login → ensure wallet exists
+      const walletRef = doc(db, "wallets", user.uid);
+      const walletSnap = await getDoc(walletRef);
+      if (!walletSnap.exists()) {
+        await setDoc(walletRef, {
+          pallBalance: 0,
+          miningActive: false,
+          lastStart: null,
+          lastMinedAt: null,
+        });
+        console.log("⚡ Wallet auto-created for first-time user");
       }
+
+      const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
+      if (isAndroidApp) setTimeout(() => navigate("/app/dashboard", { replace: true }), 1500);
+      else navigate("/app/dashboard", { replace: true });
     } catch (err: any) {
       console.error("❌ Signin error:", err);
-
-      if (err.code === "auth/user-not-found") {
-        setError("No account found with this email. Please check your email or create an account.");
-      } else if (err.code === "auth/wrong-password") {
-        setError("Incorrect password. Please try again.");
-      } else if (err.code === "auth/invalid-email") {
-        setError("Invalid email address. Please check and try again.");
-      } else if (err.code === "auth/too-many-requests") {
-        setError("Too many failed attempts. Please try again later.");
-      } else {
-        setError("Sign in failed. Please try again.");
-      }
+      if (err.code === "auth/user-not-found") setError("No account found with this email.");
+      else if (err.code === "auth/wrong-password") setError("Incorrect password.");
+      else if (err.code === "auth/invalid-email") setError("Invalid email address.");
+      else if (err.code === "auth/too-many-requests") setError("Too many failed attempts. Try later.");
+      else setError("Sign in failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -105,29 +112,11 @@ export default function SignIn() {
           <form onSubmit={handleSignin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="Enter your email"
-                value={form.email}
-                onChange={handleChange}
-                required
-                data-testid="input-email"
-              />
+              <Input id="email" name="email" type="email" placeholder="Enter your email" value={form.email} onChange={handleChange} required data-testid="input-email"/>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Enter your password"
-                value={form.password}
-                onChange={handleChange}
-                required
-                data-testid="input-password"
-              />
+              <Input id="password" name="password" type="password" placeholder="Enter your password" value={form.password} onChange={handleChange} required data-testid="input-password"/>
             </div>
 
             {error && (
@@ -142,14 +131,10 @@ export default function SignIn() {
             </Button>
 
             <div className="space-y-2 text-center">
-              <Link href="/app/forgot-password" className="text-sm text-primary hover:underline block" data-testid="link-forgot-password">
-                Forgot Password?
-              </Link>
+              <Link href="/app/forgot-password" className="text-sm text-primary hover:underline block" data-testid="link-forgot-password">Forgot Password?</Link>
               <div className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Link href="/app/signup" className="text-primary hover:underline" data-testid="link-signup">
-                  Create Account
-                </Link>
+                <Link href="/app/signup" className="text-primary hover:underline" data-testid="link-signup">Create Account</Link>
               </div>
             </div>
           </form>
