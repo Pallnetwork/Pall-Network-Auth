@@ -1,5 +1,5 @@
 // client/src/components/MiningDashboard.tsx
-// 🔒 FINAL — FIRESTORE SAFE + UI LIVE BALANCE + 24H MINING + CLOUD FUNCTION
+// 🔒 FINAL SESSION 3 — FIRESTORE SAFE + UI LIVE BALANCE + 24H MINING + CLOUD FUNCTION
 
 import React, { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
+
+// 🔹 Cloud Function backend call
+declare function mineToken(userId: string): Promise<void>;
 
 /* ===============================
    ANDROID BRIDGE TYPES
@@ -41,13 +44,20 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const isAndroidApp = typeof window !== "undefined" && !!window.Android;
 
   /* ===============================
-     SAFETY GUARD → FIREBASE READY
-     (❗ crash fix: removed undefined vars)
+     SAFETY GUARD → WAIT FOR FIREBASE
   ================================ */
   useEffect(() => {
-    if (!db) return;
-    console.log("🔥 Dashboard Loaded | Firebase Ready:", !!db);
-  }, []);
+    const checkFirebaseReady = async () => {
+      if (!db) {
+        console.warn("Firebase not loaded yet");
+        return;
+      }
+      const ref = doc(db, "wallets", userId);
+      const snap = await onSnapshot(ref, s => {});
+      console.log("🔥 Dashboard loaded | Firebase ready | Wallet snapshot ready");
+    };
+    checkFirebaseReady();
+  }, [userId]);
 
   /* ===============================
      APP OPEN INTERSTITIAL AD
@@ -62,8 +72,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
      FIRESTORE SINGLE SOURCE OF TRUTH
   ================================ */
   useEffect(() => {
-    if (!userId) return;
-
     const ref = doc(db, "wallets", userId);
 
     const unsub = onSnapshot(ref, snap => {
@@ -73,7 +81,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       }
 
       const data = snap.data();
-
       if (typeof data.pallBalance === "number") {
         setBalance(data.pallBalance);
         if (!mining) setUiBalance(data.pallBalance);
@@ -105,23 +112,20 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     });
 
     return () => unsub();
-  }, [userId, mining]);
+  }, [userId]);
 
   /* ===============================
      MINING TIMER + LIVE UI BALANCE
   ================================ */
   useEffect(() => {
     if (!mining || !lastStart) return;
-
     let localBalance = balance;
 
-    const uiInterval = setInterval(() => {
-      setUiBalance(prev => prev + baseMiningRate);
-    }, 1000);
+    const uiInterval = setInterval(() => setUiBalance(prev => prev + baseMiningRate), 1000);
 
     const cloudInterval = setInterval(async () => {
       try {
-        await mineForUser();
+        await mineToken(userId);
         localBalance += baseMiningRate * 10;
         setBalance(localBalance);
       } catch (err) {
@@ -150,51 +154,87 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       clearInterval(cloudInterval);
       clearInterval(countdown);
     };
-  }, [mining, lastStart, balance]);
+  }, [mining, lastStart, balance, userId]);
 
   /* ===============================
      START MINING AFTER REWARDED AD
   ================================ */
-  const handleStartMining = async () => {
-    if (waitingForAd || mining) return;
+  const startMiningProcess = async () => {
+    try {
+      const now = new Date();
+      const ref = doc(db, "wallets", userId);
+      await setDoc(ref, { miningActive: true, lastStart: now }, { merge: true });
+      toast({ title: "Mining Started ⛏️", description: "You're now earning PALL" });
+    } catch {
+      toast({ title: "Mining failed", variant: "destructive" });
+    }
+  };
 
+  const handleStartMining = () => {
+    if (waitingForAd || mining) return;
     setWaitingForAd(true);
 
     if (isAndroidApp && window.Android?.showRewardedAd) {
       window.Android.showRewardedAd();
 
+      // 🟡 Fallback 5 sec
       setTimeout(async () => {
         if (waitingForAd) {
+          console.warn("Fallback: rewarded ad event not received");
           setWaitingForAd(false);
-          await mineForUser();
+          try {
+            await mineForUser();
+          } catch (err) {
+            console.error("Fallback mining failed:", err);
+          }
         }
       }, 5000);
+
     } else {
-      setWaitingForAd(false);
-      await mineForUser();
+      // Web / debug mode
+      setTimeout(async () => {
+        setWaitingForAd(false);
+        try {
+          await mineForUser();
+        } catch (err) {
+          console.error("Web mining failed:", err);
+        }
+      }, 1000);
     }
   };
 
   /* ===============================
-     ⛑️ RENDER SAFETY GUARD (MAIN FIX)
+     REWARDED AD COMPLETE EVENT
   ================================ */
-  if (!userId) {
-    return <div className="text-center p-6">Loading dashboard…</div>;
-  }
+  useEffect(() => {
+    const onAdComplete = async () => {
+      console.log("Rewarded ad completed (Android event)");
+      setWaitingForAd(false);
+
+      try {
+        const result = await mineForUser();
+        console.log("Mining started backend:", result);
+        // Firestore snapshot handles UI timer & balance
+      } catch (err) {
+        console.error("Mining API failed:", err);
+      }
+    };
+
+    window.addEventListener("rewardedAdComplete", onAdComplete);
+    return () => window.removeEventListener("rewardedAdComplete", onAdComplete);
+  }, []);
 
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
-    return `${h.toString().padStart(2, "0")}:${m
-      .toString()
-      .padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+    return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}:${sec.toString().padStart(2,"0")}`;
   };
 
   /* ===============================
-     UI (UNCHANGED)
+     UI
   ================================ */
-   return (
+  return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4">
         <h2 className="text-3xl font-bold text-center text-blue-600">Pall Mining ⛏️</h2>
