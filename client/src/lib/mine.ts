@@ -1,5 +1,7 @@
 import { auth } from "./firebase";
 
+export const API_BASE_URL = "https://pall-network-auth.onrender.com";
+
 export async function mineForUser() {
   try {
     const user = auth.currentUser;
