@@ -44,20 +44,19 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const isAndroidApp = typeof window !== "undefined" && !!window.Android;
 
   /* ===============================
-     SAFETY GUARD → WAIT FOR FIREBASE
+     SAFETY GUARD → WAIT FOR FIREBASE READY
   ================================ */
+  const [firebaseReady, setFirebaseReady] = useState(false);
   useEffect(() => {
-    const checkFirebaseReady = async () => {
-      if (!db) {
-        console.warn("Firebase not loaded yet");
-        return;
+    const checkFirebase = setInterval(() => {
+      if (db) {
+        setFirebaseReady(true);
+        clearInterval(checkFirebase);
       }
-      const ref = doc(db, "wallets", userId);
-      const snap = await onSnapshot(ref, s => {});
-      console.log("🔥 Dashboard loaded | Firebase ready | Wallet snapshot ready");
-    };
-    checkFirebaseReady();
-  }, [userId]);
+    }, 100);
+  }, []);
+
+  if (!firebaseReady) return <div className="text-center mt-20 text-lg">Loading Dashboard...</div>;
 
   /* ===============================
      APP OPEN INTERSTITIAL AD
@@ -159,17 +158,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   /* ===============================
      START MINING AFTER REWARDED AD
   ================================ */
-  const startMiningProcess = async () => {
-    try {
-      const now = new Date();
-      const ref = doc(db, "wallets", userId);
-      await setDoc(ref, { miningActive: true, lastStart: now }, { merge: true });
-      toast({ title: "Mining Started ⛏️", description: "You're now earning PALL" });
-    } catch {
-      toast({ title: "Mining failed", variant: "destructive" });
-    }
-  };
-
   const handleStartMining = () => {
     if (waitingForAd || mining) return;
     setWaitingForAd(true);
@@ -214,7 +202,6 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       try {
         const result = await mineForUser();
         console.log("Mining started backend:", result);
-        // Firestore snapshot handles UI timer & balance
       } catch (err) {
         console.error("Mining API failed:", err);
       }
