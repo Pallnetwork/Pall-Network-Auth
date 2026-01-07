@@ -1,12 +1,8 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { 
-  getAuth, 
-  setPersistence, 
-  browserLocalPersistence 
-} from "firebase/auth";
+import { getAuth } from "firebase/auth";
 
-// ✅ Firebase config
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCs16TI4UyJiT8vE5c7mT0XhMa8l-cx1MU",
   authDomain: "pall-network-auth-7b89e.firebaseapp.com",
@@ -17,20 +13,11 @@ const firebaseConfig = {
   measurementId: "G-26FCXHBLWY",
 };
 
-// ✅ Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// ✅ VERY IMPORTANT: prevent double init (Android fix)
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// ✅ Firestore reference
+export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// ✅ Auth reference
-export const auth = getAuth(app);
-
-// ✅ Ensure persistence (user stays logged in after refresh / reopen)
-setPersistence(auth, browserLocalPersistence)
-  .then(() => {
-    console.log("🔥 Firebase Auth persistence set to browserLocalPersistence");
-  })
-  .catch((error) => {
-    console.error("❌ Error setting Firebase Auth persistence:", error);
-  }); 
+// debug
+console.log("🔥 Firebase initialized safely");
