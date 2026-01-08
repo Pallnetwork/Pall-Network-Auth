@@ -1,16 +1,10 @@
-// client/src/components/MiningDashboard.tsx
-// 🔒 FINAL SESSION 3 — FIRESTORE SAFE + UI LIVE BALANCE + 24H MINING + CLOUD FUNCTION
-
 import React, { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
-
-// 🔹 Cloud Function backend call
-declare function mineToken(userId: string): Promise<void>;
 
 /* ===============================
    ANDROID BRIDGE TYPES
@@ -31,6 +25,17 @@ interface MiningDashboardProps {
 export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const { toast } = useToast();
 
+  /* ===============================
+     AUTH SAFETY GUARD (🔥 VERY IMPORTANT)
+  ================================ */
+  if (!userId) {
+    return (
+      <div className="text-center mt-20 text-lg text-red-500">
+        User not authenticated
+      </div>
+    );
+  }
+
   const [balance, setBalance] = useState(0);
   const [uiBalance, setUiBalance] = useState(0);
   const [mining, setMining] = useState(false);
@@ -44,91 +49,106 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const isAndroidApp = typeof window !== "undefined" && !!window.Android;
 
   /* ===============================
-     SAFETY GUARD → WAIT FOR FIREBASE READY
-  ================================ */
-  const [firebaseReady, setFirebaseReady] = useState(false);
-  useEffect(() => {
-    const checkFirebase = setInterval(() => {
-      if (db) {
-        setFirebaseReady(true);
-        clearInterval(checkFirebase);
-      }
-    }, 100);
-  }, []);
-
-  if (!firebaseReady) return <div className="text-center mt-20 text-lg">Loading Dashboard...</div>;
-
-  /* ===============================
-     APP OPEN INTERSTITIAL AD
-  ================================ */
-  useEffect(() => {
-    if (isAndroidApp) {
-      setTimeout(() => window.Android?.showInterstitialAd(), 1000);
-    }
-  }, [isAndroidApp]);
-
-  /* ===============================
-     FIRESTORE SINGLE SOURCE OF TRUTH
+     FIRESTORE — SINGLE SOURCE OF TRUTH
   ================================ */
   useEffect(() => {
     const ref = doc(db, "wallets", userId);
 
-    const unsub = onSnapshot(ref, snap => {
-      if (!snap.exists()) {
-        setDoc(ref, { pallBalance: 0, miningActive: false }, { merge: true });
-        return;
-      }
+    const unsub = onSnapshot(
+      ref,
+      async snap => {
+        // 🟢 CREATE DOCUMENT SAFELY IF MISSING
+        if (!snap.exists()) {
+          await setDoc(
+            ref,
+            {
+              pallBalance: 0,
+              miningActive: false,
+              lastStart: null,
+              createdAt: serverTimestamp()
+            },
+            { merge: true }
+          );
+          return;
+        }
 
-      const data = snap.data();
-      if (typeof data.pallBalance === "number") {
-        setBalance(data.pallBalance);
-        if (!mining) setUiBalance(data.pallBalance);
-      }
+        const data = snap.data();
 
-      if (data.miningActive && data.lastStart) {
-        const start = data.lastStart.toDate();
-        const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
+        // 🟢 BALANCE SAFE READ
+        if (typeof data.pallBalance === "number") {
+          setBalance(data.pallBalance);
+          if (!mining) setUiBalance(data.pallBalance);
+        }
 
-        if (elapsed >= MAX_SECONDS) {
+        // 🟢 MINING STATE SAFE CHECK
+        if (
+          data.miningActive === true &&
+          data.lastStart &&
+          typeof data.lastStart.toDate === "function"
+        ) {
+          const start = data.lastStart.toDate();
+          const elapsed = Math.floor(
+            (Date.now() - start.getTime()) / 1000
+          );
+
+          if (elapsed >= MAX_SECONDS) {
+            setMining(false);
+            setCanStartMining(true);
+            setTimeRemaining(0);
+            setLastStart(null);
+            setUiBalance(data.pallBalance ?? 0);
+
+            await setDoc(
+              ref,
+              { miningActive: false },
+              { merge: true }
+            );
+          } else {
+            setMining(true);
+            setCanStartMining(false);
+            setLastStart(start);
+            setTimeRemaining(MAX_SECONDS - elapsed);
+          }
+        } else {
+          // 🟢 RESET SAFE
           setMining(false);
           setCanStartMining(true);
           setTimeRemaining(0);
           setLastStart(null);
-          setUiBalance(data.pallBalance);
-          setDoc(ref, { miningActive: false }, { merge: true });
-        } else {
-          setMining(true);
-          setCanStartMining(false);
-          setLastStart(start);
-          setTimeRemaining(MAX_SECONDS - elapsed);
         }
-      } else {
-        setMining(false);
-        setCanStartMining(true);
-        setTimeRemaining(0);
-        setLastStart(null);
+      },
+      err => {
+        console.error("🔥 Firestore snapshot error:", err);
+        toast({
+          title: "Firestore Error",
+          description: "Permission or data issue",
+          variant: "destructive"
+        });
       }
-    });
+    );
 
     return () => unsub();
   }, [userId]);
 
   /* ===============================
-     MINING TIMER + LIVE UI BALANCE
+     MINING TIMER + UI BALANCE
   ================================ */
   useEffect(() => {
     if (!mining || !lastStart) return;
+
     let localBalance = balance;
 
-    const uiInterval = setInterval(() => setUiBalance(prev => prev + baseMiningRate), 1000);
+    const uiInterval = setInterval(() => {
+      setUiBalance(prev => prev + baseMiningRate);
+    }, 1000);
 
     const cloudInterval = setInterval(async () => {
       try {
-        await mineToken(userId);
+        await mineForUser();
         localBalance += baseMiningRate * 10;
         setBalance(localBalance);
       } catch (err) {
-        console.error("Cloud Function mineToken failed:", err);
+        console.error("Cloud mining failed:", err);
       }
     }, 10000);
 
@@ -156,66 +176,36 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   }, [mining, lastStart, balance, userId]);
 
   /* ===============================
-     START MINING AFTER REWARDED AD
+     START MINING
   ================================ */
-  const handleStartMining = () => {
-    if (waitingForAd || mining) return;
-    setWaitingForAd(true);
+  const handleStartMining = async () => {
+    if (mining || waitingForAd) return;
 
-    if (isAndroidApp && window.Android?.showRewardedAd) {
-      window.Android.showRewardedAd();
+    setWaitingForAd(false);
 
-      // 🟡 Fallback 5 sec
-      setTimeout(async () => {
-        if (waitingForAd) {
-          console.warn("Fallback: rewarded ad event not received");
-          setWaitingForAd(false);
-          try {
-            await mineForUser();
-          } catch (err) {
-            console.error("Fallback mining failed:", err);
-          }
-        }
-      }, 5000);
-
-    } else {
-      // Web / debug mode
-      setTimeout(async () => {
-        setWaitingForAd(false);
-        try {
-          await mineForUser();
-        } catch (err) {
-          console.error("Web mining failed:", err);
-        }
-      }, 1000);
+    try {
+      await mineForUser();
+      toast({
+        title: "Mining Started",
+        description: "24h mining activated"
+      });
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Mining Error",
+        description: "Could not start mining",
+        variant: "destructive"
+      });
     }
   };
-
-  /* ===============================
-     REWARDED AD COMPLETE EVENT
-  ================================ */
-  useEffect(() => {
-    const onAdComplete = async () => {
-      console.log("Rewarded ad completed (Android event)");
-      setWaitingForAd(false);
-
-      try {
-        const result = await mineForUser();
-        console.log("Mining started backend:", result);
-      } catch (err) {
-        console.error("Mining API failed:", err);
-      }
-    };
-
-    window.addEventListener("rewardedAdComplete", onAdComplete);
-    return () => window.removeEventListener("rewardedAdComplete", onAdComplete);
-  }, []);
 
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
-    return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}:${sec.toString().padStart(2,"0")}`;
+    return `${h.toString().padStart(2,"0")}:${m
+      .toString()
+      .padStart(2,"0")}:${sec.toString().padStart(2,"0")}`;
   };
 
   /* ===============================
