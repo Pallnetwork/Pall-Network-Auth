@@ -225,7 +225,7 @@ const handleSaveInvitation = async () => {
           console.error("Error syncing balance:", error);
         }
       }
-    };
+    }
 
     // Sync balance every 5 seconds to reflect mining updates
     balanceInterval = setInterval(syncBalance, 5000);
