@@ -182,14 +182,19 @@ export default function Dashboard() {
   const [invitationCode, setInvitationCode] = useState("");
 
 const handleSaveInvitation = async () => {
-  if (!userId || invitationCode.trim() === "") return;
+  if (!user || invitationCode.trim() === "") return;
 
-  await updateDoc(doc(db, "users", userId), {
-    referredBy: invitationCode.trim().toLowerCase(),
-  });
+  try {
+    await updateDoc(doc(db, "users", user.id), {
+      referredBy: invitationCode.trim().toLowerCase(),
+    });
 
-  alert("Invitation code saved successfully!");
+    alert("Invitation code saved successfully!");
+  } catch (e) {
+    console.error("Failed to save invitation code:", e);
+  }
 };
+
   // Derive current page from URL path instead of internal state
   const currentPage = (() => {
     if (path === '/app/dashboard/profile') return 'PROFILE';
@@ -205,8 +210,10 @@ const handleSaveInvitation = async () => {
     let balanceInterval: NodeJS.Timeout;
 
     const syncBalance = async () => {
-      const userId = localStorage.getItem("userId");
-      if (userId) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      const userId = currentUser.uid;
         try {
           const walletSnap = await getDoc(doc(db, "wallets", userId));
           if (walletSnap.exists()) {
@@ -581,8 +588,12 @@ const handleSaveInvitation = async () => {
   }
 
   if (!user) {
-    return null;
-  }
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Initializing user...</p>
+      </div>
+     );
+   }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
