@@ -65,6 +65,8 @@ export default function SignIn() {
       const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
       const user = userCredential.user;
 
+      console.log("🔥 REAL AUTH USER:", auth.currentUser);
+
       // LocalStorage save (extra layer)
       localStorage.setItem("userId", user.uid);
 
