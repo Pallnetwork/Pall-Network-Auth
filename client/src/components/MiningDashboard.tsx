@@ -10,10 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 =============================== */
 declare global {
   interface Window {
-    Android?: {
-      showRewardedAd: () => void;
-      showInterstitialAd: () => void;
+    AndroidBridge?: {
+      startRewardedAd: () => void;
     };
+    onAdCompleted?: () => void;
+    onAdFailed?: () => void;
   }
 }
 
@@ -47,7 +48,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const MAX_SECONDS = 24 * 60 * 60;
 
   /* ===============================
-     FIRESTORE — READ ONLY (RULE SAFE)
+     FIRESTORE — READ ONLY
   ================================ */
   useEffect(() => {
     const ref = doc(db, "wallets", userId);
@@ -100,9 +101,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           setLastStart(null);
         }
       },
-      err => {
-        console.error("Firestore error:", err);
-      }
+      err => console.error("Firestore error:", err)
     );
 
     return () => unsub();
@@ -139,31 +138,64 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   }, [mining, lastStart]);
 
   /* ===============================
-     START MINING (BACKEND ONLY)
+     ANDROID REWARDED AD INTEGRATION
   ================================ */
-  const handleStartMining = async () => {
-    if (mining || waitingForAd) return;
+  useEffect(() => {
+    window.onAdCompleted = () => {
+      console.log("✅ Ad Completed - Starting Mining");
+      startMiningBackend();
+    };
 
+    window.onAdFailed = () => {
+      setWaitingForAd(false);
+      toast({
+        title: "Ad Failed",
+        description: "Rewarded ad could not load",
+        variant: "destructive"
+      });
+    };
+  }, []);
+
+  /* ===============================
+     START MINING (TRIGGER AFTER AD)
+  ================================ */
+  const startMiningBackend = async () => {
+    setWaitingForAd(false);
     try {
       const res = await fetch("http://localhost:8080/api/mine", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId })
       });
 
       if (!res.ok) throw new Error("Mining failed");
 
-      toast({
-        title: "Mining Started",
-        description: "24h mining activated"
-      });
+      toast({ title: "Mining Started", description: "24h mining activated" });
     } catch (err) {
       console.error(err);
       toast({
         title: "Mining Error",
         description: "Could not start mining",
+        variant: "destructive"
+      });
+    }
+  };
+
+  /* ===============================
+     HANDLE START MINING BUTTON CLICK
+     - Show rewarded ad first
+     - On complete → start mining
+  ================================ */
+  const handleStartMining = () => {
+    if (mining || waitingForAd || !canStartMining) return;
+
+    if (window.AndroidBridge && window.AndroidBridge.startRewardedAd) {
+      setWaitingForAd(true);
+      window.AndroidBridge.startRewardedAd();
+    } else {
+      toast({
+        title: "Mining Unavailable",
+        description: "Rewarded ad bridge not detected",
         variant: "destructive"
       });
     }
@@ -206,6 +238,8 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         >
           {mining
             ? `Mining ⛏ (${formatTime(timeRemaining)})`
+            : waitingForAd
+            ? "Loading Ad..."
             : "Start Mining ⛏"}
         </Button>
       </CardContent>
