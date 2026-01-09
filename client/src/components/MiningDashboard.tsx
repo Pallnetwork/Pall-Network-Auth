@@ -208,7 +208,8 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         variant: "destructive"
       });
     }
-  };
+  }
+};
   
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
