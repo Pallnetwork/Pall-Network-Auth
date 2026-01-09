@@ -154,6 +154,11 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
         variant: "destructive"
       });
     };
+
+    return () => {
+      window.onAdCompleted = undefined;
+      window.onAdFailed = undefined;
+    };
   }, []);
 
   /* ===============================
@@ -162,7 +167,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const startMiningBackend = async () => {
     setWaitingForAd(false);
     try {
-      const res = await fetch("http://localhost:8080/api/mine", {
+      const res = await fetch("http://pall-network-backend.onrender.com/api/mine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId })
@@ -193,14 +198,18 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       setWaitingForAd(true);
       window.AndroidBridge.startRewardedAd();
     } else {
+      if (import.meta.env.DEV) {
+      console.warn("DEV MODE start mining without ad");
+      startMiningBackend();
+    } else {
       toast({
         title: "Mining Unavailable",
-        description: "Rewarded ad bridge not detected",
+        description: "Rewarded ad not available",
         variant: "destructive"
       });
     }
   };
-
+  
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
@@ -216,19 +225,51 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4">
-        <h2 className="text-3xl font-bold text-center text-blue-600">
-          Pall Mining ⛏️
-        </h2>
+        <h2 className="text-3xl font-bold text-center text-blue-600">Pall Mining ⛏️</h2>
       </CardHeader>
 
       <CardContent className="text-center space-y-6 px-6 pb-8">
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground mb-2">
-            Current Balance
-          </p>
-          <p className="text-3xl font-bold text-blue-600">
-            {uiBalance.toFixed(8)} PALL
-          </p>
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
+          <p className="text-3xl font-bold text-blue-600">{uiBalance.toFixed(8)} PALL</p>
+        </div>
+
+        <div className="relative w-48 h-48 mx-auto">
+          <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
+
+          {mining && timeRemaining > 0 && (
+            <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle
+                cx="50"
+                cy="50"
+                r="42"
+                stroke="currentColor"
+                strokeWidth="8"
+                fill="none"
+                className="text-blue-500"
+                strokeDasharray="264"
+                strokeDashoffset={264 - ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264}
+                strokeLinecap="round"
+              />
+            </svg>
+          )}
+
+          <div className="absolute inset-4 bg-white dark:bg-card rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
+            {mining ? (
+              <>
+                <div className="text-3xl mb-2">⛏️</div>
+                <p className="text-base font-bold text-green-600">Mining Active</p>
+                <p className="text-base font-bold text-muted-foreground">Standard Rate</p>
+                <p className="text-base font-mono font-bold text-blue-600 mt-1">{formatTime(timeRemaining)}</p>
+              </>
+            ) : (
+              <>
+                <div className="text-4xl mb-2">💎</div>
+                <p className="text-sm font-semibold text-gray-600">Ready to Mine</p>
+                <p className="text-xs text-muted-foreground">Standard Mining</p>
+              </>
+            )}
+          </div>
         </div>
 
         <Button
