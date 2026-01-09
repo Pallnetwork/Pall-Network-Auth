@@ -17,6 +17,8 @@ export async function verifyFirebaseToken(
     const idToken = authHeader.split("Bearer ")[1];
     const decodedToken = await auth.verifyIdToken(idToken);
 
+    console.log("✅ TOKEN VERIFIED UID:", decodedToken.uid);
+
     (req as any).user = decodedToken;
     next();
   } catch (error) {

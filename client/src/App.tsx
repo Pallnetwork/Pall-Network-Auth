@@ -76,7 +76,7 @@ function App() {
   console.log("🔥 Token:", token);
 
   // Backend call
-  const response = await fetch("https://<YOUR-RENDER-URL>/api/mine", {
+  const response = await fetch("https://pall-network-auth.onrender.com/api/mine", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

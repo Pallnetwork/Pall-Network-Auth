@@ -1,13 +1,22 @@
+// client/src/lib/mine.ts
 import { auth } from "./firebase";
 
 export async function mineForUser() {
   try {
     const user = auth.currentUser;
-    if (!user) throw new Error("User not logged in");
 
+    if (!user) {
+      return {
+        status: "error",
+        message: "User not logged in",
+      };
+    }
+
+    // 🔥 ALWAYS FETCH FRESH TOKEN
     const token = await user.getIdToken(true);
 
-    console.log("Firebase ID Token:", token);
+    console.log("🔥 FRESH TOKEN:", token);
+    console.log("🔥 UID:", user.uid);
 
     const res = await fetch(
       "https://pall-network-auth.onrender.com/api/mine",
@@ -17,18 +26,30 @@ export async function mineForUser() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          userId: user.uid,
+        }),
       }
     );
 
+    const data = await res.json();
+
     if (!res.ok) {
-      const text = await res.text();
-      console.error("Mine API failed:", text);
-      return { status: "error", message: text };
+      return {
+        status: "error",
+        message: data?.error || "Mining failed",
+      };
     }
 
-    return await res.json();
-  } catch (err) {
-    console.error("mineForUser failed:", err);
-    return { status: "error", message: err.message };
+    return {
+      status: "success",
+      data,
+    };
+  } catch (err: any) {
+    console.error("mineForUser error:", err);
+    return {
+      status: "error",
+      message: err.message || "Unknown error",
+    };
   }
 }
