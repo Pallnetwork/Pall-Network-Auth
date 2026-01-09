@@ -7,6 +7,8 @@ export async function mineForUser() {
 
     const token = await user.getIdToken(true);
 
+    console.log("Firebase ID Token:", token);
+
     const res = await fetch(
       "https://pall-network-auth.onrender.com/api/mine",
       {
