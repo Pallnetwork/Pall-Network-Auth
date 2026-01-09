@@ -1,14 +1,12 @@
+// ✅ CURRENT FILE KA PURE CODE — SIRF START MINING FIXED
 import React, { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { mineForUser } from "@/lib/mine";
+import { mineForUser } from "@/lib/mine"; // ✅ Import token-safe function
 
-/* ===============================
-   ANDROID BRIDGE TYPES
-=============================== */
 declare global {
   interface Window {
     AndroidBridge?: {
@@ -26,9 +24,6 @@ interface MiningDashboardProps {
 export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const { toast } = useToast();
 
-  /* ===============================
-     AUTH SAFETY GUARD
-  ================================ */
   if (!userId) {
     return (
       <div className="text-center mt-20 text-lg text-red-500">
@@ -48,9 +43,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;
 
-  /* ===============================
-     FIRESTORE — READ ONLY
-  ================================ */
+  // ================= FIRESTORE READ ONLY =================
   useEffect(() => {
     const ref = doc(db, "wallets", userId);
 
@@ -108,9 +101,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     return () => unsub();
   }, [userId, mining]);
 
-  /* ===============================
-     UI TIMER (LOCAL ONLY)
-  ================================ */
+  // ================= UI TIMER =================
   useEffect(() => {
     if (!mining || !lastStart) return;
 
@@ -138,9 +129,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     };
   }, [mining, lastStart]);
 
-  /* ===============================
-     ANDROID REWARDED AD INTEGRATION
-  ================================ */
+  // ================= ANDROID REWARDED AD =================
   useEffect(() => {
     window.onAdCompleted = () => {
       console.log("✅ Ad Completed - Starting Mining");
@@ -162,34 +151,36 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     };
   }, []);
 
-  /* ===============================
-     START MINING (TRIGGER AFTER AD)
-  ================================ */
+  // ================= START MINING (TOKEN SAFE) =================
   const startMiningBackend = async () => {
     setWaitingForAd(false);
 
-    const result = await mineForUser();
+    try {
+      const result = await mineForUser(); // ✅ TOKEN ATTACHED API CALL
 
-    if (result.status === "error") {
+      if (result.status === "error") {
+        toast({
+          title: "Mining Error",
+          description: result.message || "Could not start mining",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Mining Started",
+        description: "24h mining activated"
+      });
+    } catch (err) {
       toast({
         title: "Mining Error",
-        description: result.message || "Could not start mining",
+        description: "Unexpected error occurred",
         variant: "destructive"
       });
-      return;
     }
-
-    toast({
-      title: "Mining Started",
-      description: "24h mining activated"
-    });
   };
 
-  /* ===============================
-     HANDLE START MINING BUTTON CLICK
-     - Show rewarded ad first
-     - On complete → start mining
-  ================================ */
+  // ================= HANDLE START MINING =================
   const handleStartMining = () => {
     if (mining || waitingForAd || !canStartMining) return;
 
@@ -198,17 +189,17 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       window.AndroidBridge.startRewardedAd();
     } else {
       if (import.meta.env.DEV) {
-      console.warn("DEV MODE start mining without ad");
-      startMiningBackend();
-    } else {
-      toast({
-        title: "Mining Unavailable",
-        description: "Rewarded ad not available",
-        variant: "destructive"
-      });
+        console.warn("DEV MODE start mining without ad");
+        startMiningBackend();
+      } else {
+        toast({
+          title: "Mining Unavailable",
+          description: "Rewarded ad not available",
+          variant: "destructive"
+        });
+      }
     }
-  }
-};
+  };
   
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
@@ -219,9 +210,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
       .padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
-  /* ===============================
-     UI
-  ================================ */
+  // ================= UI =================
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4">
