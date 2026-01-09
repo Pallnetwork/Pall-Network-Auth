@@ -236,11 +236,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           onClick={handleStartMining}
           className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
         >
-          {mining
-            ? `Mining ⛏ (${formatTime(timeRemaining)})`
-            : waitingForAd
-            ? "Loading Ad..."
-            : "Start Mining ⛏"}
+          {waitingForAd ? "📺 Showing Ad..." : mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
         </Button>
       </CardContent>
     </Card>
