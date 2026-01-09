@@ -4,6 +4,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { mineForUser } from "@/lib/mine";
 
 /* ===============================
    ANDROID BRIDGE TYPES
@@ -166,24 +167,22 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   ================================ */
   const startMiningBackend = async () => {
     setWaitingForAd(false);
-    try {
-      const res = await fetch("http://pall-network-backend.onrender.com/api/mine", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId })
-      });
 
-      if (!res.ok) throw new Error("Mining failed");
+    const result = await mineForUser();
 
-      toast({ title: "Mining Started", description: "24h mining activated" });
-    } catch (err) {
-      console.error(err);
+    if (result.status === "error") {
       toast({
         title: "Mining Error",
-        description: "Could not start mining",
+        description: result.message || "Could not start mining",
         variant: "destructive"
       });
+      return;
     }
+
+    toast({
+      title: "Mining Started",
+      description: "24h mining activated"
+    });
   };
 
   /* ===============================
