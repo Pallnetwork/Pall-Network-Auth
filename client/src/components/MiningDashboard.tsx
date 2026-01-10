@@ -133,6 +133,9 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   useEffect(() => {
     window.onAdCompleted = () => {
       console.log("✅ Ad Completed - Starting Mining");
+      // 🔥 SAFETY: prevent stuck state
+      setWaitingForAd(false);
+
       startMiningBackend();
     };
 
@@ -184,22 +187,41 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
   const handleStartMining = () => {
     if (mining || waitingForAd || !canStartMining) return;
 
-    if (window.AndroidBridge && window.AndroidBridge.startRewardedAd) {
+    console.log("🟡 Start Mining clicked");
+    console.log("🟡 AndroidBridge:", window.AndroidBridge);
+
+    if (window.AndroidBridge &&
+      typeof window.AndroidBridge.startRewardedAd === "function"
+    ) {
+      console.log("🟢 Calling Android rewarded ad");
       setWaitingForAd(true);
-      window.AndroidBridge.startRewardedAd();
-    } else {
-      if (import.meta.env.DEV) {
-        console.warn("DEV MODE start mining without ad");
-        startMiningBackend();
-      } else {
+
+      try {
+        window.AndroidBridge.startRewardedAd();
+      } catch (e) {
+        console.error("❌ Android ad call failed", e);
+        setWaitingForAd(false);
         toast({
-          title: "Mining Unavailable",
-          description: "Rewarded ad not available",
+          title: "Ad Error",
+          description: "Could not start rewarded ad",
           variant: "destructive"
-        });
-      }
+      });
     }
-  };
+  } else {
+    console.warn("❌ AndroidBridge not available");
+
+    if (import.meta.env.DEV) {
+      console.warn("DEV MODE: skipping ad");
+      startMiningBackend();
+    } else {
+      toast({
+        title: "Ad loading",
+        description: "Please try again",
+        variant: "destructive"
+      });
+    }
+  }
+};
   
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);

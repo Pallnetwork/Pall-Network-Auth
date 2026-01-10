@@ -7,7 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 import { auth } from "@/lib/firebase";
-import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
 import SignIn from "@/pages/signin";
@@ -48,46 +47,14 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const token = await user.getIdToken(true);
-
-        console.log("🔥 FIREBASE ID TOKEN:", token);
-
-        // Save for backend API calls
         localStorage.setItem("firebaseToken", token);
       } else {
-        console.log("❌ User logged out");
         localStorage.removeItem("firebaseToken");
       }
     });
 
-     return () => unsubscribe();
+    return () => unsubscribe();
   }, []);
-
-  async function mineForUser() {
-  const user = auth.currentUser;
-  if (!user) return console.error("User not logged in");
-
-  // Firebase ID Token fetch
-  const token = await user.getIdToken(true);
-
-  // UID directly from user object
-  const uid = user.uid;
-
-  console.log("🔥 UID:", uid);
-  console.log("🔥 Token:", token);
-
-  // Backend call
-  const response = await fetch("https://pall-network-auth.onrender.com/api/mine", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-    },
-    body: JSON.stringify({ userId: uid }),
-  });
-
-  const data = await response.json();
-  console.log("💰 Backend response:", data);
-}
 
   return (
     <QueryClientProvider client={queryClient}>
