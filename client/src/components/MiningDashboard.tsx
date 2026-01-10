@@ -1,9 +1,10 @@
 // client/src/components/MiningDashboard.tsx
 import React, { useEffect, useState } from "react";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
 
@@ -36,63 +37,63 @@ export default function MiningDashboard() {
   const [canStartMining, setCanStartMining] = useState(true);
   const [waitingForAd, setWaitingForAd] = useState(false);
 
-  const toast = useToast();
   const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;
 
-  // ================= FIRESTORE LISTENER =================
+  const toast = useToast();
+
+  // ================= FIRESTORE READ & RESUME =================
   useEffect(() => {
     if (!uid) return;
     const ref = doc(db, "wallets", uid);
 
-    const unsub = onSnapshot(
-      ref,
-      (snap) => {
-        if (!snap.exists()) {
+    const unsub = onSnapshot(ref, snap => {
+      if (!snap.exists()) {
+        setMining(false);
+        setCanStartMining(true);
+        setTimeRemaining(0);
+        setLastStart(null);
+        setBalance(0);
+        setUiBalance(0);
+        return;
+      }
+
+      const data = snap.data();
+
+      if (typeof data.pallBalance === "number") {
+        setBalance(data.pallBalance);
+        if (!mining) setUiBalance(data.pallBalance);
+      }
+
+      if (
+        data.miningActive === true &&
+        data.lastStart &&
+        typeof data.lastStart.toDate === "function"
+      ) {
+        const start = data.lastStart.toDate();
+        const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
+
+        const minedAmount = elapsed * baseMiningRate;
+        setUiBalance((data.pallBalance || 0) + minedAmount);
+
+        if (elapsed >= MAX_SECONDS) {
           setMining(false);
           setCanStartMining(true);
           setTimeRemaining(0);
           setLastStart(null);
-          setBalance(0);
-          setUiBalance(0);
-          return;
-        }
-
-        const data = snap.data();
-
-        if (typeof data.pallBalance === "number") {
-          setBalance(data.pallBalance);
-          if (!mining) setUiBalance(data.pallBalance);
-        }
-
-        if (
-          data.miningActive === true &&
-          data.lastStart &&
-          typeof data.lastStart.toDate === "function"
-        ) {
-          const start = data.lastStart.toDate();
-          const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
-
-          if (elapsed >= MAX_SECONDS) {
-            setMining(false);
-            setCanStartMining(true);
-            setTimeRemaining(0);
-            setLastStart(null);
-          } else {
-            setMining(true);
-            setCanStartMining(false);
-            setLastStart(start);
-            setTimeRemaining(MAX_SECONDS - elapsed);
-          }
         } else {
-          setMining(false);
-          setCanStartMining(true);
-          setTimeRemaining(0);
-          setLastStart(null);
+          setMining(true);
+          setCanStartMining(false);
+          setLastStart(start);
+          setTimeRemaining(MAX_SECONDS - elapsed);
         }
-      },
-      (err) => console.error("Firestore error:", err)
-    );
+      } else {
+        setMining(false);
+        setCanStartMining(true);
+        setTimeRemaining(0);
+        setLastStart(null);
+      }
+    });
 
     return () => unsub();
   }, [uid, mining]);
@@ -102,11 +103,11 @@ export default function MiningDashboard() {
     if (!mining || !lastStart) return;
 
     const uiInterval = setInterval(() => {
-      setUiBalance((prev) => prev + baseMiningRate);
+      setUiBalance(prev => prev + baseMiningRate);
     }, 1000);
 
     const countdown = setInterval(() => {
-      setTimeRemaining((prev) => {
+      setTimeRemaining(prev => {
         if (prev <= 1) {
           clearInterval(uiInterval);
           clearInterval(countdown);
@@ -128,6 +129,7 @@ export default function MiningDashboard() {
   // ================= ANDROID REWARDED AD =================
   useEffect(() => {
     window.onAdCompleted = () => {
+      console.log("✅ Ad Completed - Starting Mining");
       setWaitingForAd(false);
       startMiningBackend();
     };
@@ -137,7 +139,7 @@ export default function MiningDashboard() {
       toast({
         title: "Ad Failed",
         description: "Rewarded ad could not load",
-        variant: "destructive",
+        variant: "destructive"
       });
     };
 
@@ -147,31 +149,31 @@ export default function MiningDashboard() {
     };
   }, []);
 
-  // ================= START MINING (TOKEN SAFE) =================
+  // ================= START MINING =================
   const startMiningBackend = async () => {
     setWaitingForAd(false);
 
     try {
-      const result = await mineForUser(); // ✅ fresh token attached API call
+      const result = await mineForUser();
 
       if (result.status === "error") {
         toast({
           title: "Mining Error",
           description: result.message || "Could not start mining",
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
 
       toast({
         title: "Mining Started",
-        description: "24h mining activated",
+        description: "24h mining activated"
       });
     } catch (err) {
       toast({
         title: "Mining Error",
         description: "Unexpected error occurred",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
@@ -180,8 +182,10 @@ export default function MiningDashboard() {
   const handleStartMining = () => {
     if (mining || waitingForAd || !canStartMining) return;
 
-    if (
-      window.AndroidBridge &&
+    console.log("🟡 Start Mining clicked");
+    console.log("🟡 AndroidBridge:", window.AndroidBridge);
+
+    if (window.AndroidBridge &&
       typeof window.AndroidBridge.startRewardedAd === "function"
     ) {
       setWaitingForAd(true);
@@ -189,22 +193,25 @@ export default function MiningDashboard() {
       try {
         window.AndroidBridge.startRewardedAd();
       } catch (e) {
-        console.error("Android ad call failed", e);
+        console.error("❌ Android ad call failed", e);
         setWaitingForAd(false);
         toast({
           title: "Ad Error",
           description: "Could not start rewarded ad",
-          variant: "destructive",
+          variant: "destructive"
         });
       }
     } else {
+      console.warn("❌ AndroidBridge not available");
+
       if (import.meta.env.DEV) {
+        console.warn("DEV MODE: skipping ad");
         startMiningBackend();
       } else {
         toast({
           title: "Ad loading",
           description: "Please try again",
-          variant: "destructive",
+          variant: "destructive"
         });
       }
     }
