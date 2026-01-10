@@ -1,10 +1,9 @@
 // client/src/components/MiningDashboard.tsx
 import React, { useEffect, useState } from "react";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
 
@@ -19,16 +18,7 @@ declare global {
 }
 
 export default function MiningDashboard() {
-  const uid = auth.currentUser?.uid;
-
-  if (!uid) {
-    return (
-      <div className="text-center mt-20 text-lg text-red-500">
-        User not authenticated
-      </div>
-    );
-  }
-
+  const [uid, setUid] = useState<string | null>(auth.currentUser?.uid || null);
   const [balance, setBalance] = useState(0);
   const [uiBalance, setUiBalance] = useState(0);
   const [mining, setMining] = useState(false);
@@ -37,63 +27,73 @@ export default function MiningDashboard() {
   const [canStartMining, setCanStartMining] = useState(true);
   const [waitingForAd, setWaitingForAd] = useState(false);
 
+  const toast = useToast();
   const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;
 
-  const toast = useToast();
+  // ================= FIREBASE USER CHECK =================
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        console.log("🔥 REAL AUTH USER:", user.uid);
+        setUid(user.uid);
+      } else {
+        console.log("⚠️ No Firebase user found yet");
+        setUid(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
-  // ================= FIRESTORE READ & RESUME =================
+  // ================= FIRESTORE LISTENER =================
   useEffect(() => {
     if (!uid) return;
     const ref = doc(db, "wallets", uid);
 
-    const unsub = onSnapshot(ref, snap => {
-      if (!snap.exists()) {
-        setMining(false);
-        setCanStartMining(true);
-        setTimeRemaining(0);
-        setLastStart(null);
-        setBalance(0);
-        setUiBalance(0);
-        return;
-      }
-
-      const data = snap.data();
-
-      if (typeof data.pallBalance === "number") {
-        setBalance(data.pallBalance);
-        if (!mining) setUiBalance(data.pallBalance);
-      }
-
-      if (
-        data.miningActive === true &&
-        data.lastStart &&
-        typeof data.lastStart.toDate === "function"
-      ) {
-        const start = data.lastStart.toDate();
-        const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
-
-        const minedAmount = elapsed * baseMiningRate;
-        setUiBalance((data.pallBalance || 0) + minedAmount);
-
-        if (elapsed >= MAX_SECONDS) {
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) {
           setMining(false);
           setCanStartMining(true);
           setTimeRemaining(0);
           setLastStart(null);
-        } else {
-          setMining(true);
-          setCanStartMining(false);
-          setLastStart(start);
-          setTimeRemaining(MAX_SECONDS - elapsed);
+          setBalance(0);
+          setUiBalance(0);
+          return;
         }
-      } else {
-        setMining(false);
-        setCanStartMining(true);
-        setTimeRemaining(0);
-        setLastStart(null);
-      }
-    });
+
+        const data = snap.data();
+
+        if (typeof data.pallBalance === "number") {
+          setBalance(data.pallBalance);
+          if (!mining) setUiBalance(data.pallBalance);
+        }
+
+        if (data.miningActive && data.lastStart?.toDate) {
+          const start = data.lastStart.toDate();
+          const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
+
+          if (elapsed >= MAX_SECONDS) {
+            setMining(false);
+            setCanStartMining(true);
+            setTimeRemaining(0);
+            setLastStart(null);
+          } else {
+            setMining(true);
+            setCanStartMining(false);
+            setLastStart(start);
+            setTimeRemaining(MAX_SECONDS - elapsed);
+          }
+        } else {
+          setMining(false);
+          setCanStartMining(true);
+          setTimeRemaining(0);
+          setLastStart(null);
+        }
+      },
+      (err) => console.error("Firestore error:", err)
+    );
 
     return () => unsub();
   }, [uid, mining]);
@@ -103,11 +103,11 @@ export default function MiningDashboard() {
     if (!mining || !lastStart) return;
 
     const uiInterval = setInterval(() => {
-      setUiBalance(prev => prev + baseMiningRate);
+      setUiBalance((prev) => prev + baseMiningRate);
     }, 1000);
 
     const countdown = setInterval(() => {
-      setTimeRemaining(prev => {
+      setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(uiInterval);
           clearInterval(countdown);
@@ -129,7 +129,6 @@ export default function MiningDashboard() {
   // ================= ANDROID REWARDED AD =================
   useEffect(() => {
     window.onAdCompleted = () => {
-      console.log("✅ Ad Completed - Starting Mining");
       setWaitingForAd(false);
       startMiningBackend();
     };
@@ -139,7 +138,7 @@ export default function MiningDashboard() {
       toast({
         title: "Ad Failed",
         description: "Rewarded ad could not load",
-        variant: "destructive"
+        variant: "destructive",
       });
     };
 
@@ -149,9 +148,10 @@ export default function MiningDashboard() {
     };
   }, []);
 
-  // ================= START MINING =================
+  // ================= START MINING BACKEND =================
   const startMiningBackend = async () => {
     setWaitingForAd(false);
+    if (!uid) return;
 
     try {
       const result = await mineForUser();
@@ -160,60 +160,49 @@ export default function MiningDashboard() {
         toast({
           title: "Mining Error",
           description: result.message || "Could not start mining",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
 
       toast({
         title: "Mining Started",
-        description: "24h mining activated"
+        description: "24h mining activated",
       });
     } catch (err) {
       toast({
         title: "Mining Error",
         description: "Unexpected error occurred",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
   // ================= HANDLE START MINING =================
   const handleStartMining = () => {
-    if (mining || waitingForAd || !canStartMining) return;
+    if (!canStartMining || mining || waitingForAd) return;
 
-    console.log("🟡 Start Mining clicked");
-    console.log("🟡 AndroidBridge:", window.AndroidBridge);
-
-    if (window.AndroidBridge &&
-      typeof window.AndroidBridge.startRewardedAd === "function"
-    ) {
+    if (window.AndroidBridge?.startRewardedAd) {
       setWaitingForAd(true);
-
       try {
         window.AndroidBridge.startRewardedAd();
       } catch (e) {
-        console.error("❌ Android ad call failed", e);
+        console.error("Android ad call failed", e);
         setWaitingForAd(false);
         toast({
           title: "Ad Error",
           description: "Could not start rewarded ad",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } else {
-      console.warn("❌ AndroidBridge not available");
-
-      if (import.meta.env.DEV) {
-        console.warn("DEV MODE: skipping ad");
-        startMiningBackend();
-      } else {
+      if (import.meta.env.DEV) startMiningBackend();
+      else
         toast({
           title: "Ad loading",
           description: "Please try again",
-          variant: "destructive"
+          variant: "destructive",
         });
-      }
     }
   };
 
@@ -226,7 +215,14 @@ export default function MiningDashboard() {
       .padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
-  // ================= UI =================
+  if (!uid) {
+    return (
+      <div className="text-center mt-20 text-lg text-red-500">
+        User not authenticated
+      </div>
+    );
+  }
+
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4">
