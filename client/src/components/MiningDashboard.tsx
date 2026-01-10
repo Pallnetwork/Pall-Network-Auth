@@ -1,9 +1,10 @@
-// ✅ CURRENT FILE KA PURE CODE — SIRF START MINING FIXED
+// client/src/pages/MiningDashboard.tsx
 import React, { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine"; // ✅ Import token-safe function
 
@@ -17,14 +18,11 @@ declare global {
   }
 }
 
-interface MiningDashboardProps {
-  userId: string;
-}
-
-export default function MiningDashboard({ userId }: MiningDashboardProps) {
+export default function MiningDashboard() {
   const { toast } = useToast();
+  const uid = auth.currentUser?.uid;
 
-  if (!userId) {
+  if (!uid) {
     return (
       <div className="text-center mt-20 text-lg text-red-500">
         User not authenticated
@@ -45,7 +43,8 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
 
   // ================= FIRESTORE READ ONLY =================
   useEffect(() => {
-    const ref = doc(db, "wallets", userId);
+    if (!uid) return;
+    const ref = doc(db, "wallets", uid);
 
     const unsub = onSnapshot(
       ref,
@@ -73,9 +72,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           typeof data.lastStart.toDate === "function"
         ) {
           const start = data.lastStart.toDate();
-          const elapsed = Math.floor(
-            (Date.now() - start.getTime()) / 1000
-          );
+          const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
 
           if (elapsed >= MAX_SECONDS) {
             setMining(false);
@@ -99,7 +96,7 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
     );
 
     return () => unsub();
-  }, [userId, mining]);
+  }, [uid, mining]);
 
   // ================= UI TIMER =================
   useEffect(() => {
@@ -131,10 +128,14 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
 
   // ================= ANDROID REWARDED AD =================
   useEffect(() => {
-    window.onAdCompleted = () => {
+    window.onAdCompleted = async () => {
       console.log("✅ Ad Completed - Starting Mining");
-      // 🔥 SAFETY: prevent stuck state
       setWaitingForAd(false);
+
+      // 🔥 REFRESH TOKEN BEFORE MINING
+      if (auth.currentUser) {
+        await auth.currentUser.getIdToken(true);
+      }
 
       startMiningBackend();
     };
@@ -205,24 +206,24 @@ export default function MiningDashboard({ userId }: MiningDashboardProps) {
           title: "Ad Error",
           description: "Could not start rewarded ad",
           variant: "destructive"
-      });
-    }
-  } else {
-    console.warn("❌ AndroidBridge not available");
-
-    if (import.meta.env.DEV) {
-      console.warn("DEV MODE: skipping ad");
-      startMiningBackend();
+        });
+      }
     } else {
-      toast({
-        title: "Ad loading",
-        description: "Please try again",
-        variant: "destructive"
-      });
+      console.warn("❌ AndroidBridge not available");
+
+      if (import.meta.env.DEV) {
+        console.warn("DEV MODE: skipping ad");
+        startMiningBackend();
+      } else {
+        toast({
+          title: "Ad loading",
+          description: "Please try again",
+          variant: "destructive"
+        });
+      }
     }
-  }
-};
-  
+  };
+
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);

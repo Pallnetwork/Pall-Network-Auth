@@ -33,9 +33,7 @@ export async function mineForUser() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          userId: user.uid,
-        }),
+        body: JSON.stringify({})
       }
     );
 
