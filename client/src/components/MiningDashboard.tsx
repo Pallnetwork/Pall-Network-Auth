@@ -1,3 +1,4 @@
+// client/src/components/MiningDashboard.tsx
 import React, { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
@@ -17,10 +18,7 @@ declare global {
 }
 
 export default function MiningDashboard() {
-  const user = auth.currentUser;
-  const { toast } = useToast();
-
-  const uid = user?.uid;
+  const uid = auth.currentUser?.uid;
 
   if (!uid) {
     return (
@@ -38,17 +36,18 @@ export default function MiningDashboard() {
   const [canStartMining, setCanStartMining] = useState(true);
   const [waitingForAd, setWaitingForAd] = useState(false);
 
+  const toast = useToast();
   const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;
 
-  // ================= FIRESTORE WATCH =================
+  // ================= FIRESTORE LISTENER =================
   useEffect(() => {
     if (!uid) return;
     const ref = doc(db, "wallets", uid);
 
     const unsub = onSnapshot(
       ref,
-      snap => {
+      (snap) => {
         if (!snap.exists()) {
           setMining(false);
           setCanStartMining(true);
@@ -66,7 +65,11 @@ export default function MiningDashboard() {
           if (!mining) setUiBalance(data.pallBalance);
         }
 
-        if (data.miningActive === true && data.lastStart?.toDate) {
+        if (
+          data.miningActive === true &&
+          data.lastStart &&
+          typeof data.lastStart.toDate === "function"
+        ) {
           const start = data.lastStart.toDate();
           const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
 
@@ -87,7 +90,8 @@ export default function MiningDashboard() {
           setTimeRemaining(0);
           setLastStart(null);
         }
-      }
+      },
+      (err) => console.error("Firestore error:", err)
     );
 
     return () => unsub();
@@ -98,11 +102,11 @@ export default function MiningDashboard() {
     if (!mining || !lastStart) return;
 
     const uiInterval = setInterval(() => {
-      setUiBalance(prev => prev + baseMiningRate);
+      setUiBalance((prev) => prev + baseMiningRate);
     }, 1000);
 
     const countdown = setInterval(() => {
-      setTimeRemaining(prev => {
+      setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(uiInterval);
           clearInterval(countdown);
@@ -123,13 +127,9 @@ export default function MiningDashboard() {
 
   // ================= ANDROID REWARDED AD =================
   useEffect(() => {
-    window.onAdCompleted = async () => {
-      console.log("✅ Ad Completed - Starting Mining");
+    window.onAdCompleted = () => {
       setWaitingForAd(false);
-
-      // 🔥 Fetch fresh token AFTER Ad completion
-      const token = await user?.getIdToken(true);
-      startMiningBackend(token);
+      startMiningBackend();
     };
 
     window.onAdFailed = () => {
@@ -145,12 +145,14 @@ export default function MiningDashboard() {
       window.onAdCompleted = undefined;
       window.onAdFailed = undefined;
     };
-  }, [user]);
+  }, []);
 
-  // ================= START MINING =================
-  const startMiningBackend = async (token?: string) => {
+  // ================= START MINING (TOKEN SAFE) =================
+  const startMiningBackend = async () => {
+    setWaitingForAd(false);
+
     try {
-      const result = await mineForUser(token);
+      const result = await mineForUser(); // ✅ fresh token attached API call
 
       if (result.status === "error") {
         toast({
@@ -165,7 +167,7 @@ export default function MiningDashboard() {
         title: "Mining Started",
         description: "24h mining activated",
       });
-    } catch {
+    } catch (err) {
       toast({
         title: "Mining Error",
         description: "Unexpected error occurred",
@@ -178,12 +180,25 @@ export default function MiningDashboard() {
   const handleStartMining = () => {
     if (mining || waitingForAd || !canStartMining) return;
 
-    if (window.AndroidBridge?.startRewardedAd) {
+    if (
+      window.AndroidBridge &&
+      typeof window.AndroidBridge.startRewardedAd === "function"
+    ) {
       setWaitingForAd(true);
-      window.AndroidBridge.startRewardedAd();
+
+      try {
+        window.AndroidBridge.startRewardedAd();
+      } catch (e) {
+        console.error("Android ad call failed", e);
+        setWaitingForAd(false);
+        toast({
+          title: "Ad Error",
+          description: "Could not start rewarded ad",
+          variant: "destructive",
+        });
+      }
     } else {
       if (import.meta.env.DEV) {
-        // DEV MODE skip ad
         startMiningBackend();
       } else {
         toast({
@@ -204,11 +219,13 @@ export default function MiningDashboard() {
       .padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
+  // ================= UI =================
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4">
         <h2 className="text-3xl font-bold text-center text-blue-600">Pall Mining ⛏️</h2>
       </CardHeader>
+
       <CardContent className="text-center space-y-6 px-6 pb-8">
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
           <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
@@ -217,6 +234,7 @@ export default function MiningDashboard() {
 
         <div className="relative w-48 h-48 mx-auto">
           <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
+
           {mining && timeRemaining > 0 && (
             <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <circle
@@ -233,6 +251,7 @@ export default function MiningDashboard() {
               />
             </svg>
           )}
+
           <div className="absolute inset-4 bg-white dark:bg-card rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
             {mining ? (
               <>

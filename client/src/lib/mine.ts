@@ -1,7 +1,7 @@
 // client/src/lib/mine.ts
 import { auth } from "./firebase";
 
-export async function mineForUser(freshToken?: string) {
+export async function mineForUser() {
   try {
     const user = auth.currentUser;
 
@@ -12,11 +12,12 @@ export async function mineForUser(freshToken?: string) {
       };
     }
 
-    // 🔥 Always fetch fresh token if not provided
-    const token = freshToken || (await user.getIdToken(true));
+    // 🔥 ALWAYS FETCH FRESH TOKEN
+    const token = await user.getIdToken(true);
 
-    console.log("🔥 USER UID:", user.uid);
-    console.log("🔥 TOKEN LENGTH:", token.length);
+    console.log("🔥 USER UID:", user?.uid);
+    console.log("🔥 TOKEN EXISTS:", !!token);
+    console.log("🔥 TOKEN LENGTH:", token?.length);
 
     const res = await fetch(
       "https://pall-network-auth.onrender.com/api/mine",
@@ -26,7 +27,7 @@ export async function mineForUser(freshToken?: string) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userId: user.uid }),
+        body: JSON.stringify({}),
       }
     );
 
