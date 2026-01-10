@@ -9,10 +9,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ✅ Determine service account
-let serviceAccount;
+let serviceAccount: admin.ServiceAccount;
 
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT as string);
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 } else {
   const localPath = path.resolve(__dirname, "serviceAccountKey.json");
   if (!fs.existsSync(localPath)) {
@@ -26,9 +26,9 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
 // ✅ Initialize Firebase Admin
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
   });
-}
+  }
 
 // ✅ Export Auth & Firestore
 export const auth = admin.auth();

@@ -1,7 +1,5 @@
-// server/middleware/auth.ts
-
 import { Request, Response, NextFunction } from "express";
-import { auth } from "../firebase";
+import admin from "../firebase";
 
 export async function verifyFirebaseToken(
   req: Request,
@@ -10,31 +8,22 @@ export async function verifyFirebaseToken(
 ) {
   try {
     const authHeader = req.headers.authorization;
+    console.log("🟡 AUTH HEADER:", authHeader);
+
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Missing Authorization token" });
     }
 
-    const idToken = authHeader.split("Bearer ")[1];
-    const decodedToken = await auth.verifyIdToken(idToken);
+    const idToken = authHeader.replace("Bearer ", "").trim();
 
-    console.log("✅ TOKEN VERIFIED UID:", decodedToken.uid);
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+    console.log("✅ VERIFIED UID:", decodedToken.uid);
 
     (req as any).user = decodedToken;
     next();
-  } catch (error) {
-    console.error("Token verify error:", error);
+  } catch (error: any) {
+    console.error("❌ TOKEN VERIFY FAILED:", error.message);
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 }
-
-/* 
-Firestore Rules (should NOT be in TS code):
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /wallets/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-*/
