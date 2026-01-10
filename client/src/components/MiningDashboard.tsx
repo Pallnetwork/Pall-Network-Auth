@@ -1,12 +1,10 @@
-// client/src/pages/MiningDashboard.tsx
 import React, { useEffect, useState } from "react";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { mineForUser } from "@/lib/mine"; // ✅ Import token-safe function
+import { mineForUser } from "@/lib/mine";
 
 declare global {
   interface Window {
@@ -19,8 +17,10 @@ declare global {
 }
 
 export default function MiningDashboard() {
+  const user = auth.currentUser;
   const { toast } = useToast();
-  const uid = auth.currentUser?.uid;
+
+  const uid = user?.uid;
 
   if (!uid) {
     return (
@@ -41,7 +41,7 @@ export default function MiningDashboard() {
   const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;
 
-  // ================= FIRESTORE READ ONLY =================
+  // ================= FIRESTORE WATCH =================
   useEffect(() => {
     if (!uid) return;
     const ref = doc(db, "wallets", uid);
@@ -66,11 +66,7 @@ export default function MiningDashboard() {
           if (!mining) setUiBalance(data.pallBalance);
         }
 
-        if (
-          data.miningActive === true &&
-          data.lastStart &&
-          typeof data.lastStart.toDate === "function"
-        ) {
+        if (data.miningActive === true && data.lastStart?.toDate) {
           const start = data.lastStart.toDate();
           const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
 
@@ -91,8 +87,7 @@ export default function MiningDashboard() {
           setTimeRemaining(0);
           setLastStart(null);
         }
-      },
-      err => console.error("Firestore error:", err)
+      }
     );
 
     return () => unsub();
@@ -132,12 +127,9 @@ export default function MiningDashboard() {
       console.log("✅ Ad Completed - Starting Mining");
       setWaitingForAd(false);
 
-      // 🔥 REFRESH TOKEN BEFORE MINING
-      if (auth.currentUser) {
-        await auth.currentUser.getIdToken(true);
-      }
-
-      startMiningBackend();
+      // 🔥 Fetch fresh token AFTER Ad completion
+      const token = await user?.getIdToken(true);
+      startMiningBackend(token);
     };
 
     window.onAdFailed = () => {
@@ -145,7 +137,7 @@ export default function MiningDashboard() {
       toast({
         title: "Ad Failed",
         description: "Rewarded ad could not load",
-        variant: "destructive"
+        variant: "destructive",
       });
     };
 
@@ -153,33 +145,31 @@ export default function MiningDashboard() {
       window.onAdCompleted = undefined;
       window.onAdFailed = undefined;
     };
-  }, []);
+  }, [user]);
 
-  // ================= START MINING (TOKEN SAFE) =================
-  const startMiningBackend = async () => {
-    setWaitingForAd(false);
-
+  // ================= START MINING =================
+  const startMiningBackend = async (token?: string) => {
     try {
-      const result = await mineForUser(); // ✅ TOKEN ATTACHED API CALL
+      const result = await mineForUser(token);
 
       if (result.status === "error") {
         toast({
           title: "Mining Error",
           description: result.message || "Could not start mining",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
 
       toast({
         title: "Mining Started",
-        description: "24h mining activated"
+        description: "24h mining activated",
       });
-    } catch (err) {
+    } catch {
       toast({
         title: "Mining Error",
         description: "Unexpected error occurred",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -188,37 +178,18 @@ export default function MiningDashboard() {
   const handleStartMining = () => {
     if (mining || waitingForAd || !canStartMining) return;
 
-    console.log("🟡 Start Mining clicked");
-    console.log("🟡 AndroidBridge:", window.AndroidBridge);
-
-    if (window.AndroidBridge &&
-      typeof window.AndroidBridge.startRewardedAd === "function"
-    ) {
-      console.log("🟢 Calling Android rewarded ad");
+    if (window.AndroidBridge?.startRewardedAd) {
       setWaitingForAd(true);
-
-      try {
-        window.AndroidBridge.startRewardedAd();
-      } catch (e) {
-        console.error("❌ Android ad call failed", e);
-        setWaitingForAd(false);
-        toast({
-          title: "Ad Error",
-          description: "Could not start rewarded ad",
-          variant: "destructive"
-        });
-      }
+      window.AndroidBridge.startRewardedAd();
     } else {
-      console.warn("❌ AndroidBridge not available");
-
       if (import.meta.env.DEV) {
-        console.warn("DEV MODE: skipping ad");
+        // DEV MODE skip ad
         startMiningBackend();
       } else {
         toast({
           title: "Ad loading",
           description: "Please try again",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     }
@@ -233,13 +204,11 @@ export default function MiningDashboard() {
       .padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
-  // ================= UI =================
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4">
         <h2 className="text-3xl font-bold text-center text-blue-600">Pall Mining ⛏️</h2>
       </CardHeader>
-
       <CardContent className="text-center space-y-6 px-6 pb-8">
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
           <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
@@ -248,7 +217,6 @@ export default function MiningDashboard() {
 
         <div className="relative w-48 h-48 mx-auto">
           <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
-
           {mining && timeRemaining > 0 && (
             <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <circle
@@ -265,7 +233,6 @@ export default function MiningDashboard() {
               />
             </svg>
           )}
-
           <div className="absolute inset-4 bg-white dark:bg-card rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
             {mining ? (
               <>
