@@ -15,8 +15,15 @@ export async function mineForUser() {
     // 🔥 ALWAYS FETCH FRESH TOKEN
     const token = await user.getIdToken(true);
 
-    console.log("🔥 FRESH TOKEN:", token);
+    /* ===== 🔥 STEP 1 DEBUG LOGS — START ===== */
+    console.log("🔥 USER UID:", user?.uid);
+    console.log("🔥 TOKEN EXISTS:", !!token);
+    console.log("🔥 TOKEN TYPE:", typeof token);
+    console.log("🔥 TOKEN LENGTH:", token?.length);
+    console.log("🔥 TOKEN START:", token?.slice(0, 20));
+    console.log("🔥 TOKEN END:", token?.slice(-20));
     console.log("🔥 UID:", user.uid);
+    /* ===== 🔥 STEP 1 DEBUG LOGS — END ===== */
 
     const res = await fetch(
       "https://pall-network-auth.onrender.com/api/mine",
