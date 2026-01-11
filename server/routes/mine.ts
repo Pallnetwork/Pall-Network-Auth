@@ -17,23 +17,34 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
     const snap = await walletRef.get();
     const now = Date.now();
 
-    // ✅ First-time user: wallet create & mining start
+    let isNewUser = false;
+
+    // ✅ First-time user: wallet create
     if (!snap.exists) {
+      // wallet create
+      isNewUser = true;
+
       await walletRef.set({
+        uid, // ✅ VERY IMPORTANT
         pallBalance: 0,
-        miningActive: true,
-        lastStart: admin.firestore.FieldValue.serverTimestamp(),
-        lastMinedAt: admin.firestore.FieldValue.serverTimestamp(),
+        miningActive: false, // ❗ pehle false
+        lastStart: null,
+        lastMinedAt: null,
         miningSpeed: 1,
         totalEarnings: 0,
         usdtBalance: 0,
         currentPackage: "free",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      return res.json({ success: true, message: "Mining started (first-time user)" });
     }
 
-    const data = snap.data()!;
+    const walletSnap = await walletRef.get();
+
+    if (!walletSnap.exists) {
+      return res.status(500).json({ error: "Wallet creation failed" });
+    }
+    
+    const data = walletSnap.data()!;
     const lastStart = data.lastStart?.toDate?.() ?? null;
 
     // ✅ Mining already active
@@ -42,19 +53,25 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
     }
 
     // ✅ Cooldown check
-    if (lastStart && now - lastStart.getTime() < COOLDOWN_MS) {
+    if (!isNewUser && lastStart && now - lastStart.getTime() < COOLDOWN_MS) {
       const remainingMinutes = Math.ceil((COOLDOWN_MS - (now - lastStart.getTime())) / 60000);
       return res.status(400).json({ error: "Cooldown active", remainingMinutes });
     }
 
-    // ✅ Start mining for existing user
+    // ✅ Start mining (new + existing users)
     await walletRef.update({
       miningActive: true,
       lastStart: admin.firestore.FieldValue.serverTimestamp(),
       lastMinedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    return res.json({ success: true, message: "Mining session started" });
+    return res.json({
+      success: true,
+      message: isNewUser
+      ? "Mining started (new user)"
+      : "Mining session started",
+    });
+
   } catch (err) {
     console.error("SESSION 3 mining error:", err);
     return res.status(500).json({ error: "Mining failed" });

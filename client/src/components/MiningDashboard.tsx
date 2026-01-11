@@ -35,41 +35,45 @@ export default function MiningDashboard() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        console.log("🔥 REAL AUTH USER:", user.uid);
         setUid(user.uid);
       } else {
-        console.log("⚠️ No Firebase user found yet");
         setUid(null);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // ================= FIRESTORE LISTENER =================
+  // ================= FIRESTORE LISTENER (FIXED) =================
   useEffect(() => {
     if (!uid) return;
+
     const ref = doc(db, "wallets", uid);
 
     const unsub = onSnapshot(
       ref,
       (snap) => {
+        // 🔴 NEW USER FIX: wallet not exists but ad/backend running
         if (!snap.exists()) {
-          setMining(false);
-          setCanStartMining(true);
-          setTimeRemaining(0);
-          setLastStart(null);
-          setBalance(0);
-          setUiBalance(0);
+          if (!waitingForAd) {
+            setMining(false);
+            setCanStartMining(true);
+            setTimeRemaining(0);
+            setLastStart(null);
+            setBalance(0);
+            setUiBalance(0);
+          }
           return;
         }
 
         const data = snap.data();
 
+        // 🔢 Balance sync
         if (typeof data.pallBalance === "number") {
           setBalance(data.pallBalance);
           if (!mining) setUiBalance(data.pallBalance);
         }
 
+        // ⛏️ Mining state sync
         if (data.miningActive && data.lastStart?.toDate) {
           const start = data.lastStart.toDate();
           const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
@@ -96,7 +100,7 @@ export default function MiningDashboard() {
     );
 
     return () => unsub();
-  }, [uid, mining]);
+  }, [uid, waitingForAd]);
 
   // ================= UI TIMER =================
   useEffect(() => {
@@ -150,7 +154,6 @@ export default function MiningDashboard() {
 
   // ================= START MINING BACKEND =================
   const startMiningBackend = async () => {
-    setWaitingForAd(false);
     if (!uid) return;
 
     try {
@@ -169,7 +172,7 @@ export default function MiningDashboard() {
         title: "Mining Started",
         description: "24h mining activated",
       });
-    } catch (err) {
+    } catch {
       toast({
         title: "Mining Error",
         description: "Unexpected error occurred",
@@ -186,8 +189,7 @@ export default function MiningDashboard() {
       setWaitingForAd(true);
       try {
         window.AndroidBridge.startRewardedAd();
-      } catch (e) {
-        console.error("Android ad call failed", e);
+      } catch {
         setWaitingForAd(false);
         toast({
           title: "Ad Error",
@@ -226,20 +228,29 @@ export default function MiningDashboard() {
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4">
-        <h2 className="text-3xl font-bold text-center text-blue-600">Pall Mining ⛏️</h2>
+        <h2 className="text-3xl font-bold text-center text-blue-600">
+          Pall Mining ⛏️
+        </h2>
       </CardHeader>
 
       <CardContent className="text-center space-y-6 px-6 pb-8">
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
-          <p className="text-3xl font-bold text-blue-600">{uiBalance.toFixed(8)} PALL</p>
+          <p className="text-sm font-medium text-muted-foreground mb-2">
+            Current Balance
+          </p>
+          <p className="text-3xl font-bold text-blue-600">
+            {uiBalance.toFixed(8)} PALL
+          </p>
         </div>
 
         <div className="relative w-48 h-48 mx-auto">
           <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
 
           {mining && timeRemaining > 0 && (
-            <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+            <svg
+              className="absolute inset-0 w-full h-full transform -rotate-90"
+              viewBox="0 0 100 100"
+            >
               <circle
                 cx="50"
                 cy="50"
@@ -249,7 +260,10 @@ export default function MiningDashboard() {
                 fill="none"
                 className="text-blue-500"
                 strokeDasharray="264"
-                strokeDashoffset={264 - ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264}
+                strokeDashoffset={
+                  264 -
+                  ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264
+                }
                 strokeLinecap="round"
               />
             </svg>
@@ -259,15 +273,25 @@ export default function MiningDashboard() {
             {mining ? (
               <>
                 <div className="text-3xl mb-2">⛏️</div>
-                <p className="text-base font-bold text-green-600">Mining Active</p>
-                <p className="text-base font-bold text-muted-foreground">Standard Rate</p>
-                <p className="text-base font-mono font-bold text-blue-600 mt-1">{formatTime(timeRemaining)}</p>
+                <p className="text-base font-bold text-green-600">
+                  Mining Active
+                </p>
+                <p className="text-base font-bold text-muted-foreground">
+                  Standard Rate
+                </p>
+                <p className="text-base font-mono font-bold text-blue-600 mt-1">
+                  {formatTime(timeRemaining)}
+                </p>
               </>
             ) : (
               <>
                 <div className="text-4xl mb-2">💎</div>
-                <p className="text-sm font-semibold text-gray-600">Ready to Mine</p>
-                <p className="text-xs text-muted-foreground">Standard Mining</p>
+                <p className="text-sm font-semibold text-gray-600">
+                  Ready to Mine
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Standard Mining
+                </p>
               </>
             )}
           </div>
@@ -278,7 +302,11 @@ export default function MiningDashboard() {
           onClick={handleStartMining}
           className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
         >
-          {waitingForAd ? "📺 Showing Ad..." : mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
+          {waitingForAd
+            ? "📺 Showing Ad..."
+            : mining
+            ? `Mining ⛏ (${formatTime(timeRemaining)})`
+            : "Start Mining ⛏"}
         </Button>
       </CardContent>
     </Card>
