@@ -34,8 +34,11 @@ export default function MiningDashboard() {
   // ================= FIREBASE USER CHECK =================
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) setUid(user.uid);
-      else setUid(null);
+      if (user) {
+        setUid(user.uid);
+      } else {
+        setUid(null);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -127,21 +130,12 @@ export default function MiningDashboard() {
   // ================= ANDROID REWARDED AD =================
   useEffect(() => {
     window.onAdCompleted = async () => {
-      console.log("🔥 Ad completed! Checking Firebase user:", auth.currentUser);
       setWaitingForAd(false);
 
-      const user = auth.currentUser;
-      if (!user) {
-        console.warn("⚠️ No Firebase user, cannot start mining");
-        return;
-      }
+      console.log("🔥 Ad completed, calling mine API...");
 
       try {
-        // ✅ Inject fresh token first
-        const token = await user.getIdToken(true);
-        localStorage.setItem("firebaseToken", token);
-
-        // ✅ Call backend mine API
+        // ✅ FIX: always get token from localStorage injected by MainActivity.kt
         const result = await mineForUser();
         console.log("🔥 Mine API result:", result);
 
@@ -151,14 +145,15 @@ export default function MiningDashboard() {
             description: result.message || "Could not start mining",
             variant: "destructive",
           });
-        } else {
-          toast({
-            title: "Mining Started",
-            description: "24h mining activated",
-          });
+          return;
         }
+
+        toast({
+          title: "Mining Started",
+          description: "24h mining activated",
+        });
       } catch (err) {
-        console.error("🔥 Mine API call failed:", err);
+        console.error("❌ Mine API call failed:", err);
         toast({
           title: "Mining Error",
           description: "Unexpected error occurred",
@@ -182,12 +177,32 @@ export default function MiningDashboard() {
     };
   }, []);
 
-  // ================= START MINING BACKEND =================
+  // ================= HANDLE START MINING =================
+  const handleStartMining = () => {
+    if (waitingForAd) return;
+
+    if (window.AndroidBridge?.startRewardedAd) {
+      setWaitingForAd(true);
+      try {
+        window.AndroidBridge.startRewardedAd();
+      } catch {
+        setWaitingForAd(false);
+        toast({
+          title: "Ad Error",
+          description: "Could not start rewarded ad",
+          variant: "destructive",
+        });
+      }
+    } else {
+      startMiningBackend();
+    }
+  };
+
   const startMiningBackend = async () => {
     if (!uid) return;
+
     try {
       const result = await mineForUser();
-      console.log("🔥 Manual Mine API result:", result);
 
       if (result.status === "error") {
         toast({
@@ -208,28 +223,6 @@ export default function MiningDashboard() {
         description: "Unexpected error occurred",
         variant: "destructive",
       });
-    }
-  };
-
-  // ================= HANDLE START MINING (FIX-1) =================
-  const handleStartMining = () => {
-    if (waitingForAd) return;
-
-    if (window.AndroidBridge?.startRewardedAd) {
-      setWaitingForAd(true);
-      try {
-        window.AndroidBridge.startRewardedAd();
-      } catch {
-        setWaitingForAd(false);
-        toast({
-          title: "Ad Error",
-          description: "Could not start rewarded ad",
-          variant: "destructive",
-        });
-      }
-    } else {
-      // 🔥 Browser fallback: direct mining start
-      startMiningBackend();
     }
   };
 
