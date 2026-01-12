@@ -52,7 +52,6 @@ export default function MiningDashboard() {
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        // 🔴 NEW USER FIX: wallet not exists but ad/backend running
         if (!snap.exists()) {
           if (!waitingForAd) {
             setMining(false);
@@ -67,13 +66,11 @@ export default function MiningDashboard() {
 
         const data = snap.data();
 
-        // 🔢 Balance sync
         if (typeof data.pallBalance === "number") {
           setBalance(data.pallBalance);
           if (!mining) setUiBalance(data.pallBalance);
         }
 
-        // ⛏️ Mining state sync
         if (data.miningActive && data.lastStart?.toDate) {
           const start = data.lastStart.toDate();
           const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
@@ -181,11 +178,12 @@ export default function MiningDashboard() {
     }
   };
 
-  // ================= HANDLE START MINING =================
+  // ================= HANDLE START MINING (FIX-1) =================
   const handleStartMining = () => {
     if (!canStartMining || mining || waitingForAd) return;
 
-    if (window.AndroidBridge?.startRewardedAd) {
+    // 🔹 FIX-1: AndroidBridge safe detection
+    if (typeof window !== "undefined" && window.AndroidBridge?.startRewardedAd) {
       setWaitingForAd(true);
       try {
         window.AndroidBridge.startRewardedAd();
@@ -197,15 +195,21 @@ export default function MiningDashboard() {
           variant: "destructive",
         });
       }
-    } else {
-      if (import.meta.env.DEV) startMiningBackend();
-      else
-        toast({
-          title: "Ad loading",
-          description: "Please try again",
-          variant: "destructive",
-        });
+      return;
     }
+
+    // 🔹 DEV fallback
+    if (import.meta.env.DEV) {
+      startMiningBackend();
+      return;
+    }
+
+    // 🔹 Browser fallback
+    toast({
+      title: "Android App Required",
+      description: "Mining is available only inside the Android app",
+      variant: "destructive",
+    });
   };
 
   const formatTime = (s: number) => {
