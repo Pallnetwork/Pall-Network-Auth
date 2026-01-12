@@ -4,6 +4,7 @@ import cors from "cors";
 import http from "http";
 import { setupVite, serveStatic, log } from "./vite";
 import mineRouter from "./routes/mine";
+import stopRoutes from "./routes/stop";
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(cors());
 
 // Routes
 app.use("/api/mine", mineRouter);
+app.use("/api/stop", stopRoutes);
 
 app.get("/api/health", (_req, res) =>
   res.json({ status: "ok", message: "Mining backend running ✅" })
@@ -61,7 +63,7 @@ const server = http.createServer(app);
     serveStatic(app);
   }
 
-  const port = parseInt(process.env.PORT || "8082", 10);
+  const port = parseInt(process.env.PORT || "8080", 10);
   server.listen(port, "0.0.0.0", () =>
     log(`serving on port ${port} ✅`)
   );
