@@ -14,20 +14,21 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
     if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
     const walletRef = db.collection("wallets").doc(uid);
+
+    // 🔑 SESSION 4 RULE: Firestore is the ONLY source of truth
     const snap = await walletRef.get();
-    const now = Date.now();
+    const nowMs = Date.now();
 
     let isNewUser = false;
 
-    // ✅ First-time user: wallet create
+    // ✅ First-time user → wallet create
     if (!snap.exists) {
-      // wallet create
       isNewUser = true;
 
       await walletRef.set({
-        uid, // ✅ VERY IMPORTANT
+        uid, // keep existing
         pallBalance: 0,
-        miningActive: false, // ❗ pehle false
+        miningActive: false,
         lastStart: null,
         lastMinedAt: null,
         miningSpeed: 1,
@@ -38,42 +39,54 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
       });
     }
 
+    // 🔁 Always re-read wallet (SESSION 4 safety)
     const walletSnap = await walletRef.get();
-
     if (!walletSnap.exists) {
-      return res.status(500).json({ error: "Wallet creation failed" });
+      return res.status(500).json({ error: "Wallet not found" });
     }
-    
-    const data = walletSnap.data()!;
-    const lastStart = data.lastStart?.toDate?.() ?? null;
 
-    // ✅ Mining already active
-    if (data.miningActive === true) {
+    const wallet = walletSnap.data()!;
+    const lastStartDate =
+      wallet.lastStart && wallet.lastStart.toDate
+        ? wallet.lastStart.toDate()
+        : null;
+
+    // ❌ Mining already running
+    if (wallet.miningActive === true) {
       return res.status(400).json({ error: "Mining already active" });
     }
 
-    // ✅ Cooldown check
-    if (!isNewUser && lastStart && now - lastStart.getTime() < COOLDOWN_MS) {
-      const remainingMinutes = Math.ceil((COOLDOWN_MS - (now - lastStart.getTime())) / 60000);
-      return res.status(400).json({ error: "Cooldown active", remainingMinutes });
+    // ⏳ Cooldown check (existing logic preserved)
+    if (!isNewUser && lastStartDate) {
+      const diff = nowMs - lastStartDate.getTime();
+      if (diff < COOLDOWN_MS) {
+        const remainingMinutes = Math.ceil((COOLDOWN_MS - diff) / 60000);
+        return res.status(400).json({
+          error: "Cooldown active",
+          remainingMinutes,
+        });
+      }
     }
 
-    // ✅ Start mining (new + existing users)
+    // 🚀 SESSION 4 — START MINING
+    const nowTs = admin.firestore.Timestamp.now();
+
     await walletRef.update({
       miningActive: true,
-      lastStart: admin.firestore.FieldValue.serverTimestamp(),
-      lastMinedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastStart: nowTs,       // miningStartedAt (SESSION 4 equivalent)
+      lastMinedAt: nowTs,    // used later in stop logic
     });
 
     return res.json({
       success: true,
       message: isNewUser
-      ? "Mining started (new user)"
-      : "Mining session started",
+        ? "Mining started (new user)"
+        : "Mining session started",
+      miningStartedAt: nowTs,
     });
 
   } catch (err) {
-    console.error("SESSION 3 mining error:", err);
+    console.error("SESSION 4 mining start error:", err);
     return res.status(500).json({ error: "Mining failed" });
   }
 });

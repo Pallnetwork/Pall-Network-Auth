@@ -63,7 +63,7 @@ const server = http.createServer(app);
     serveStatic(app);
   }
 
-  const port = parseInt(process.env.PORT || "8080", 10);
+  const port = parseInt(process.env.PORT || "8082", 10);
   server.listen(port, "0.0.0.0", () =>
     log(`serving on port ${port} ✅`)
   );
