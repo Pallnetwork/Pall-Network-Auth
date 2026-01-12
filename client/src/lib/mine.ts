@@ -1,7 +1,10 @@
 import { auth } from "./firebase";
 
 // ✅ Wait for Firebase user reliably
-async function waitForAuthUser(maxRetries = 3, delay = 1500): Promise<any> {
+async function waitForAuthUser(
+  maxRetries = 3,
+  delay = 1500
+): Promise<any> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const user = auth.currentUser;
     if (user) return user;
@@ -45,12 +48,29 @@ export async function mineForUser() {
 
     const data = await res.json();
 
+    // 🔥 FIX (ROOT CAUSE)
+    // Backend 400 + "Mining already active" = VALID STATE
     if (!res.ok) {
-      return { status: "error", message: data?.error };
+      if (data?.error === "Mining already active") {
+        return {
+          status: "success",
+          data: {
+            alreadyActive: true,
+          },
+        };
+      }
+
+      return {
+        status: "error",
+        message: data?.error || "Mining request failed",
+      };
     }
 
     return { status: "success", data };
   } catch (err: any) {
-    return { status: "error", message: err.message };
+    return {
+      status: "error",
+      message: err.message || "Unexpected error",
+    };
   }
 }

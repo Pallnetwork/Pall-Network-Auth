@@ -131,8 +131,6 @@ export default function MiningDashboard() {
   useEffect(() => {
     window.onAdCompleted = async () => {
       setWaitingForAd(false);
-
-      // 🔥 FIX: Always call backend after ad complete
       await startMiningBackend();
     };
 
@@ -158,6 +156,22 @@ export default function MiningDashboard() {
     try {
       const result = await mineForUser();
 
+      // 🔥 FINAL ROOT FIX (ONLY THIS PART ADDED)
+      if (
+        result.status === "error" &&
+        result.message === "Mining already active"
+      ) {
+        // Treat backend 400 as SUCCESS
+        setMining(true);
+        setCanStartMining(false);
+
+        toast({
+          title: "Mining Active",
+          description: "Mining already running",
+        });
+        return;
+      }
+
       if (result.status === "error") {
         toast({
           title: "Mining Error",
@@ -180,7 +194,7 @@ export default function MiningDashboard() {
     }
   };
 
-  // ================= HANDLE START MINING (FIX-1) =================
+  // ================= HANDLE START MINING =================
   const handleStartMining = () => {
     if (waitingForAd) return;
 
@@ -197,7 +211,6 @@ export default function MiningDashboard() {
         });
       }
     } else {
-      // 🔥 Browser fallback: direct mining start
       startMiningBackend();
     }
   };
