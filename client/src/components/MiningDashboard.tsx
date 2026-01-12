@@ -43,7 +43,7 @@ export default function MiningDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // ================= FIRESTORE LISTENER (FIXED) =================
+  // ================= FIRESTORE LISTENER =================
   useEffect(() => {
     if (!uid) return;
 
@@ -129,9 +129,11 @@ export default function MiningDashboard() {
 
   // ================= ANDROID REWARDED AD =================
   useEffect(() => {
-    window.onAdCompleted = () => {
+    window.onAdCompleted = async () => {
       setWaitingForAd(false);
-      startMiningBackend();
+
+      // 🔥 FIX: Always call backend after ad complete
+      await startMiningBackend();
     };
 
     window.onAdFailed = () => {
@@ -180,10 +182,9 @@ export default function MiningDashboard() {
 
   // ================= HANDLE START MINING (FIX-1) =================
   const handleStartMining = () => {
-    if (!canStartMining || mining || waitingForAd) return;
+    if (waitingForAd) return;
 
-    // 🔹 FIX-1: AndroidBridge safe detection
-    if (typeof window !== "undefined" && window.AndroidBridge?.startRewardedAd) {
+    if (window.AndroidBridge?.startRewardedAd) {
       setWaitingForAd(true);
       try {
         window.AndroidBridge.startRewardedAd();
@@ -195,21 +196,10 @@ export default function MiningDashboard() {
           variant: "destructive",
         });
       }
-      return;
-    }
-
-    // 🔹 DEV fallback
-    if (import.meta.env.DEV) {
+    } else {
+      // 🔥 Browser fallback: direct mining start
       startMiningBackend();
-      return;
     }
-
-    // 🔹 Browser fallback
-    toast({
-      title: "Android App Required",
-      description: "Mining is available only inside the Android app",
-      variant: "destructive",
-    });
   };
 
   const formatTime = (s: number) => {
@@ -265,8 +255,7 @@ export default function MiningDashboard() {
                 className="text-blue-500"
                 strokeDasharray="264"
                 strokeDashoffset={
-                  264 -
-                  ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264
+                  264 - ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264
                 }
                 strokeLinecap="round"
               />
