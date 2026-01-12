@@ -1,10 +1,8 @@
+// lib/mine.ts
 import { auth } from "./firebase";
 
-// ✅ Wait for Firebase user reliably
-async function waitForAuthUser(
-  maxRetries = 3,
-  delay = 1500
-): Promise<any> {
+// 🔹 Wait for Firebase user reliably
+async function waitForAuthUser(maxRetries = 5, delay = 1500): Promise<any> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const user = auth.currentUser;
     if (user) return user;
@@ -27,50 +25,37 @@ export async function mineForUser() {
     const user = auth.currentUser ?? (await waitForAuthUser());
 
     if (!user) {
+      console.warn("⚠️ User not authenticated");
       return {
         status: "error",
         message: "User not authenticated",
       };
     }
 
+    // 🔹 Always get fresh token
     const token = await user.getIdToken(true);
+    console.log("🔥 Using Firebase Token:", token);
 
-    const res = await fetch(
-      "https://pall-network-auth.onrender.com/api/mine",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const res = await fetch("https://pall-network-auth.onrender.com/api/mine", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ test: "rootCauseCheck" }),
+    });
 
     const data = await res.json();
 
-    // 🔥 FIX (ROOT CAUSE)
-    // Backend 400 + "Mining already active" = VALID STATE
     if (!res.ok) {
-      if (data?.error === "Mining already active") {
-        return {
-          status: "success",
-          data: {
-            alreadyActive: true,
-          },
-        };
-      }
-
-      return {
-        status: "error",
-        message: data?.error || "Mining request failed",
-      };
+      console.warn("⚠️ API returned error:", data?.error);
+      return { status: "error", message: data?.error };
     }
 
+    console.log("✅ Mining started successfully", data);
     return { status: "success", data };
   } catch (err: any) {
-    return {
-      status: "error",
-      message: err.message || "Unexpected error",
-    };
+    console.error("🔥 Mining API call failed:", err);
+    return { status: "error", message: err.message };
   }
 }

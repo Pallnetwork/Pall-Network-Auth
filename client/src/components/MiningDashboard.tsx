@@ -34,11 +34,8 @@ export default function MiningDashboard() {
   // ================= FIREBASE USER CHECK =================
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setUid(user.uid);
-      } else {
-        setUid(null);
-      }
+      if (user) setUid(user.uid);
+      else setUid(null);
     });
     return () => unsubscribe();
   }, []);
@@ -130,8 +127,44 @@ export default function MiningDashboard() {
   // ================= ANDROID REWARDED AD =================
   useEffect(() => {
     window.onAdCompleted = async () => {
+      console.log("🔥 Ad completed! Checking Firebase user:", auth.currentUser);
       setWaitingForAd(false);
-      await startMiningBackend();
+
+      const user = auth.currentUser;
+      if (!user) {
+        console.warn("⚠️ No Firebase user, cannot start mining");
+        return;
+      }
+
+      try {
+        // ✅ Inject fresh token first
+        const token = await user.getIdToken(true);
+        localStorage.setItem("firebaseToken", token);
+
+        // ✅ Call backend mine API
+        const result = await mineForUser();
+        console.log("🔥 Mine API result:", result);
+
+        if (result.status === "error") {
+          toast({
+            title: "Mining Error",
+            description: result.message || "Could not start mining",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Mining Started",
+            description: "24h mining activated",
+          });
+        }
+      } catch (err) {
+        console.error("🔥 Mine API call failed:", err);
+        toast({
+          title: "Mining Error",
+          description: "Unexpected error occurred",
+          variant: "destructive",
+        });
+      }
     };
 
     window.onAdFailed = () => {
@@ -152,25 +185,9 @@ export default function MiningDashboard() {
   // ================= START MINING BACKEND =================
   const startMiningBackend = async () => {
     if (!uid) return;
-
     try {
       const result = await mineForUser();
-
-      // 🔥 FINAL ROOT FIX (ONLY THIS PART ADDED)
-      if (
-        result.status === "error" &&
-        result.message === "Mining already active"
-      ) {
-        // Treat backend 400 as SUCCESS
-        setMining(true);
-        setCanStartMining(false);
-
-        toast({
-          title: "Mining Active",
-          description: "Mining already running",
-        });
-        return;
-      }
+      console.log("🔥 Manual Mine API result:", result);
 
       if (result.status === "error") {
         toast({
@@ -194,7 +211,7 @@ export default function MiningDashboard() {
     }
   };
 
-  // ================= HANDLE START MINING =================
+  // ================= HANDLE START MINING (FIX-1) =================
   const handleStartMining = () => {
     if (waitingForAd) return;
 
@@ -211,6 +228,7 @@ export default function MiningDashboard() {
         });
       }
     } else {
+      // 🔥 Browser fallback: direct mining start
       startMiningBackend();
     }
   };
