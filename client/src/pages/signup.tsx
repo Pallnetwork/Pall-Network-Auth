@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { db, auth } from "@/lib/firebase";
 import {
@@ -12,7 +12,6 @@ import {
 import {
   createUserWithEmailAndPassword,
   updateProfile,
-  onAuthStateChanged,
 } from "firebase/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 
-// 🔹 Referral code generator
 function generateReferralCode(username: string, uid: string) {
   return `${username.toLowerCase()}-${uid.slice(0, 5)}`;
 }
@@ -41,13 +39,6 @@ export default function SignUp() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) navigate("/app/dashboard", { replace: true });
-    });
-    return () => unsub();
-  }, [navigate]);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError("");
@@ -65,23 +56,22 @@ export default function SignUp() {
     }
 
     try {
-      // 🔐 STEP 1 — CREATE AUTH USER (VERY IMPORTANT FIRST)
-      const userCredential = await createUserWithEmailAndPassword(
+      // 1️⃣ CREATE AUTH USER
+      const cred = await createUserWithEmailAndPassword(
         auth,
         form.email,
         form.password
       );
-      const user = userCredential.user;
+      const user = cred.user;
 
-      // 🔍 STEP 2 — VALIDATE REFERRAL (AFTER AUTH)
+      // 2️⃣ REFERRAL CHECK (AFTER AUTH)
       let referredBy: string | null = null;
 
-      if (form.referral.trim() !== "") {
+      if (form.referral.trim()) {
         const q = query(
           collection(db, "users"),
           where("referralCode", "==", form.referral.trim())
         );
-
         const snap = await getDocs(q);
 
         if (snap.empty) {
@@ -90,32 +80,27 @@ export default function SignUp() {
           return;
         }
 
-        referredBy = snap.docs[0].id; // ✅ parent UID
+        referredBy = snap.docs[0].id;
       }
 
-      // 👤 STEP 3 — UPDATE PROFILE
+      // 3️⃣ UPDATE PROFILE
       await updateProfile(user, {
         displayName: form.name,
       });
 
-      // 🧾 STEP 4 — CREATE USER DOC
-      const myReferralCode = generateReferralCode(
-        form.username,
-        user.uid
-      );
-
+      // 4️⃣ CREATE USER DOC
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         email: form.email,
         name: form.name,
         username: form.username,
-        referralCode: myReferralCode,
-        referredBy, // ✅ null OR UID
+        referralCode: generateReferralCode(form.username, user.uid),
+        referredBy,
         package: "free",
         createdAt: new Date(),
       });
 
-      // 👛 STEP 5 — CREATE WALLET
+      // 5️⃣ CREATE WALLET
       await setDoc(doc(db, "wallets", user.uid), {
         userId: user.uid,
         pallBalance: 0,
@@ -130,20 +115,15 @@ export default function SignUp() {
 
       toast({
         title: "Success",
-        description: "Account created successfully!",
+        description: "Account created successfully",
       });
 
+      // ✅ ONLY ONE REDIRECT — HERE
       navigate("/app/dashboard", { replace: true });
-    } catch (err: any) {
-      console.error("Signup error:", err);
 
-      if (err.code === "auth/email-already-in-use")
-        setError("This email is already registered.");
-      else if (err.code === "auth/weak-password")
-        setError("Password must be at least 6 characters.");
-      else if (err.code === "auth/invalid-email")
-        setError("Invalid email address.");
-      else setError("Failed to create account. Please try again.");
+    } catch (err: any) {
+      console.error(err);
+      setError("Signup failed. Try again.");
     } finally {
       setIsLoading(false);
     }
@@ -159,53 +139,42 @@ export default function SignUp() {
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <Label>Full Name</Label>
-              <Input name="name" value={form.name} onChange={handleChange} required />
+              <Input name="name" value={form.name} onChange={handleChange} />
             </div>
 
             <div>
               <Label>Username</Label>
-              <Input name="username" value={form.username} onChange={handleChange} required />
+              <Input name="username" value={form.username} onChange={handleChange} />
             </div>
 
             <div>
               <Label>Email</Label>
-              <Input type="email" name="email" value={form.email} onChange={handleChange} required />
+              <Input type="email" name="email" value={form.email} onChange={handleChange} />
             </div>
 
             <div>
               <Label>Password</Label>
-              <Input type="password" name="password" value={form.password} onChange={handleChange} required />
+              <Input type="password" name="password" value={form.password} onChange={handleChange} />
             </div>
 
             <div>
               <Label>Confirm Password</Label>
-              <Input
-                type="password"
-                name="confirmPassword"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                required
-              />
+              <Input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} />
             </div>
 
             <div>
               <Label>Referral Code (optional)</Label>
-              <Input
-                name="referral"
-                value={form.referral}
-                onChange={handleChange}
-                placeholder="Enter referral code"
-              />
+              <Input name="referral" value={form.referral} onChange={handleChange} />
             </div>
 
             {error && (
-              <div className="p-2 text-sm text-red-600 flex items-center">
+              <div className="text-sm text-red-600 flex items-center">
                 <AlertCircle className="w-4 h-4 mr-2" /> {error}
               </div>
             )}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating Account..." : "Create Account"}
+              {isLoading ? "Creating..." : "Create Account"}
             </Button>
 
             <div className="text-center text-sm">
