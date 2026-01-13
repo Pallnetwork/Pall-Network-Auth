@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 
-// 🔹 Simple referral code generator
+// 🔹 Referral code generator
 function generateReferralCode(username: string, uid: string) {
   return `${username.toLowerCase()}-${uid.slice(0, 5)}`;
 }
@@ -33,7 +33,7 @@ export default function SignUp() {
     username: "",
     password: "",
     confirmPassword: "",
-    referral: "", // 🔗 optional referral input
+    referral: "",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -65,7 +65,15 @@ export default function SignUp() {
     }
 
     try {
-      // 🔍 STEP 1 — validate referral (if provided)
+      // 🔐 STEP 1 — CREATE AUTH USER (VERY IMPORTANT FIRST)
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        form.email,
+        form.password
+      );
+      const user = userCredential.user;
+
+      // 🔍 STEP 2 — VALIDATE REFERRAL (AFTER AUTH)
       let referredBy: string | null = null;
 
       if (form.referral.trim() !== "") {
@@ -82,28 +90,20 @@ export default function SignUp() {
           return;
         }
 
-        referredBy = snap.docs[0].id; // ✅ F1 UID
+        referredBy = snap.docs[0].id; // ✅ parent UID
       }
 
-      // 🔐 STEP 2 — create auth user
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        form.email,
-        form.password
-      );
-      const user = userCredential.user;
-
+      // 👤 STEP 3 — UPDATE PROFILE
       await updateProfile(user, {
         displayName: form.name,
       });
 
-      // 🧾 STEP 3 — generate own referral code
+      // 🧾 STEP 4 — CREATE USER DOC
       const myReferralCode = generateReferralCode(
         form.username,
         user.uid
       );
 
-      // 👤 STEP 4 — create user document
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         email: form.email,
@@ -115,7 +115,7 @@ export default function SignUp() {
         createdAt: new Date(),
       });
 
-      // 👛 STEP 5 — create wallet
+      // 👛 STEP 5 — CREATE WALLET
       await setDoc(doc(db, "wallets", user.uid), {
         userId: user.uid,
         pallBalance: 0,
@@ -127,8 +127,6 @@ export default function SignUp() {
         totalEarnings: 0,
         createdAt: new Date(),
       });
-
-      localStorage.setItem("userId", user.uid);
 
       toast({
         title: "Success",
@@ -190,7 +188,6 @@ export default function SignUp() {
               />
             </div>
 
-            {/* 🔗 OPTIONAL REFERRAL */}
             <div>
               <Label>Referral Code (optional)</Label>
               <Input
