@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { db, auth } from "@/lib/firebase";
-import { doc, setDoc, getDocs, collection, query, where } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  getDocs,
+  query,
+  collection,
+  where,
+} from "firebase/firestore";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
@@ -14,9 +21,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 
-/** ✅ Simple referral code generator */
-function generateReferralCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+// 🔹 Simple referral code generator
+function generateReferralCode(username: string, uid: string) {
+  return `${username.toLowerCase()}-${uid.slice(0, 5)}`;
 }
 
 export default function SignUp() {
@@ -26,7 +33,7 @@ export default function SignUp() {
     username: "",
     password: "",
     confirmPassword: "",
-    referralInput: "", // ✅ NEW
+    referral: "", // 🔗 optional referral input
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -35,10 +42,10 @@ export default function SignUp() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
       if (user) navigate("/app/dashboard", { replace: true });
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, [navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,7 +65,27 @@ export default function SignUp() {
     }
 
     try {
-      // 1️⃣ Create auth user
+      // 🔍 STEP 1 — validate referral (if provided)
+      let referredBy: string | null = null;
+
+      if (form.referral.trim() !== "") {
+        const q = query(
+          collection(db, "users"),
+          where("referralCode", "==", form.referral.trim())
+        );
+
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          setError("Invalid referral code");
+          setIsLoading(false);
+          return;
+        }
+
+        referredBy = snap.docs[0].id; // ✅ F1 UID
+      }
+
+      // 🔐 STEP 2 — create auth user
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         form.email,
@@ -70,40 +97,25 @@ export default function SignUp() {
         displayName: form.name,
       });
 
-      // 2️⃣ Generate my referral code
-      const myReferralCode = generateReferralCode();
+      // 🧾 STEP 3 — generate own referral code
+      const myReferralCode = generateReferralCode(
+        form.username,
+        user.uid
+      );
 
-      // 3️⃣ Find referredBy (F1)
-      let referredBy: string | null = null;
-
-      if (form.referralInput) {
-        const q = query(
-          collection(db, "users"),
-          where("referralCode", "==", form.referralInput.toUpperCase())
-        );
-        const snap = await getDocs(q);
-
-        if (!snap.empty) {
-          referredBy = snap.docs[0].id; // ✅ F1 UID
-        }
-      }
-
-      // 4️⃣ Save user document
+      // 👤 STEP 4 — create user document
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         email: form.email,
         name: form.name,
         username: form.username,
         referralCode: myReferralCode,
-        referredBy, // ✅ referral chain saved
-        miningActive: false,
-        baseSpeed: 1,
-        finalSpeed: 1,
+        referredBy, // ✅ null OR UID
         package: "free",
         createdAt: new Date(),
       });
 
-      // 5️⃣ Create wallet (UNCHANGED)
+      // 👛 STEP 5 — create wallet
       await setDoc(doc(db, "wallets", user.uid), {
         userId: user.uid,
         pallBalance: 0,
@@ -159,24 +171,12 @@ export default function SignUp() {
 
             <div>
               <Label>Email</Label>
-              <Input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                required
-              />
+              <Input type="email" name="email" value={form.email} onChange={handleChange} required />
             </div>
 
             <div>
               <Label>Password</Label>
-              <Input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                required
-              />
+              <Input type="password" name="password" value={form.password} onChange={handleChange} required />
             </div>
 
             <div>
@@ -190,12 +190,12 @@ export default function SignUp() {
               />
             </div>
 
-            {/* ✅ Referral input */}
+            {/* 🔗 OPTIONAL REFERRAL */}
             <div>
               <Label>Referral Code (optional)</Label>
               <Input
-                name="referralInput"
-                value={form.referralInput}
+                name="referral"
+                value={form.referral}
                 onChange={handleChange}
                 placeholder="Enter referral code"
               />
