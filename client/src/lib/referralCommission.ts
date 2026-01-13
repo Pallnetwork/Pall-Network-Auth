@@ -1,7 +1,7 @@
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { db } from "./firebase";
 
-// Commission rates - will be overridden by Firebase settings
+// Commission rates - default
 let F1_RATE = 0.05;
 let F2_RATE = 0.025;
 
@@ -24,89 +24,81 @@ const loadCommissionRates = async () => {
 // Run this after user buys a package
 export const distributeReferralCommission = async (buyerId: string, packagePrice: number) => {
   try {
-    // Load current commission rates
     await loadCommissionRates();
 
-    // 1. Get buyer user document
+    // 🔹 1️⃣ Get buyer doc
     const buyerRef = doc(db, "users", buyerId);
     const buyerSnap = await getDoc(buyerRef);
-
     if (!buyerSnap.exists()) return console.log("❌ Buyer not found");
 
     const buyerData = buyerSnap.data();
-    const f1Username = buyerData.referralBy; // Direct referrer username
+    const f1Id = buyerData.referredBy; // Direct referrer UID
 
-    if (!f1Username) return console.log("ℹ No referrer found for this buyer");
+    if (!f1Id) return console.log("ℹ No referrer for this buyer");
 
-    // 2. Find F1 user (direct referrer) by username
-    const f1Query = query(collection(db, "users"), where("username", "==", f1Username));
-    const f1Snap = await getDocs(f1Query);
-    
-    if (f1Snap.empty) return console.log("❌ F1 user not found");
+    // 🔹 2️⃣ F1 - direct referrer
+    const f1Ref = doc(db, "users", f1Id);
+    const f1Snap = await getDoc(f1Ref);
+    if (!f1Snap.exists()) return console.log("❌ F1 user not found");
 
-    const f1Doc = f1Snap.docs[0];
-    const f1Id = f1Doc.id;
+    const f1Data = f1Snap.data();
+    const f1WalletRef = doc(db, "wallets", f1Id);
     const f1Commission = packagePrice * F1_RATE;
 
-    // 3. Update F1 wallet and referral data
-    const f1WalletRef = doc(db, "wallets", f1Id);
+    // Update F1 wallet
     const f1WalletSnap = await getDoc(f1WalletRef);
     const currentF1Balance = f1WalletSnap.exists() ? (f1WalletSnap.data().usdtBalance || 0) : 0;
-    
-    await setDoc(f1WalletRef, {
-      usdtBalance: currentF1Balance + f1Commission
-    }, { merge: true });
+    await setDoc(f1WalletRef, { usdtBalance: currentF1Balance + f1Commission }, { merge: true });
 
-    // Update F1 referral commission tracking
+    // Update F1 referral doc
     const f1ReferralRef = doc(db, "referrals", f1Id);
     const f1ReferralSnap = await getDoc(f1ReferralRef);
     const currentF1Commission = f1ReferralSnap.exists() ? (f1ReferralSnap.data().f1Commission || 0) : 0;
-    
+    const currentTotal = f1ReferralSnap.exists() ? (f1ReferralSnap.data().totalCommission || 0) : 0;
+
     await setDoc(f1ReferralRef, {
       f1Commission: currentF1Commission + f1Commission,
-      totalCommission: (f1ReferralSnap.exists() ? f1ReferralSnap.data().totalCommission || 0 : 0) + f1Commission
+      totalCommission: currentTotal + f1Commission,
+      referredUsers: f1ReferralSnap.exists()
+        ? Array.from(new Set([...f1ReferralSnap.data().referredUsers, buyerId]))
+        : [buyerId],
     }, { merge: true });
 
     console.log(`✅ F1 Commission ${f1Commission} USDT added to ${f1Id}`);
 
-    // 4. Find F2 (referrer of F1)
-    const f1Data = f1Doc.data();
-    if (f1Data.referralBy) {
-      const f2Query = query(collection(db, "users"), where("username", "==", f1Data.referralBy));
-      const f2Snap = await getDocs(f2Query);
-      
-      if (!f2Snap.empty) {
-        const f2Doc = f2Snap.docs[0];
-        const f2Id = f2Doc.id;
-        const f2Commission = packagePrice * F2_RATE;
+    // 🔹 3️⃣ F2 - referrer of F1
+    const f2Id = f1Data.referredBy;
+    if (f2Id) {
+      const f2Ref = doc(db, "users", f2Id);
+      const f2Snap = await getDoc(f2Ref);
+      if (!f2Snap.exists()) return console.log("ℹ F2 user not found");
 
-        // Update F2 wallet
-        const f2WalletRef = doc(db, "wallets", f2Id);
-        const f2WalletSnap = await getDoc(f2WalletRef);
-        const currentF2Balance = f2WalletSnap.exists() ? (f2WalletSnap.data().usdtBalance || 0) : 0;
-        
-        await setDoc(f2WalletRef, {
-          usdtBalance: currentF2Balance + f2Commission
-        }, { merge: true });
+      const f2WalletRef = doc(db, "wallets", f2Id);
+      const f2Commission = packagePrice * F2_RATE;
 
-        // Update F2 referral commission tracking
-        const f2ReferralRef = doc(db, "referrals", f2Id);
-        const f2ReferralSnap = await getDoc(f2ReferralRef);
-        const currentF2Commission = f2ReferralSnap.exists() ? (f2ReferralSnap.data().f2Commission || 0) : 0;
-        
-        await setDoc(f2ReferralRef, {
-          f2Commission: currentF2Commission + f2Commission,
-          totalCommission: (f2ReferralSnap.exists() ? f2ReferralSnap.data().totalCommission || 0 : 0) + f2Commission
-        }, { merge: true });
+      // Update F2 wallet
+      const f2WalletSnap = await getDoc(f2WalletRef);
+      const currentF2Balance = f2WalletSnap.exists() ? (f2WalletSnap.data().usdtBalance || 0) : 0;
+      await setDoc(f2WalletRef, { usdtBalance: currentF2Balance + f2Commission }, { merge: true });
 
-        console.log(`✅ F2 Commission ${f2Commission} USDT added to ${f2Id}`);
-      }
+      // Update F2 referral doc
+      const f2ReferralRef = doc(db, "referrals", f2Id);
+      const f2ReferralSnap = await getDoc(f2ReferralRef);
+      const currentF2Commission = f2ReferralSnap.exists() ? (f2ReferralSnap.data().f2Commission || 0) : 0;
+      const currentF2Total = f2ReferralSnap.exists() ? (f2ReferralSnap.data().totalCommission || 0) : 0;
+
+      await setDoc(f2ReferralRef, {
+        f2Commission: currentF2Commission + f2Commission,
+        totalCommission: currentF2Total + f2Commission,
+      }, { merge: true });
+
+      console.log(`✅ F2 Commission ${f2Commission} USDT added to ${f2Id}`);
     }
 
     return {
       success: true,
       f1Commission,
-      f2Commission: f1Data.referralBy ? packagePrice * F2_RATE : 0
+      f2Commission: f2Id ? packagePrice * F2_RATE : 0,
     };
 
   } catch (error: any) {

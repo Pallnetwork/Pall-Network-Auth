@@ -209,45 +209,17 @@ export default function Dashboard() {
             setProfile(profileDoc.data() as Profile);
           }
 
-          // Fetch referrals count safely (from referrals doc only)
-          try {
-            const referralSnap = await getDoc(doc(db, "referrals", userId));
-            if (referralSnap.exists()) {
-              const refData = referralSnap.data();
-              setReferralData({
-                f1Commission: refData?.f1Commission || 0,
-                f2Commission: refData?.f2Commission || 0,
-                totalCommission: refData?.totalCommission || 0,
-                referredUsers: refData?.referredUsers || []
-              });
-            }
-          } catch (e) {
-            console.error("Referral fetch error:", e);
-          }
-          
-          // Fetch mining data
-          try {
-            const walletSnap = await getDoc(doc(db, "wallets", userId));
-            if (walletSnap.exists()) {
-              const walletData = walletSnap.data();
-              setPallBalance(walletData.pallBalance || 0);
-              setUsdtBalance(walletData.usdtBalance || 0);
-              setMiningStatus(walletData.miningActive || false);
-            }
-          } catch (error) {
-            console.error("Error fetching mining data:", error);
-          }
-
           // Fetch referral data
           try {
             const referralSnap = await getDoc(doc(db, "referrals", userId));
+
             if (referralSnap.exists()) {
               const refData = referralSnap.data();
               setReferralData({
                 f1Commission: refData.f1Commission || 0,
                 f2Commission: refData.f2Commission || 0,
                 totalCommission: refData.totalCommission || 0,
-                referredUsers: refData.referredUsers || []
+                referredUsers: refData.referredUsers || [],
               });
             } else {
               // ✅ RULE-SAFE: frontend does NOTHING if doc missing
@@ -255,7 +227,7 @@ export default function Dashboard() {
                 f1Commission: 0,
                 f2Commission: 0,
                 totalCommission: 0,
-                referredUsers: []
+                referredUsers: [],
               });
             }
           } catch (error) {
@@ -502,6 +474,34 @@ export default function Dashboard() {
           <img src="/logo192.png" alt="Pall Network" className="w-8 h-8 rounded-full" />
           <h1 className="text-xl font-bold">Pall Network</h1>
         </div>
+
+        {/* ===== Referral Commissions & Team ===== */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* F1 Commission Card */}
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Direct Referrals (F1)</h3>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {referralData?.f1Commission?.toFixed(2) || 0} USDT
+            </p>
+          </div>
+
+          {/* F2 Commission Card */}
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Indirect Referrals (F2)</h3>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {referralData?.f2Commission?.toFixed(2) || 0} USDT
+            </p>
+          </div>
+
+          {/* Total Commission Card */}
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Referral Earnings</h3>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {referralData?.totalCommission?.toFixed(2) || 0} USDT
+            </p>
+          </div>
+        </div>
+        
         <Button
           variant="ghost"
           size="sm"
