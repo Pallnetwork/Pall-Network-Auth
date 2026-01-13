@@ -12,6 +12,7 @@ import { LogOut, Menu, X, Home, User, Users, CreditCard, Info, Wallet, Shield, P
 import MiningDashboard from "@/components/MiningDashboard";
 import UpgradePage from "@/components/UpgradePage";
 import PoliciesPage from "@/components/PoliciesPage";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 interface User {
   id: string;
@@ -212,6 +213,22 @@ export default function Dashboard() {
           // Fetch referral data
           try {
             const referralSnap = await getDoc(doc(db, "referrals", userId));
+
+            // Fetch F1 referral users list
+            try {
+              const usersSnap = await getDoc(doc(db, "users", userId));
+              if (usersSnap.exists()) {
+                const q = query(
+                  collection(db, "users"),
+                  where("referredBy", "==", userId)
+                );
+                const snap = await getDocs(q);
+                const list: User[] = snap.docs.map(d => d.data() as User);
+                setReferrals(list);
+              }
+            } catch (e) {
+              console.error("Error fetching referral users:", e);
+            }
 
             if (referralSnap.exists()) {
               const refData = referralSnap.data();
@@ -469,39 +486,12 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top Bar with Safe Area */}
-      <div className="flex justify-between items-center bg-green-600 text-white p-4 pt-8 shadow-lg" style={{paddingTop: 'max(2rem, env(safe-area-inset-top, 2rem))'}}>
+      <div className="flex justify-between items-center bg-green-600 text-white p-2 pt-8 shadow-lg" style={{paddingTop: 'max(2rem, env(safe-area-inset-top, 1rem))'}}>
         <div className="flex items-center space-x-3">
           <img src="/logo192.png" alt="Pall Network" className="w-8 h-8 rounded-full" />
           <h1 className="text-xl font-bold">Pall Network</h1>
         </div>
 
-        {/* ===== Referral Commissions & Team ===== */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* F1 Commission Card */}
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Direct Referrals (F1)</h3>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {referralData?.f1Commission?.toFixed(2) || 0} USDT
-            </p>
-          </div>
-
-          {/* F2 Commission Card */}
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Indirect Referrals (F2)</h3>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {referralData?.f2Commission?.toFixed(2) || 0} USDT
-            </p>
-          </div>
-
-          {/* Total Commission Card */}
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-            <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Referral Earnings</h3>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {referralData?.totalCommission?.toFixed(2) || 0} USDT
-            </p>
-          </div>
-        </div>
-        
         <Button
           variant="ghost"
           size="sm"
