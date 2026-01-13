@@ -1,4 +1,3 @@
-// server/routes/mine.ts
 import express from "express";
 import { verifyFirebaseToken } from "../middleware/auth";
 import admin, { db } from "../firebase";
@@ -8,25 +7,70 @@ const router = express.Router();
 const COOLDOWN_HOURS = 24;
 const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
 
+/**
+ * 🔹 Referral speed calculator
+ * F1 active  → +0.1
+ * F2 active  → +0.001
+ */
+async function calculateMiningSpeed(uid: string) {
+  let speed = 1;
+
+  const userSnap = await db.collection("users").doc(uid).get();
+  if (!userSnap.exists) return speed;
+
+  const user = userSnap.data()!;
+  const referredBy = user.referredBy;
+
+  // 🔗 F1
+  if (referredBy) {
+    const f1WalletSnap = await db.collection("wallets").doc(referredBy).get();
+    const f1UserSnap = await db.collection("users").doc(referredBy).get();
+
+    if (f1WalletSnap.exists && f1UserSnap.exists) {
+      const f1Wallet = f1WalletSnap.data()!;
+      const f1User = f1UserSnap.data()!;
+
+      if (f1Wallet.miningActive === true) {
+        speed += 0.1;
+      }
+
+      // 🔗 F2
+      if (f1User.referredBy) {
+        const f2WalletSnap = await db
+          .collection("wallets")
+          .doc(f1User.referredBy)
+          .get();
+
+        if (f2WalletSnap.exists) {
+          const f2Wallet = f2WalletSnap.data()!;
+          if (f2Wallet.miningActive === true) {
+            speed += 0.001;
+          }
+        }
+      }
+    }
+  }
+
+  return speed;
+}
+
 router.post("/", verifyFirebaseToken, async (req, res) => {
   try {
     const uid = (req as any).user?.uid;
     if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
     const walletRef = db.collection("wallets").doc(uid);
-
-    // 🔑 SESSION 4 RULE: Firestore is the ONLY source of truth
     const snap = await walletRef.get();
     const nowMs = Date.now();
 
     let isNewUser = false;
 
-    // ✅ First-time user → wallet create
+    // ✅ First-time wallet create (UNCHANGED)
     if (!snap.exists) {
       isNewUser = true;
 
       await walletRef.set({
-        uid, // keep existing
+        uid,
         pallBalance: 0,
         miningActive: false,
         lastStart: null,
@@ -39,24 +83,17 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
       });
     }
 
-    // 🔁 Always re-read wallet (SESSION 4 safety)
     const walletSnap = await walletRef.get();
-    if (!walletSnap.exists) {
-      return res.status(500).json({ error: "Wallet not found" });
-    }
-
     const wallet = walletSnap.data()!;
     const lastStartDate =
       wallet.lastStart && wallet.lastStart.toDate
         ? wallet.lastStart.toDate()
         : null;
 
-    // ❌ Mining already running
     if (wallet.miningActive === true) {
       return res.status(400).json({ error: "Mining already active" });
     }
 
-    // ⏳ Cooldown check (existing logic preserved)
     if (!isNewUser && lastStartDate) {
       const diff = nowMs - lastStartDate.getTime();
       if (diff < COOLDOWN_MS) {
@@ -68,25 +105,24 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
       }
     }
 
-    // 🚀 SESSION 4 — START MINING
+    // 🚀 START MINING + REFERRAL SPEED
     const nowTs = admin.firestore.Timestamp.now();
+    const miningSpeed = await calculateMiningSpeed(uid);
 
     await walletRef.update({
       miningActive: true,
-      lastStart: nowTs,       // miningStartedAt (SESSION 4 equivalent)
-      lastMinedAt: nowTs,    // used later in stop logic
+      miningSpeed,          // ✅ FINAL SPEED SAVED
+      lastStart: nowTs,
+      lastMinedAt: nowTs,
     });
 
     return res.json({
       success: true,
-      message: isNewUser
-        ? "Mining started (new user)"
-        : "Mining session started",
-      miningStartedAt: nowTs,
+      miningSpeed,
+      message: "Mining session started",
     });
-
   } catch (err) {
-    console.error("SESSION 4 mining start error:", err);
+    console.error("Referral mining start error:", err);
     return res.status(500).json({ error: "Mining failed" });
   }
 });

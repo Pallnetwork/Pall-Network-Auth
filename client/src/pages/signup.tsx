@@ -1,14 +1,23 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { db, auth } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
-import { createUserWithEmailAndPassword, updateProfile, onAuthStateChanged } from "firebase/auth";
+import { doc, setDoc, getDocs, collection, query, where } from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  onAuthStateChanged,
+} from "firebase/auth";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
+
+/** ✅ Simple referral code generator */
+function generateReferralCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
 
 export default function SignUp() {
   const [form, setForm] = useState({
@@ -17,6 +26,7 @@ export default function SignUp() {
     username: "",
     password: "",
     confirmPassword: "",
+    referralInput: "", // ✅ NEW
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -48,30 +58,52 @@ export default function SignUp() {
     }
 
     try {
-      // ✅ Firebase Auth create user
-      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      // 1️⃣ Create auth user
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        form.email,
+        form.password
+      );
       const user = userCredential.user;
 
       await updateProfile(user, {
         displayName: form.name,
       });
 
-      // ✅ Generate referral code
-      const referralCode = form.username.toLowerCase() + "-" + user.uid.slice(0, 5);
+      // 2️⃣ Generate my referral code
+      const myReferralCode = generateReferralCode();
 
-      // ✅ Create user document
+      // 3️⃣ Find referredBy (F1)
+      let referredBy: string | null = null;
+
+      if (form.referralInput) {
+        const q = query(
+          collection(db, "users"),
+          where("referralCode", "==", form.referralInput.toUpperCase())
+        );
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+          referredBy = snap.docs[0].id; // ✅ F1 UID
+        }
+      }
+
+      // 4️⃣ Save user document
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         email: form.email,
         name: form.name,
         username: form.username,
-        referralCode,
-        referredBy: null, // invitation code optional, initially null
+        referralCode: myReferralCode,
+        referredBy, // ✅ referral chain saved
+        miningActive: false,
+        baseSpeed: 1,
+        finalSpeed: 1,
         package: "free",
         createdAt: new Date(),
       });
 
-      // ✅ Create wallet document
+      // 5️⃣ Create wallet (UNCHANGED)
       await setDoc(doc(db, "wallets", user.uid), {
         userId: user.uid,
         pallBalance: 0,
@@ -95,9 +127,12 @@ export default function SignUp() {
     } catch (err: any) {
       console.error("Signup error:", err);
 
-      if (err.code === "auth/email-already-in-use") setError("This email is already registered.");
-      else if (err.code === "auth/weak-password") setError("Password must be at least 6 characters.");
-      else if (err.code === "auth/invalid-email") setError("Invalid email address.");
+      if (err.code === "auth/email-already-in-use")
+        setError("This email is already registered.");
+      else if (err.code === "auth/weak-password")
+        setError("Password must be at least 6 characters.");
+      else if (err.code === "auth/invalid-email")
+        setError("Invalid email address.");
       else setError("Failed to create account. Please try again.");
     } finally {
       setIsLoading(false);
@@ -124,17 +159,46 @@ export default function SignUp() {
 
             <div>
               <Label>Email</Label>
-              <Input type="email" name="email" value={form.email} onChange={handleChange} required />
+              <Input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                required
+              />
             </div>
 
             <div>
               <Label>Password</Label>
-              <Input type="password" name="password" value={form.password} onChange={handleChange} required />
+              <Input
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                required
+              />
             </div>
 
             <div>
               <Label>Confirm Password</Label>
-              <Input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} required />
+              <Input
+                type="password"
+                name="confirmPassword"
+                value={form.confirmPassword}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            {/* ✅ Referral input */}
+            <div>
+              <Label>Referral Code (optional)</Label>
+              <Input
+                name="referralInput"
+                value={form.referralInput}
+                onChange={handleChange}
+                placeholder="Enter referral code"
+              />
             </div>
 
             {error && (
