@@ -1,140 +1,54 @@
-import { useState } from "react";
-import { useNavigate } from "wouter";
-import { auth, db } from "@/lib/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { setDoc, doc, collection, getDocs, query, where, serverTimestamp } from "firebase/firestore";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react"; import { useLocation } from "wouter"; import { auth, db } from "@/lib/firebase"; import { createUserWithEmailAndPassword } from "firebase/auth"; import { doc, setDoc, getDocs, query, collection, where } from "firebase/firestore"; import { useToast } from "@/hooks/use-toast";
 
-export default function SignUp() {
-  const [form, setForm] = useState({
-    fullName: "",
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    referralCode: "",
+interface User { id: string; name: string; username: string; email: string; referredBy?: string; package?: string; }
+
+export default function Signup() { const [form, setForm] = useState({ fullName: "", username: "", email: "", password: "", confirmPassword: "", referralCode: "" }); const [loading, setLoading] = useState(false); const { toast } = useToast(); const [, navigate] = useLocation(); // wouter compatible
+
+const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => { setForm({ ...form, [e.target.name]: e.target.value }); };
+
+const handleSignup = async () => { if (form.password !== form.confirmPassword) { toast({ title: "Error", description: "Passwords do not match", variant: "destructive" }); return; }
+
+setLoading(true);
+try {
+  // Create user in Firebase Auth
+  const userCred = await createUserWithEmailAndPassword(auth, form.email, form.password);
+  const uid = userCred.user.uid;
+
+  let referredByUID: string | null = null;
+
+  if (form.referralCode.trim() !== "") {
+    // Fetch the user with that referral code
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("referralCode", "==", form.referralCode));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      referredByUID = snap.docs[0].id; // ✅ UID only
+    } else {
+      referredByUID = null; // invalid referral, ignore
+    }
+  }
+
+  // Save user document in Firestore
+  await setDoc(doc(db, "users", uid), {
+    id: uid,
+    name: form.fullName,
+    username: form.username,
+    email: form.email,
+    package: "free",
+    referredBy: referredByUID || null,
+    createdAt: new Date(),
+    referralCode: `${form.username}-${uid.slice(0,5)}` // generate referral code
   });
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-  const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const generateReferralCode = (username: string, uid: string) => {
-    return `${username}-${uid.slice(0, 5)}`;
-  };
-
-  const handleSignUp = async () => {
-    if (form.password !== form.confirmPassword) {
-      toast({
-        title: "Password mismatch",
-        description: "Passwords do not match",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // 1️⃣ Create Firebase Auth user
-      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
-      const newUserUID = userCredential.user.uid;
-
-      // 2️⃣ Referral Handling (SAFE)
-      let referredByUID: string | null = null;
-      const codeInput = form.referralCode?.trim();
-
-      if (codeInput) {
-        try {
-          const q = query(
-            collection(db, "users"),
-            where("referralCode", "==", codeInput)
-          );
-          const snap = await getDocs(q);
-
-          if (!snap.empty) {
-            referredByUID = snap.docs[0].id; // ✅ UID only
-            console.log("Referral UID found:", referredByUID);
-          } else {
-            console.warn("Referral code invalid or not found:", codeInput);
-          }
-        } catch (error) {
-          console.error("Error fetching referral UID:", error);
-        }
-      }
-
-      // 3️⃣ Save user to Firestore
-      await setDoc(doc(db, "users", newUserUID), {
-        id: newUserUID,
-        name: form.fullName,
-        username: form.username,
-        email: form.email,
-        package: "free",
-        referralCode: generateReferralCode(form.username, newUserUID),
-        referredBy: referredByUID,
-        createdAt: serverTimestamp(),
-      });
-
-      toast({
-        title: "Account created",
-        description: "Welcome to Pall Network!",
-      });
-
-      navigate("/app/signin");
-    } catch (error: any) {
-      console.error("Signup error:", error);
-      toast({
-        title: "Signup failed",
-        description: error.message || "Please try again",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="max-w-md w-full bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md space-y-4">
-        <h2 className="text-2xl font-bold text-center">Sign Up</h2>
-
-        <div className="space-y-2">
-          <Label htmlFor="fullName">Full Name</Label>
-          <Input id="fullName" name="fullName" value={form.fullName} onChange={handleChange} />
-
-          <Label htmlFor="username">Username</Label>
-          <Input id="username" name="username" value={form.username} onChange={handleChange} />
-
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" value={form.email} onChange={handleChange} />
-
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" value={form.password} onChange={handleChange} />
-
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <Input id="confirmPassword" name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} />
-
-          <Label htmlFor="referralCode">Referral Code (Optional)</Label>
-          <Input id="referralCode" name="referralCode" value={form.referralCode} onChange={handleChange} />
-        </div>
-
-        <Button onClick={handleSignUp} className="w-full" disabled={loading}>
-          {loading ? "Creating account..." : "Sign Up"}
-        </Button>
-
-        <p className="text-center text-sm text-muted-foreground mt-2">
-          Already have an account?{" "}
-          <span className="text-blue-600 cursor-pointer" onClick={() => navigate("/app/signin")}>
-            Sign In
-          </span>
-        </p>
-      </div>
-    </div>
-  );
+  toast({ title: "Success", description: "Account created successfully" });
+  navigate("/app/dashboard");
+} catch (error: any) {
+  console.error("Signup error:", error);
+  toast({ title: "Error", description: error.message || "Failed to create account", variant: "destructive" });
+} finally {
+  setLoading(false);
 }
+
+};
+
+return ( <div className="max-w-md mx-auto p-6 space-y-4"> <h2 className="text-2xl font-bold text-center">Create Account</h2> <input type="text" name="fullName" placeholder="Full Name" value={form.fullName} onChange={handleChange} className="input" /> <input type="text" name="username" placeholder="Username" value={form.username} onChange={handleChange} className="input" /> <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} className="input" /> <input type="password" name="password" placeholder="Password" value={form.password} onChange={handleChange} className="input" /> <input type="password" name="confirmPassword" placeholder="Confirm Password" value={form.confirmPassword} onChange={handleChange} className="input" /> <input type="text" name="referralCode" placeholder="Referral Code (optional)" value={form.referralCode} onChange={handleChange} className="input" /> <button onClick={handleSignup} disabled={loading} className="btn w-full">{loading ? "Creating..." : "Create Account"}</button> </div> ); }
