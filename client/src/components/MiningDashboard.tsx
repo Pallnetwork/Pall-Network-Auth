@@ -1,17 +1,18 @@
 // client/src/components/MiningDashboard.tsx
 import React, { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
-import { doc, onSnapshot, getDoc, setDoc, updateDoc, increment } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
+import { claimDailyReward } from "@/lib/dailyReward";
 
 declare global {
   interface Window {
     AndroidBridge?: {
       startRewardedAd: () => void;
-      startDailyRewardedAd?: () => void;  // ensure this exists if called
+      startDailyRewardedAd?: () => void;
       setAdPurpose?: (purpose: string) => void;
     };
     onAdCompleted?: () => void;
@@ -41,11 +42,8 @@ export default function MiningDashboard() {
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setUid(user.uid);
-      } else {
-        setUid(null);
-      }
+      if (user) setUid(user.uid);
+      else setUid(null);
     });
     return () => unsubscribe();
   }, []);
@@ -104,41 +102,6 @@ export default function MiningDashboard() {
 
     return () => unsub();
   }, [uid, waitingForAd]);
-
-  // Fetch daily reward info from Firestore
-  useEffect(() => {
-    if (!uid) return;
-
-    const fetchDailyReward = async () => {
-      const ref = doc(db, "dailyRewards", uid);
-      const snap = await getDoc(ref);
-
-      if (!snap.exists()) {
-        await setDoc(ref, {
-          claimedCount: 0,
-          lastClaimAt: null,
-        });
-        setClaimedCount(0);
-        return;
-      }
-
-      const data = snap.data();
-      const now = Date.now();
-      const last = data.lastClaimAt?.toMillis?.() || 0;
-
-      if (now - last > 24 * 60 * 60 * 1000) {
-        await setDoc(ref, {
-          claimedCount: 0,
-          lastClaimAt: null,
-        });
-        setClaimedCount(0);
-      } else {
-        setClaimedCount(data.claimedCount || 0);
-      }
-    };
-
-    fetchDailyReward();
-  }, [uid]);
 
   // UI timer for mining balance and countdown
   useEffect(() => {
@@ -211,36 +174,34 @@ export default function MiningDashboard() {
         return;
       }
 
-      const ref = doc(db, "dailyRewards", uid);
-      const snap = await getDoc(ref);
+      try {
+        const res = await claimDailyReward(uid);
+        if (res.status === "success") {
+          setClaimedCount(res.data.newCount);
+          setUiBalance((prev) => prev + 0.1);
+          setDailyWaiting(false);
 
-      let count = snap.exists() ? snap.data().claimedCount || 0 : 0;
-
-      if (count >= 10) {
+          toast({
+            title: "🎉 Reward Received",
+            description: "+0.1 Pall added to your balance",
+          });
+        } else {
+          setDailyWaiting(false);
+          toast({
+            title: "Error",
+            description: res.message || "Reward claim failed",
+            variant: "destructive",
+          });
+        }
+      } catch (err) {
+        console.error(err);
         setDailyWaiting(false);
-        return;
+        toast({
+          title: "Error",
+          description: "Unexpected error during daily reward",
+          variant: "destructive",
+        });
       }
-
-      await setDoc(
-        ref,
-        {
-          claimedCount: count + 1,
-          lastClaimAt: new Date(),
-        },
-        { merge: true }
-      );
-
-      await updateDoc(doc(db, "wallets", uid), {
-        pallBalance: increment(0.1),
-      });
-
-      setClaimedCount(count + 1);
-      setDailyWaiting(false);
-
-      toast({
-        title: "🎉 Reward Received",
-        description: "+0.1 Pall added to your balance",
-      });
     };
 
     return () => {
@@ -250,7 +211,6 @@ export default function MiningDashboard() {
     };
   }, [uid]);
 
-  // Start mining button handler
   const handleStartMining = () => {
     if (waitingForAd) return;
 
@@ -272,7 +232,6 @@ export default function MiningDashboard() {
     }
   };
 
-  // Fallback mining start without ad (web)
   const startMiningBackend = async () => {
     if (!uid) return;
 
@@ -301,7 +260,6 @@ export default function MiningDashboard() {
     }
   };
 
-  // Daily reward button handler
   const handleDailyReward = async () => {
     if (!uid || dailyWaiting) return;
 
@@ -321,7 +279,6 @@ export default function MiningDashboard() {
     }
   };
 
-  // Format seconds to hh:mm:ss
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
