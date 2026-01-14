@@ -1,238 +1,140 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "wouter";
-import { db, auth } from "@/lib/firebase";
-import {
-  doc,
-  setDoc,
-  getDocs,
-  query,
-  collection,
-  where,
-  arrayUnion
-} from "firebase/firestore";
-import {
-  createUserWithEmailAndPassword,
-  updateProfile,
-  onAuthStateChanged,
-} from "firebase/auth";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useNavigate } from "wouter";
+import { auth, db } from "@/lib/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { setDoc, doc, collection, getDocs, query, where, serverTimestamp } from "firebase/firestore";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { AlertCircle } from "lucide-react";
-
-// 🔹 Simple referral code generator
-function generateReferralCode(username: string, uid: string) {
-  return `${username.toLowerCase()}-${uid.slice(0, 5)}`;
-}
 
 export default function SignUp() {
   const [form, setForm] = useState({
-    email: "",
-    name: "",
+    fullName: "",
     username: "",
+    email: "",
     password: "",
     confirmPassword: "",
-    referral: "", // 🔗 optional referral input
+    referralCode: "",
   });
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [, navigate] = useLocation();
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) navigate("/app/dashboard", { replace: true });
-    });
-    return () => unsub();
-  }, [navigate]);
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    setError("");
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
+  const generateReferralCode = (username: string, uid: string) => {
+    return `${username}-${uid.slice(0, 5)}`;
+  };
 
+  const handleSignUp = async () => {
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match");
-      setIsLoading(false);
+      toast({
+        title: "Password mismatch",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
       return;
     }
 
+    setLoading(true);
+
     try {
-      // 🔍 STEP 1 — validate referral (if provided)
-      let referredBy: string | null = null;
+      // 1️⃣ Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
+      const newUserUID = userCredential.user.uid;
 
-      if (form.referral.trim() !== "") {
-        const q = query(
-          collection(db, "users"),
-          where("referralCode", "==", form.referral.trim())
-        );
+      // 2️⃣ Referral Handling (SAFE)
+      let referredByUID: string | null = null;
+      const codeInput = form.referralCode?.trim();
 
-        const snap = await getDocs(q);
+      if (codeInput) {
+        try {
+          const q = query(
+            collection(db, "users"),
+            where("referralCode", "==", codeInput)
+          );
+          const snap = await getDocs(q);
 
-        if (snap.empty) {
-          setError("Invalid referral code");
-          setIsLoading(false);
-          return;
+          if (!snap.empty) {
+            referredByUID = snap.docs[0].id; // ✅ UID only
+            console.log("Referral UID found:", referredByUID);
+          } else {
+            console.warn("Referral code invalid or not found:", codeInput);
+          }
+        } catch (error) {
+          console.error("Error fetching referral UID:", error);
         }
-
-        referredBy = snap.docs[0].id; // ✅ F1 UID
       }
 
-      // 🔐 STEP 2 — create auth user
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        form.email,
-        form.password
-      );
-      const user = userCredential.user;
-
-      await updateProfile(user, {
-        displayName: form.name,
-      });
-
-      // 🧾 STEP 3 — generate own referral code
-      const myReferralCode = generateReferralCode(
-        form.username,
-        user.uid
-      );
-
-      // 👤 STEP 4 — create user document
-      await setDoc(doc(db, "users", user.uid), {
-        id: user.uid,
-        email: form.email,
-        name: form.name,
+      // 3️⃣ Save user to Firestore
+      await setDoc(doc(db, "users", newUserUID), {
+        id: newUserUID,
+        name: form.fullName,
         username: form.username,
-        referralCode: myReferralCode,
-        referredBy, // ✅ null OR UID
+        email: form.email,
         package: "free",
-        createdAt: new Date(),
+        referralCode: generateReferralCode(form.username, newUserUID),
+        referredBy: referredByUID,
+        createdAt: serverTimestamp(),
       });
-
-      // 🔗 STEP 4.1 — update parent's referral list
-      if (referredBy) {
-        const refDocRef = doc(db, "referrals", referredBy);
-        await setDoc(
-          refDocRef,
-          {
-            referredUsers: arrayUnion(user.uid) // Add new user to parent's referral list
-          },
-          { merge: true }
-        );
-      }
-
-      // 👛 STEP 5 — create wallet
-      await setDoc(doc(db, "wallets", user.uid), {
-        userId: user.uid,
-        pallBalance: 0,
-        usdtBalance: 0,
-        currentPackage: "free",
-        miningSpeed: 1,
-        miningActive: false,
-        lastStart: null,
-        totalEarnings: 0,
-        createdAt: new Date(),
-      });
-
-      localStorage.setItem("userId", user.uid);
 
       toast({
-        title: "Success",
-        description: "Account created successfully!",
+        title: "Account created",
+        description: "Welcome to Pall Network!",
       });
 
-      navigate("/app/dashboard", { replace: true });
-    } catch (err: any) {
-      console.error("Signup error:", err);
-
-      if (err.code === "auth/email-already-in-use")
-        setError("This email is already registered.");
-      else if (err.code === "auth/weak-password")
-        setError("Password must be at least 6 characters.");
-      else if (err.code === "auth/invalid-email")
-        setError("Invalid email address.");
-      else setError("Failed to create account. Please try again.");
+      navigate("/app/signin");
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      toast({
+        title: "Signup failed",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <h2 className="text-2xl font-semibold">Create Account</h2>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div>
-              <Label>Full Name</Label>
-              <Input name="name" value={form.name} onChange={handleChange} required />
-            </div>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="max-w-md w-full bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md space-y-4">
+        <h2 className="text-2xl font-bold text-center">Sign Up</h2>
 
-            <div>
-              <Label>Username</Label>
-              <Input name="username" value={form.username} onChange={handleChange} required />
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="fullName">Full Name</Label>
+          <Input id="fullName" name="fullName" value={form.fullName} onChange={handleChange} />
 
-            <div>
-              <Label>Email</Label>
-              <Input type="email" name="email" value={form.email} onChange={handleChange} required />
-            </div>
+          <Label htmlFor="username">Username</Label>
+          <Input id="username" name="username" value={form.username} onChange={handleChange} />
 
-            <div>
-              <Label>Password</Label>
-              <Input type="password" name="password" value={form.password} onChange={handleChange} required />
-            </div>
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" name="email" type="email" value={form.email} onChange={handleChange} />
 
-            <div>
-              <Label>Confirm Password</Label>
-              <Input
-                type="password"
-                name="confirmPassword"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                required
-              />
-            </div>
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" name="password" type="password" value={form.password} onChange={handleChange} />
 
-            {/* 🔗 OPTIONAL REFERRAL */}
-            <div>
-              <Label>Referral Code (optional)</Label>
-              <Input
-                name="referral"
-                value={form.referral}
-                onChange={handleChange}
-                placeholder="Enter referral code"
-              />
-            </div>
+          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <Input id="confirmPassword" name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} />
 
-            {error && (
-              <div className="p-2 text-sm text-red-600 flex items-center">
-                <AlertCircle className="w-4 h-4 mr-2" /> {error}
-              </div>
-            )}
+          <Label htmlFor="referralCode">Referral Code (Optional)</Label>
+          <Input id="referralCode" name="referralCode" value={form.referralCode} onChange={handleChange} />
+        </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating Account..." : "Create Account"}
-            </Button>
+        <Button onClick={handleSignUp} className="w-full" disabled={loading}>
+          {loading ? "Creating account..." : "Sign Up"}
+        </Button>
 
-            <div className="text-center text-sm">
-              Already have an account?{" "}
-              <Link href="/app/signin" className="text-primary">
-                Sign In
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        <p className="text-center text-sm text-muted-foreground mt-2">
+          Already have an account?{" "}
+          <span className="text-blue-600 cursor-pointer" onClick={() => navigate("/app/signin")}>
+            Sign In
+          </span>
+        </p>
+      </div>
     </div>
   );
 }
