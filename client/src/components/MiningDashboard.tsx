@@ -29,7 +29,7 @@ export default function MiningDashboard() {
   const [waitingForAd, setWaitingForAd] = useState(false);
 
   // ✅ Daily Reward States
-  const [dailyClaimed, setDailyClaimed] = useState(0);
+  const [claimedCount, setClaimedCount] = useState(0);
   const [dailyWaiting, setDailyWaiting] = useState(false);
 
   const toast = useToast();
@@ -108,30 +108,36 @@ export default function MiningDashboard() {
   useEffect(() => {
     if (!uid) return;
 
-    const ref = doc(db, "dailyRewards", uid);
-
-    const fetchReward = async () => {
-      const snap = await getDoc(ref);
-      const now = Date.now();
-
-      if (snap.exists()) {
-        const data = snap.data();
-        const last = data.lastClaimAt?.toMillis() || 0;
-
-        if (now - last > 24 * 60 * 60 * 1000) {
-          await setDoc(ref, { claimedCount: 0, lastClaimAt: null });
-          setDailyClaimed(0);
-        } else {
-          setDailyClaimed(data.claimedCount);
-        }
-      } else {
-        await setDoc(ref, { claimedCount: 0, lastClaimAt: null });
-        setDailyClaimed(0);
-      }
-    };
-
-    fetchReward();
+    fetchDailyReward();
   }, [uid]);
+
+  async function fetchDailyReward() {
+    const ref = doc(db, "dailyRewards", uid!);
+    const snap = await getDoc(ref);
+
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        claimedCount: 0,
+        lastClaimAt: null,
+      });
+      setClaimedCount(0);
+      return;
+    }
+
+    const data = snap.data();
+    const now = Date.now();
+    const last = data.lastClaimAt?.toMillis?.() || 0;
+
+    if (now - last > 24 * 60 * 60 * 1000) {
+      await setDoc(ref, {
+        claimedCount: 0,
+        lastClaimAt: null,
+      });
+      setClaimedCount(0);
+    } else {
+      setClaimedCount(data.claimedCount || 0);
+    }
+  }
 
   // ================= UI TIMER =================
   useEffect(() => {
@@ -203,30 +209,35 @@ export default function MiningDashboard() {
 
     // ================= DAILY REWARD CALLBACK =================
     window.onRewardAdCompleted = async () => {
-      setDailyWaiting(false);
+      if (!uid) {
+        setDailyWaiting(false);
+        return;
+      }    
 
-      if (!uid) return;
       const ref = doc(db, "dailyRewards", uid);
       const snap = await getDoc(ref);
-      let count = snap.exists() ? snap.data().claimedCount : 0;
 
-      if (count >= 10) return;
+      let count = snap.exists() ? snap.data().claimedCount || 0 : 0;
+      
+      if (count >= 10) {
+        setDailyWaiting(false);
+        return;
+      }
 
       await setDoc(
         ref,
-        {
-          claimedCount: count + 1,
+        {claimedCount: count + 1,
           lastClaimAt: new Date(),
         },
-        { merge: true }
+        {merge: true }
       );
 
-      // add 0.1 Pall token to wallet
       await updateDoc(doc(db, "wallets", uid), {
         pallBalance: increment(0.1),
       });
 
-      setDailyClaimed(count + 1);
+      setClaimedCount(count + 1);
+      setDailyWaiting(false);
 
       toast({
         title: "🎉 Reward Received",
@@ -421,18 +432,18 @@ export default function MiningDashboard() {
           </h3>
 
           <p className="text-center text-sm mb-4 text-muted-foreground">
-            {dailyClaimed} / 10
+            {claimedCount} / 10
           </p>
 
           <Button
-            disabled={dailyClaimed >= 10 || dailyWaiting}
+            disabled={claimedCount >= 10 || dailyWaiting}
             onClick={handleDailyReward}
             className="w-full py-3 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold shadow"
           >
             {dailyWaiting ? "📺 Showing Ad..." : "Watch Ad & Get 0.1 Pall"}
           </Button>
 
-          {dailyClaimed < 10 && (
+          {claimedCount < 10 && (
             <div className="mt-2 text-center text-yellow-600 animate-bounce">
               ⬆️
             </div>
