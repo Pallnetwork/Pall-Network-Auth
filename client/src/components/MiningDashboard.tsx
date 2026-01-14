@@ -11,6 +11,8 @@ declare global {
   interface Window {
     AndroidBridge?: {
       startRewardedAd: () => void;
+      startDailyRewardedAd?: () => void;  // ensure this exists if called
+      setAdPurpose?: (purpose: string) => void;
     };
     onAdCompleted?: () => void;
     onAdFailed?: () => void;
@@ -28,7 +30,7 @@ export default function MiningDashboard() {
   const [canStartMining, setCanStartMining] = useState(true);
   const [waitingForAd, setWaitingForAd] = useState(false);
 
-  // ✅ Daily Reward States
+  // Daily Reward States
   const [claimedCount, setClaimedCount] = useState(0);
   const [dailyWaiting, setDailyWaiting] = useState(false);
 
@@ -36,7 +38,7 @@ export default function MiningDashboard() {
   const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;
 
-  // ================= FIREBASE USER CHECK =================
+  // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -48,12 +50,11 @@ export default function MiningDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // ================= FIRESTORE LISTENER =================
+  // Firestore listener for wallet and mining status
   useEffect(() => {
     if (!uid) return;
 
     const ref = doc(db, "wallets", uid);
-
     const unsub = onSnapshot(
       ref,
       (snap) => {
@@ -104,42 +105,42 @@ export default function MiningDashboard() {
     return () => unsub();
   }, [uid, waitingForAd]);
 
-  // ================= DAILY REWARD FETCH =================
+  // Fetch daily reward info from Firestore
   useEffect(() => {
     if (!uid) return;
+
+    const fetchDailyReward = async () => {
+      const ref = doc(db, "dailyRewards", uid);
+      const snap = await getDoc(ref);
+
+      if (!snap.exists()) {
+        await setDoc(ref, {
+          claimedCount: 0,
+          lastClaimAt: null,
+        });
+        setClaimedCount(0);
+        return;
+      }
+
+      const data = snap.data();
+      const now = Date.now();
+      const last = data.lastClaimAt?.toMillis?.() || 0;
+
+      if (now - last > 24 * 60 * 60 * 1000) {
+        await setDoc(ref, {
+          claimedCount: 0,
+          lastClaimAt: null,
+        });
+        setClaimedCount(0);
+      } else {
+        setClaimedCount(data.claimedCount || 0);
+      }
+    };
 
     fetchDailyReward();
   }, [uid]);
 
-  async function fetchDailyReward() {
-    const ref = doc(db, "dailyRewards", uid!);
-    const snap = await getDoc(ref);
-
-    if (!snap.exists()) {
-      await setDoc(ref, {
-        claimedCount: 0,
-        lastClaimAt: null,
-      });
-      setClaimedCount(0);
-      return;
-    }
-
-    const data = snap.data();
-    const now = Date.now();
-    const last = data.lastClaimAt?.toMillis?.() || 0;
-
-    if (now - last > 24 * 60 * 60 * 1000) {
-      await setDoc(ref, {
-        claimedCount: 0,
-        lastClaimAt: null,
-      });
-      setClaimedCount(0);
-    } else {
-      setClaimedCount(data.claimedCount || 0);
-    }
-  }
-
-  // ================= UI TIMER =================
+  // UI timer for mining balance and countdown
   useEffect(() => {
     if (!mining || !lastStart) return;
 
@@ -167,14 +168,12 @@ export default function MiningDashboard() {
     };
   }, [mining, lastStart]);
 
-  // ================= ANDROID REWARDED AD =================
+  // Android Rewarded Ad Callbacks
   useEffect(() => {
     window.onAdCompleted = async () => {
       setWaitingForAd(false);
-
       try {
         const result = await mineForUser();
-
         if (result.status === "error") {
           toast({
             title: "Mining Error",
@@ -183,7 +182,6 @@ export default function MiningDashboard() {
           });
           return;
         }
-
         toast({
           title: "Mining Started",
           description: "24h mining activated",
@@ -207,18 +205,17 @@ export default function MiningDashboard() {
       });
     };
 
-    // ================= DAILY REWARD CALLBACK =================
     window.onRewardAdCompleted = async () => {
       if (!uid) {
         setDailyWaiting(false);
         return;
-      }    
+      }
 
       const ref = doc(db, "dailyRewards", uid);
       const snap = await getDoc(ref);
 
       let count = snap.exists() ? snap.data().claimedCount || 0 : 0;
-      
+
       if (count >= 10) {
         setDailyWaiting(false);
         return;
@@ -226,10 +223,11 @@ export default function MiningDashboard() {
 
       await setDoc(
         ref,
-        {claimedCount: count + 1,
+        {
+          claimedCount: count + 1,
           lastClaimAt: new Date(),
         },
-        {merge: true }
+        { merge: true }
       );
 
       await updateDoc(doc(db, "wallets", uid), {
@@ -252,14 +250,14 @@ export default function MiningDashboard() {
     };
   }, [uid]);
 
-  // ================= HANDLE MINING =================
+  // Start mining button handler
   const handleStartMining = () => {
     if (waitingForAd) return;
 
     if (window.AndroidBridge?.startRewardedAd) {
       setWaitingForAd(true);
       try {
-        window.AndroidBridge?.setAdPurpose("mining");
+        window.AndroidBridge.setAdPurpose?.("mining");
         window.AndroidBridge.startRewardedAd();
       } catch {
         setWaitingForAd(false);
@@ -274,6 +272,7 @@ export default function MiningDashboard() {
     }
   };
 
+  // Fallback mining start without ad (web)
   const startMiningBackend = async () => {
     if (!uid) return;
 
@@ -302,15 +301,15 @@ export default function MiningDashboard() {
     }
   };
 
+  // Daily reward button handler
   const handleDailyReward = async () => {
     if (!uid || dailyWaiting) return;
 
-    if (window.AndroidBridge?.startRewardedAd) {
+    if (window.AndroidBridge?.startDailyRewardedAd) {
       setDailyWaiting(true);
       try {
-        // ✅ tell Android this ad is for DAILY reward
-        window.AndroidBridge?.setAdPurpose("daily");
-        window.AndroidBridge?.startRewardedAd();
+        window.AndroidBridge.setAdPurpose?.("daily");
+        window.AndroidBridge.startDailyRewardedAd();
       } catch {
         setDailyWaiting(false);
         toast({
@@ -322,6 +321,7 @@ export default function MiningDashboard() {
     }
   };
 
+  // Format seconds to hh:mm:ss
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
@@ -348,7 +348,7 @@ export default function MiningDashboard() {
       </CardHeader>
 
       <CardContent className="text-center space-y-6 px-6 pb-8">
-        {/* ====== BALANCE CARD ====== */}
+        {/* Balance Card */}
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
           <p className="text-sm font-medium text-muted-foreground mb-2">
             Current Balance
@@ -358,7 +358,7 @@ export default function MiningDashboard() {
           </p>
         </div>
 
-        {/* ====== MINING CIRCLE ====== */}
+        {/* Mining Circle */}
         <div className="relative w-48 h-48 mx-auto">
           <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
 
@@ -404,15 +404,13 @@ export default function MiningDashboard() {
                 <p className="text-sm font-semibold text-gray-600">
                   Ready to Mine
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Standard Mining
-                </p>
+                <p className="text-xs text-muted-foreground">Standard Mining</p>
               </>
             )}
           </div>
         </div>
 
-        {/* ====== START MINING BUTTON ====== */}
+        {/* Start Mining Button */}
         <Button
           disabled={mining || waitingForAd || !canStartMining}
           onClick={handleStartMining}
@@ -425,7 +423,7 @@ export default function MiningDashboard() {
             : "Start Mining ⛏"}
         </Button>
 
-        {/* ====== DAILY REWARD CARD ====== */}
+        {/* Daily Reward Card */}
         <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 p-4 rounded-xl border border-yellow-100 dark:border-yellow-800 shadow-md">
           <h3 className="text-lg font-bold mb-2 text-center text-orange-600">
             Get Daily Reward
