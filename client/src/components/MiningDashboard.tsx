@@ -248,6 +248,7 @@ export default function MiningDashboard() {
     if (window.AndroidBridge?.startRewardedAd) {
       setWaitingForAd(true);
       try {
+        window.AndroidBridge?.setAdPurpose("mining");
         window.AndroidBridge.startRewardedAd();
       } catch {
         setWaitingForAd(false);
@@ -296,7 +297,9 @@ export default function MiningDashboard() {
     if (window.AndroidBridge?.startRewardedAd) {
       setDailyWaiting(true);
       try {
-        window.AndroidBridge.startRewardedAd();
+        // ✅ tell Android this ad is for DAILY reward
+        window.AndroidBridge?.setAdPurpose("daily");
+        window.AndroidBridge?.startRewardedAd();
       } catch {
         setDailyWaiting(false);
         toast({
