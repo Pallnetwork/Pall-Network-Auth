@@ -214,11 +214,11 @@ export default function MiningDashboard() {
   const handleStartMining = () => {
     if (waitingForAd) return;
 
-    if (window.AndroidBridge?.startRewardedAd) {
+    if (window.AndroidBridge?.startMiningRewardedAd) {
       setWaitingForAd(true);
       try {
         window.AndroidBridge.setAdPurpose?.("mining");
-        window.AndroidBridge.startRewardedAd();
+        window.AndroidBridge.startMiningRewardedAd();
       } catch {
         setWaitingForAd(false);
         toast({
