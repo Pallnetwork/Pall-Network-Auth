@@ -75,10 +75,10 @@ export default function MiningDashboard() {
           if (!mining) setUiBalance(data.pallBalance);
         }
 
-        if (data.miningActive && data.lastStart?.toDate) {
+        if (data.miningActive === true && data.lastStart?.toDate) {
           const start = data.lastStart.toDate();
           const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
-
+          
           if (elapsed >= MAX_SECONDS) {
             setMining(false);
             setCanStartMining(true);
@@ -135,6 +135,14 @@ export default function MiningDashboard() {
   useEffect(() => {
     window.onAdCompleted = async () => {
       setWaitingForAd(false);
+      if (mining) {
+        toast({
+          title: "Mining Already Active",
+          description: "Your mining is already running",
+          variant: "warning",
+        });
+        return;
+      }
       try {
         const result = await mineForUser();
         if (result.status === "error") {
