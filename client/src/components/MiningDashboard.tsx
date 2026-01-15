@@ -105,7 +105,7 @@ export default function MiningDashboard() {
     );
 
     return () => unsub();
-  }, [uid, waitingForAd, mining]);
+  }, [uid, waitingForAd]);
 
   // Firestore listener for daily rewards count
   useEffect(() => {
@@ -127,14 +127,6 @@ export default function MiningDashboard() {
 
     return () => unsubscribeDaily();
   }, [uid]);
-
-  useEffect(() => {
-    window.mining = mining;
-    window.uiBalance = uiBalance;
-    window.timeRemaining = timeRemaining;
-    window.canStartMining = canStartMining;
-    window.claimedCount = claimedCount;
-  }, [mining, uiBalance, timeRemaining, canStartMining, claimedCount]);
 
   // UI timer for mining balance and countdown
   useEffect(() => {
@@ -164,10 +156,29 @@ export default function MiningDashboard() {
     };
   }, [mining, lastStart]);
 
-  // Android Rewarded Ad Callbacks
+  // Android Rewarded Ad Callbacks (FINAL PATCHED)
   useEffect(() => {
+     const waitForAuthUser = async (retries = 5, delay = 500) => {
+      for (let i = 0; i < retries; i++) {
+        if (auth.currentUser) return auth.currentUser;
+        await new Promise((r) => setTimeout(r, delay));
+      }
+      return null;
+    };
+
     window.onAdCompleted = async () => {
       setWaitingForAd(false);
+
+      const user = await waitForAuthUser();
+      if (!user) {
+        toast({
+          title: "Auth Error",
+          description: "User not ready yet, try again",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (mining) {
         toast({
           title: "Mining Already Active",
@@ -176,6 +187,7 @@ export default function MiningDashboard() {
         });
         return;
       }
+
       try {
         const result = await mineForUser();
         if (result.status === "error") {
@@ -184,8 +196,9 @@ export default function MiningDashboard() {
             description: result.message || "Could not start mining",
             variant: "destructive",
           });
-          return;
+           return;
         }
+
         toast({
           title: "Mining Started",
           description: "24h mining activated",
@@ -210,47 +223,52 @@ export default function MiningDashboard() {
     };
 
     window.onRewardAdCompleted = async () => {
-      if (!uid) {
-        setDailyWaiting(false);
+      setDailyWaiting(false);
+
+      const user = await waitForAuthUser();
+      if (!user) {
+        toast({
+          title: "Auth Error",
+          description: "User not ready yet, try again",
+          variant: "destructive",
+        });
         return;
       }
 
       try {
-        const res = await claimDailyReward(uid);
+        const res = await claimDailyReward(user.uid);
         if (res.status === "success") {
           setClaimedCount(res.data.newCount);
           setUiBalance((prev) => prev + 0.1);
-          setDailyWaiting(false);
 
-          toast({
+           toast({
             title: "🎉 Reward Received",
             description: "+0.1 Pall added to your balance",
-          });
-        } else {
-          setDailyWaiting(false);
+           });
+          } else {
+            toast({
+              title: "Daily Reward Error",
+              description: res.message || "Reward already claimed",
+              variant: "destructive",
+            });
+          }
+        } catch (err) {
+          console.error(err);
           toast({
-            title: "Error",
-            description: res.message || "Reward claim failed",
+            title: "Daily Reward Error",
+            description: "Unexpected error occurred",
             variant: "destructive",
           });
         }
-      } catch (err) {
-        console.error(err);
-        setDailyWaiting(false);
-        toast({
-          title: "Error",
-          description: "Unexpected error during daily reward",
-          variant: "destructive",
-        });
-      }
-    };
+      };
 
-    return () => {
-      window.onAdCompleted = undefined;
-      window.onAdFailed = undefined;
-      window.onRewardAdCompleted = undefined;
-    };
-  }, [uid]);
+      return () => {
+        window.onAdCompleted = undefined;
+        window.onAdFailed = undefined;
+        window.onRewardAdCompleted = undefined;
+      };
+    }
+  }, [uid, mining]);
 
   const handleStartMining = () => {
     if (waitingForAd) return;
