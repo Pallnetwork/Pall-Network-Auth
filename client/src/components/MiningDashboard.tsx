@@ -191,7 +191,6 @@ export default function MiningDashboard() {
         return;
       }
 
-      const currentuser = auth.currentUser;
       console.log("DEBUG: Current Firebase user:", user);
 
       try {
