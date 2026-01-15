@@ -75,10 +75,10 @@ export default function MiningDashboard() {
           if (!mining) setUiBalance(data.pallBalance);
         }
 
-        if (data.miningActive === true && data.lastStart?.toDate) {
+        if (data.miningActive && data.lastStart?.toDate) {
           const start = data.lastStart.toDate();
           const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
-          
+
           if (elapsed >= MAX_SECONDS) {
             setMining(false);
             setCanStartMining(true);
