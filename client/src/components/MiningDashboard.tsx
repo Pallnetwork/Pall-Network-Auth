@@ -158,6 +158,7 @@ export default function MiningDashboard() {
 
   // Android Rewarded Ad Callbacks (FINAL PATCHED)
   useEffect(() => {
+    console.log("🔥 DEBUG: MiningDashboard mounted, uid =", uid);
      const waitForAuthUser = async (retries = 5, delay = 500) => {
       for (let i = 0; i < retries; i++) {
         if (auth.currentUser) return auth.currentUser;
@@ -166,7 +167,9 @@ export default function MiningDashboard() {
       return null;
     };
 
+    // Override ad callbacks temporarily to log everything
     window.onAdCompleted = async () => {
+      console.log("✅ DEBUG: window.onAdCompleted fired");
       setWaitingForAd(false);
 
       const user = await waitForAuthUser();
@@ -187,6 +190,9 @@ export default function MiningDashboard() {
         });
         return;
       }
+
+      const user = auth.currentUser;
+      console.log("DEBUG: Current Firebase user:", user);
 
       try {
         const result = await mineForUser();
@@ -237,6 +243,7 @@ export default function MiningDashboard() {
 
       try {
         const res = await claimDailyReward(user.uid);
+        console.log("DEBUG: claimDailyReward() result:", res);
         if (res.status === "success") {
           setClaimedCount(res.data.newCount);
           setUiBalance((prev) => prev + 0.1);
@@ -253,6 +260,7 @@ export default function MiningDashboard() {
             });
           }
         } catch (err) {
+          console.error("DEBUG: claimDailyReward() error:", err);
           console.error(err);
           toast({
             title: "Daily Reward Error",
@@ -270,14 +278,17 @@ export default function MiningDashboard() {
     }, [uid, mining]);
 
   const handleStartMining = () => {
+    console.log("🔹 DEBUG: Start Mining button clicked, waitingForAd =", waitingForAd);
     if (waitingForAd) return;
 
     if (window.AndroidBridge?.startMiningRewardedAd) {
+      console.log("🔹 DEBUG: AndroidBridge detected, calling startMiningRewardedAd");
       setWaitingForAd(true);
       try {
         window.AndroidBridge.setAdPurpose?.("mining");
         window.AndroidBridge.startMiningRewardedAd();
       } catch {
+        console.error("🔹 DEBUG: startMiningRewardedAd error:", err);
         setWaitingForAd(false);
         toast({
           title: "Ad Error",
@@ -286,6 +297,7 @@ export default function MiningDashboard() {
         });
       }
     } else {
+      console.log("🔹 DEBUG: AndroidBridge not found, calling backend directly");
       startMiningBackend();
     }
   };
