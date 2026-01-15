@@ -32,8 +32,11 @@ export async function mineForUser() {
       };
     }
 
-    // 🔹 Always get fresh token
-    const token = await user.getIdToken(true);
+    // 🔹 Always get correct token (WebView + Android safe)
+    const token =
+      localStorage.getItem("firebaseToken") ??
+      (await user.getIdToken(true));
+      
     console.log("🔥 Using Firebase Token:", token);
 
     const res = await fetch("https://pall-network-auth.onrender.com/api/mine", {
