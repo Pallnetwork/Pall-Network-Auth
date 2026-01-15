@@ -11,7 +11,7 @@ import { claimDailyReward } from "@/lib/dailyReward";
 declare global {
   interface Window {
     AndroidBridge?: {
-      startRewardedAd: () => void;
+      startMiningRewardedAd: () => void;
       startDailyRewardedAd?: () => void;
       setAdPurpose?: (purpose: string) => void;
     };
