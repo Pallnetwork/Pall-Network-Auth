@@ -75,8 +75,12 @@ export default function MiningDashboard() {
           if (!mining) setUiBalance(data.pallBalance);
         }
 
-        if (data.miningActive && data.lastStart?.toDate) {
-          const start = data.lastStart.toDate();
+        if (data.miningActive && data.lastStart) {
+          const start =
+            typeof data.lastStart.toDate === "function"
+              ? data.lastStart.toDate()
+              : new Date(data.lastStart.seconds * 1000);
+
           const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
 
           if (elapsed >= MAX_SECONDS) {
@@ -101,7 +105,28 @@ export default function MiningDashboard() {
     );
 
     return () => unsub();
-  }, [uid, waitingForAd]);
+  }, [uid, waitingForAd, mining]);
+
+  // Firestore listener for daily rewards count
+  useEffect(() => {
+    if (!uid) return;
+
+    const dailyRef = doc(db, "dailyRewards", uid);
+    const unsubscribeDaily = onSnapshot(
+      dailyRef,
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (typeof data.claimedCount === "number") {
+            setClaimedCount(data.claimedCount);
+          }
+        }
+      },
+      (err) => console.error("DailyRewards Firestore error:", err)
+    );
+
+    return () => unsubscribeDaily();
+  }, [uid]);
 
   // UI timer for mining balance and countdown
   useEffect(() => {
