@@ -128,6 +128,14 @@ export default function MiningDashboard() {
     return () => unsubscribeDaily();
   }, [uid]);
 
+  useEffect(() => {
+    window.mining = mining;
+    window.uiBalance = uiBalance;
+    window.timeRemaining = timeRemaining;
+    window.canStartMining = canStartMining;
+    window.claimedCount = claimedCount;
+  }, [mining, uiBalance, timeRemaining, canStartMining, claimedCount]);
+
   // UI timer for mining balance and countdown
   useEffect(() => {
     if (!mining || !lastStart) return;
