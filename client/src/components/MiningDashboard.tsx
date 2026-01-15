@@ -267,8 +267,7 @@ export default function MiningDashboard() {
         window.onAdFailed = undefined;
         window.onRewardAdCompleted = undefined;
       };
-    }
-  }, [uid, mining]);
+    }, [uid, mining]);
 
   const handleStartMining = () => {
     if (waitingForAd) return;
