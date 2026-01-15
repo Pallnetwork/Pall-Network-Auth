@@ -158,7 +158,8 @@ export default function MiningDashboard() {
 
   // Android Rewarded Ad Callbacks (FINAL PATCHED)
   useEffect(() => {
-    console.log("🔥 DEBUG: MiningDashboard mounted, uid =", uid);
+    console.log("🟢 DEBUG useEffect mounted");
+
      const waitForAuthUser = async (retries = 5, delay = 500) => {
       for (let i = 0; i < retries; i++) {
         if (auth.currentUser) return auth.currentUser;
@@ -167,13 +168,39 @@ export default function MiningDashboard() {
       return null;
     };
 
+    const originalMining = window.onAdCompleted;
+    const originalDaily = window.onRewardAdCompleted;
+
     // Override ad callbacks temporarily to log everything
+    const originalMining = window.onAdCompleted;
     window.onAdCompleted = async () => {
-      console.log("✅ DEBUG: window.onAdCompleted fired");
+      console.log("🔥 CALLBACK: onAdCompleted fired");
+
       setWaitingForAd(false);
 
       const user = await waitForAuthUser();
-      if (!user) {
+      console.log("👤 Firebase user:", currentUser);
+    
+      const token = localStorage.getItem("firebaseToken");
+      if (token) {
+        console.log("🔑 Firebase token:", token.substring(0, 20) + "...");
+      } else {
+        console.warn("⚠️ Firebase token MISSING");
+      }
+
+      try {
+        const res = await fetch("/api/mine", { method: "POST" });
+        console.log("📡 /api/mine status:", res.status);
+        const data = await res.json().catch(() => null);
+        console.log("📦 /api/mine data:", data);
+      } catch (err) {
+        console.error("❌ /api/mine error:", err);
+      }
+
+      originalMining && originalMining();
+    };
+
+
         toast({
           title: "Auth Error",
           description: "User not ready yet, try again",
@@ -190,8 +217,6 @@ export default function MiningDashboard() {
         });
         return;
       }
-
-      console.log("DEBUG: Current Firebase user:", user);
 
       try {
         const result = await mineForUser();
@@ -228,9 +253,13 @@ export default function MiningDashboard() {
     };
 
     window.onRewardAdCompleted = async () => {
+      console.log("🎁 CALLBACK: onRewardAdCompleted fired");
+
       setDailyWaiting(false);
 
       const rewarduser = await waitForAuthUser();
+      console.log("👤 Firebase user (daily):", rewardUser);
+
       if (!user) {
         toast({
           title: "Auth Error",
@@ -242,7 +271,10 @@ export default function MiningDashboard() {
 
       try {
         const res = await claimDailyReward(user.uid);
-        console.log("DEBUG: claimDailyReward() result:", res);
+        const res = await fetch("/api/dailyReward", { method: "POST" });
+        console.log("📡 /api/dailyReward status:", res.status);
+        console.log("📦 /api/dailyReward data:", data);
+    
         if (res.status === "success") {
           setClaimedCount(res.data.newCount);
           setUiBalance((prev) => prev + 0.1);
@@ -259,7 +291,7 @@ export default function MiningDashboard() {
             });
           }
         } catch (err) {
-          console.error("DEBUG: claimDailyReward() error:", err);
+          console.error("❌ /api/dailyReward error:", err);
           console.error(err);
           toast({
             title: "Daily Reward Error",
@@ -269,12 +301,21 @@ export default function MiningDashboard() {
         }
       };
 
+      originalDaily && originalDaily();
+      return () => {
+        console.log("🧹 DEBUG cleanup");
+        window.onAdCompleted = originalMining;
+        window.onRewardAdCompleted = originalDaily;
+      };
+
       return () => {
         window.onAdCompleted = undefined;
         window.onAdFailed = undefined;
         window.onRewardAdCompleted = undefined;
       };
     }, [uid, mining]);
+    
+    console.log("🖱️ Start Mining button clicked");
 
   const handleStartMining = () => {
     console.log("🔹 DEBUG: Start Mining button clicked, waitingForAd =", waitingForAd);
