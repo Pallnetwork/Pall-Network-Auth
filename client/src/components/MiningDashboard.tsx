@@ -191,7 +191,7 @@ export default function MiningDashboard() {
         return;
       }
 
-      const user = auth.currentUser;
+      const currentuser = auth.currentUser;
       console.log("DEBUG: Current Firebase user:", user);
 
       try {
@@ -231,7 +231,7 @@ export default function MiningDashboard() {
     window.onRewardAdCompleted = async () => {
       setDailyWaiting(false);
 
-      const user = await waitForAuthUser();
+      const rewarduser = await waitForAuthUser();
       if (!user) {
         toast({
           title: "Auth Error",
