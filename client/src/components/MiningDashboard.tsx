@@ -193,10 +193,10 @@ export default function MiningDashboard() {
           title: "Mining Error",
           description: "Unexpected error occurred",
           variant: "destructive",
-          console.log("🔥 JS CALLBACK: onAdCompleted end");
         });
       }
     };
+    console.log("🔥 JS CALLBACK: onAdCompleted end");
 
     // Mining Ad failed
     window.onAdFailed = () => {
