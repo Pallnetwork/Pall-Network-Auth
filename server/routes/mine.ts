@@ -54,7 +54,7 @@ async function calculateMiningSpeed(uid: string) {
   return speed;
 }
 
-router.post("/", verifyFirebaseToken, async (req, res) => {
+router.post("/mine", verifyFirebaseToken, async (req, res) => {
   try {
     const uid = (req as any).user?.uid;
     if (!uid) return res.status(401).json({ error: "Unauthorized" });
