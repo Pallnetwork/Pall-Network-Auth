@@ -83,6 +83,8 @@ export default function MiningDashboard() {
           setTimeRemaining(0);
           setLastStart(null);
         } else {
+          console.log("⛔️ Mining timer stopped or not started");
+          console.log("⛏️ Mining started, setting mining state true");
           setMining(true);
           setCanStartMining(false);
           setLastStart(start);
@@ -112,6 +114,7 @@ export default function MiningDashboard() {
   }, [uid]);
 
   useEffect(() => {
+    console.log("⛏️ Mining timer started");
     if (!mining || !lastStart) return;
 
     const uiInterval = setInterval(() => {
@@ -162,6 +165,7 @@ export default function MiningDashboard() {
       console.log("User from waitForAuthUser:", user);
 
       if (!user) {
+        console.warn("⛔️ No authenticated user found!");
         toast({
           title: "Auth Error",
           description: "User not ready yet",
@@ -169,6 +173,7 @@ export default function MiningDashboard() {
         });
         return;
       }
+      console.log("✅ Authenticated user found:", user.uid);
 
       try {
         const result = await mineForUser();
