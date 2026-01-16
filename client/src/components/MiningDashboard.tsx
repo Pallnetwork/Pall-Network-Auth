@@ -140,6 +140,8 @@ export default function MiningDashboard() {
 
   // ⚡ Fixed Rewarded Ad callbacks
   useEffect(() => {
+    console.log("🟢 Registering Android ad callbacks");
+
     const waitForAuthUser = async (retries = 5, delay = 500) => {
       for (let i = 0; i < retries; i++) {
         if (auth.currentUser) return auth.currentUser;
@@ -244,6 +246,7 @@ export default function MiningDashboard() {
     };
 
     return () => {
+      console.log("🧹 Cleaning Android callbacks");
       window.onAdCompleted = undefined;
       window.onAdFailed = undefined;
       window.onRewardAdCompleted = undefined;
