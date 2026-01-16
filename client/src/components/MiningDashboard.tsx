@@ -148,30 +148,47 @@ export default function MiningDashboard() {
       return null;
     };
 
-    // Mining Ad completed
+    // Mining Ad completed (FINAL FIX)
     window.onAdCompleted = async () => {
+      console.log("🔥 JS CALLBACK: onAdCompleted");
+
+      // 🔒 HARD LOCK (double callback protection)
+      if (waitingForAd === false) return;
       setWaitingForAd(false);
+
       const user = await waitForAuthUser();
       if (!user) {
-        toast({ title: "Auth Error", description: "User not ready yet", variant: "destructive" });
-        return;
-      }
-
-      if (mining) {
-        toast({ title: "Mining Already Active", description: "Your mining is already running", variant: "warning" });
+        toast({
+          title: "Auth Error",
+          description: "User not ready yet",
+          variant: "destructive",
+        });
         return;
       }
 
       try {
         const result = await mineForUser();
+
         if (result.status === "error") {
-          toast({ title: "Mining Error", description: result.message || "Could not start mining", variant: "destructive" });
+          toast({
+            title: "Mining Error",
+            description: result.message || "Could not start mining",
+            variant: "destructive",
+          });
           return;
         }
-        toast({ title: "Mining Started", description: "24h mining activated" });
+
+        toast({
+          title: "Mining Started",
+          description: "24h mining activated",
+        });
       } catch (err) {
-        console.error(err);
-        toast({ title: "Mining Error", description: "Unexpected error occurred", variant: "destructive" });
+        console.error("Mining error:", err);
+        toast({
+          title: "Mining Error",
+          description: "Unexpected error occurred",
+          variant: "destructive",
+        });
       }
     };
 
@@ -183,25 +200,46 @@ export default function MiningDashboard() {
 
     // Daily Reward Ad completed
     window.onRewardAdCompleted = async () => {
+      console.log("🎁 JS CALLBACK: onRewardAdCompleted");
+
+      if (dailyWaiting === false) return;
       setDailyWaiting(false);
+
       const user = await waitForAuthUser();
       if (!user) {
-        toast({ title: "Auth Error", description: "User not ready yet", variant: "destructive" });
+        toast({
+          title: "Auth Error",
+          description: "User not ready yet",
+          variant: "destructive",
+        });
         return;
       }
 
       try {
         const res = await claimDailyReward(user.uid);
+
         if (res.status === "success") {
           setClaimedCount(res.data.newCount);
           setUiBalance((prev) => prev + 0.1);
-          toast({ title: "🎉 Reward Received", description: "+0.1 Pall added to your balance" });
+
+          toast({
+            title: "🎉 Reward Received",
+            description: "+0.1 Pall added to your balance",
+          });
         } else {
-          toast({ title: "Daily Reward Error", description: res.message || "Reward already claimed", variant: "destructive" });
+          toast({
+            title: "Daily Reward Error",
+            description: res.message || "Reward already claimed",
+            variant: "destructive",
+          });
         }
       } catch (err) {
-        console.error(err);
-        toast({ title: "Daily Reward Error", description: "Unexpected error occurred", variant: "destructive" });
+        console.error("Daily reward error:", err);
+        toast({
+          title: "Daily Reward Error",
+          description: "Unexpected error occurred",
+          variant: "destructive",
+        });
       }
     };
 
