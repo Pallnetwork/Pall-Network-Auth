@@ -152,13 +152,15 @@ export default function MiningDashboard() {
 
     // Mining Ad completed (FINAL FIX)
     window.onAdCompleted = async () => {
-      console.log("🔥 JS CALLBACK: onAdCompleted");
+      console.log("🔥 JS CALLBACK: onAdCompleted start");
 
       // 🔒 HARD LOCK (double callback protection)
       if (waitingForAd === false) return;
       setWaitingForAd(false);
 
       const user = await waitForAuthUser();
+      console.log("User from waitForAuthUser:", user);
+
       if (!user) {
         toast({
           title: "Auth Error",
@@ -170,6 +172,7 @@ export default function MiningDashboard() {
 
       try {
         const result = await mineForUser();
+        console.log("mineForUser result:", result);
 
         if (result.status === "error") {
           toast({
@@ -190,6 +193,7 @@ export default function MiningDashboard() {
           title: "Mining Error",
           description: "Unexpected error occurred",
           variant: "destructive",
+          console.log("🔥 JS CALLBACK: onAdCompleted end");
         });
       }
     };
@@ -202,7 +206,6 @@ export default function MiningDashboard() {
 
     // Daily Reward Ad completed
     window.onRewardAdCompleted = async () => {
-      console.log("🎁 JS CALLBACK: onRewardAdCompleted");
 
       if (dailyWaiting === false) return;
       setDailyWaiting(false);
