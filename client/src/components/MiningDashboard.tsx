@@ -188,7 +188,7 @@ export default function MiningDashboard() {
           description: "24h mining activated",
         });
       } catch (err) {
-        console.error("Mining error:", err);
+        console.error("🔥 mineForUser() threw error:", err);
         toast({
           title: "Mining Error",
           description: "Unexpected error occurred",
@@ -273,8 +273,12 @@ export default function MiningDashboard() {
   const startMiningBackend = async () => {
     if (!uid) return;
     try {
+      console.log("⏳ Calling mineForUser()");
       const result = await mineForUser();
+      console.log("✅ mineForUser() response:", result);
+
       if (result.status === "error") {
+        console.warn("⚠️ mineForUser error:", result.message);
         toast({ title: "Mining Error", description: result.message || "Could not start mining", variant: "destructive" });
         return;
       }
