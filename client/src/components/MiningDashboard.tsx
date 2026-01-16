@@ -1,5 +1,5 @@
 // client/src/components/MiningDashboard.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ export default function MiningDashboard() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [canStartMining, setCanStartMining] = useState(true);
   const [waitingForAd, setWaitingForAd] = useState(false);
+  const waitingForAdRef = useRef(false);
+
 
   // Daily Reward States
   const [claimedCount, setClaimedCount] = useState(0);
@@ -83,8 +85,7 @@ export default function MiningDashboard() {
           setTimeRemaining(0);
           setLastStart(null);
         } else {
-          console.log("⛔️ Mining timer stopped or not started");
-          console.log("⛏️ Mining started, setting mining state true");
+          console.log("⛏️ Mining active — syncing timer from Firestore");
           setMining(true);
           setCanStartMining(false);
           setLastStart(start);
@@ -158,7 +159,9 @@ export default function MiningDashboard() {
       console.log("🔥 JS CALLBACK: onAdCompleted start");
 
       // 🔒 HARD LOCK (double callback protection)
-      if (waitingForAd === false) return;
+      if (!waitingForAdRef.current) return;
+
+      waitingForAdRef.current = false;
       setWaitingForAd(false);
 
       const user = await waitForAuthUser();
@@ -259,20 +262,30 @@ export default function MiningDashboard() {
       window.onAdFailed = undefined;
       window.onRewardAdCompleted = undefined;
     };
-  }, [uid, mining]);
+  }, [uid]);
 
   const handleStartMining = () => {
-    if (waitingForAd) return;
+    if (waitingForAdRef.current) return;
+
     if (window.AndroidBridge?.startMiningRewardedAd) {
+      // 🔒 HARD LOCK lagao
+      waitingForAdRef.current = true;
       setWaitingForAd(true);
+
       try {
         window.AndroidBridge.setAdPurpose?.("mining");
         window.AndroidBridge.startMiningRewardedAd();
       } catch {
+        waitingForAdRef.current = false;
         setWaitingForAd(false);
-        toast({ title: "Ad Error", description: "Could not start rewarded ad", variant: "destructive" });
+        toast({
+          title: "Ad Error",
+          description: "Could not start rewarded ad",
+          variant: "destructive",
+        });
       }
-    } else startMiningBackend();
+    } else
+      startMiningBackend();
   };
 
   const startMiningBackend = async () => {
