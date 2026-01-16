@@ -39,7 +39,6 @@ export default function MiningDashboard() {
   const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;
 
-  // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) setUid(user.uid);
@@ -48,87 +47,70 @@ export default function MiningDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // Firestore listener for wallet and mining status
   useEffect(() => {
     if (!uid) return;
-
     const ref = doc(db, "wallets", uid);
-    const unsub = onSnapshot(
-      ref,
-      (snap) => {
-        if (!snap.exists()) {
-          if (!waitingForAd) {
-            setMining(false);
-            setCanStartMining(true);
-            setTimeRemaining(0);
-            setLastStart(null);
-            setBalance(0);
-            setUiBalance(0);
-          }
-          return;
-        }
-
-        const data = snap.data();
-
-        if (typeof data.pallBalance === "number") {
-          setBalance(data.pallBalance);
-          if (!mining) setUiBalance(data.pallBalance);
-        }
-
-        if (data.miningActive && data.lastStart) {
-          const start =
-            typeof data.lastStart.toDate === "function"
-              ? data.lastStart.toDate()
-              : new Date(data.lastStart.seconds * 1000);
-
-          const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
-
-          if (elapsed >= MAX_SECONDS) {
-            setMining(false);
-            setCanStartMining(true);
-            setTimeRemaining(0);
-            setLastStart(null);
-          } else {
-            setMining(true);
-            setCanStartMining(false);
-            setLastStart(start);
-            setTimeRemaining(MAX_SECONDS - elapsed);
-          }
-        } else {
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) {
+        if (!waitingForAd) {
           setMining(false);
           setCanStartMining(true);
           setTimeRemaining(0);
           setLastStart(null);
+          setBalance(0);
+          setUiBalance(0);
         }
-      },
-      (err) => console.error("Firestore error:", err)
-    );
+        return;
+      }
+
+      const data = snap.data();
+      if (typeof data.pallBalance === "number") {
+        setBalance(data.pallBalance);
+        if (!mining) setUiBalance(data.pallBalance);
+      }
+
+      if (data.miningActive && data.lastStart) {
+        const start =
+          typeof data.lastStart.toDate === "function"
+            ? data.lastStart.toDate()
+            : new Date(data.lastStart.seconds * 1000);
+
+        const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
+
+        if (elapsed >= MAX_SECONDS) {
+          setMining(false);
+          setCanStartMining(true);
+          setTimeRemaining(0);
+          setLastStart(null);
+        } else {
+          setMining(true);
+          setCanStartMining(false);
+          setLastStart(start);
+          setTimeRemaining(MAX_SECONDS - elapsed);
+        }
+      } else {
+        setMining(false);
+        setCanStartMining(true);
+        setTimeRemaining(0);
+        setLastStart(null);
+      }
+    });
 
     return () => unsub();
   }, [uid, waitingForAd]);
 
-  // Firestore listener for daily rewards count
   useEffect(() => {
     if (!uid) return;
-
     const dailyRef = doc(db, "dailyRewards", uid);
-    const unsubscribeDaily = onSnapshot(
-      dailyRef,
-      (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          if (typeof data.claimedCount === "number") {
-            setClaimedCount(data.claimedCount);
-          }
-        }
-      },
-      (err) => console.error("DailyRewards Firestore error:", err)
-    );
-
-    return () => unsubscribeDaily();
+    const unsub = onSnapshot(dailyRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (typeof data.claimedCount === "number") setClaimedCount(data.claimedCount);
+      }
+    });
+    return () => unsub();
   }, [uid]);
 
-  // UI timer for mining balance and countdown
   useEffect(() => {
     if (!mining || !lastStart) return;
 
@@ -156,10 +138,8 @@ export default function MiningDashboard() {
     };
   }, [mining, lastStart]);
 
-  // Android Rewarded Ad Callbacks (FINAL PATCHED)
+  // ⚡ Fixed Rewarded Ad callbacks
   useEffect(() => {
-    console.log("🟢 DEBUG useEffect mounted");
-
     const waitForAuthUser = async (retries = 5, delay = 500) => {
       for (let i = 0; i < retries; i++) {
         if (auth.currentUser) return auth.currentUser;
@@ -168,167 +148,100 @@ export default function MiningDashboard() {
       return null;
     };
 
-    const originalMining = window.onAdCompleted;
-    const originalDaily = window.onRewardAdCompleted;
-
-    // Override ad callbacks temporarily to log everything
+    // Mining Ad completed
     window.onAdCompleted = async () => {
-      console.log("🔥 CALLBACK: onAdCompleted fired");
-
       setWaitingForAd(false);
-
       const user = await waitForAuthUser();
-      console.log("👤 Firebase user:", user);
-
       if (!user) {
-        toast({
-          title: "Auth Error",
-          description: "User not ready yet, try again",
-          variant: "destructive",
-        });
+        toast({ title: "Auth Error", description: "User not ready yet", variant: "destructive" });
         return;
       }
 
-      const token = localStorage.getItem("firebaseToken");
-      if (token) {
-        console.log("🔑 Firebase token:", token.substring(0, 20) + "...");
-      } else {
-        console.warn("⚠️ Firebase token MISSING");
+      if (mining) {
+        toast({ title: "Mining Already Active", description: "Your mining is already running", variant: "warning" });
+        return;
       }
 
       try {
-        const res = await fetch("/api/mine", { method: "POST" });
-        console.log("📡 /api/mine status:", res.status);
-        const data = await res.json().catch(() => null);
-        console.log("📦 /api/mine data:", data);
+        const result = await mineForUser();
+        if (result.status === "error") {
+          toast({ title: "Mining Error", description: result.message || "Could not start mining", variant: "destructive" });
+          return;
+        }
+        toast({ title: "Mining Started", description: "24h mining activated" });
       } catch (err) {
-        console.error("❌ /api/mine error:", err);
+        console.error(err);
+        toast({ title: "Mining Error", description: "Unexpected error occurred", variant: "destructive" });
       }
-
-      originalMining && originalMining();
     };
 
+    // Mining Ad failed
     window.onAdFailed = () => {
       setWaitingForAd(false);
-      toast({
-        title: "Ad Failed",
-        description: "Rewarded ad could not load",
-        variant: "destructive",
-      });
+      toast({ title: "Ad Failed", description: "Rewarded ad could not load", variant: "destructive" });
     };
 
+    // Daily Reward Ad completed
     window.onRewardAdCompleted = async () => {
-      console.log("🎁 CALLBACK: onRewardAdCompleted fired");
-
       setDailyWaiting(false);
-
       const user = await waitForAuthUser();
-      console.log("👤 Firebase user (daily):", user);
-
       if (!user) {
-        toast({
-          title: "Auth Error",
-          description: "User not ready yet, try again",
-          variant: "destructive",
-        });
+        toast({ title: "Auth Error", description: "User not ready yet", variant: "destructive" });
         return;
       }
 
       try {
-        const res = await fetch("/api/dailyReward", { method: "POST" });
-        console.log("📡 /api/dailyReward status:", res.status);
-        const data = await res.json().catch(() => null);
-        console.log("📦 /api/dailyReward data:", data);
-
-        if (res.status === 200 && data?.success) {
-          setClaimedCount(data.newCount);
+        const res = await claimDailyReward(user.uid);
+        if (res.status === "success") {
+          setClaimedCount(res.data.newCount);
           setUiBalance((prev) => prev + 0.1);
-
-          toast({
-            title: "🎉 Reward Received",
-            description: "+0.1 Pall added to your balance",
-          });
+          toast({ title: "🎉 Reward Received", description: "+0.1 Pall added to your balance" });
         } else {
-          toast({
-            title: "Daily Reward Error",
-            description: data?.message || "Reward already claimed",
-            variant: "destructive",
-          });
+          toast({ title: "Daily Reward Error", description: res.message || "Reward already claimed", variant: "destructive" });
         }
       } catch (err) {
-        console.error("❌ /api/dailyReward error:", err);
-        toast({
-          title: "Daily Reward Error",
-          description: "Unexpected error occurred",
-          variant: "destructive",
-        });
+        console.error(err);
+        toast({ title: "Daily Reward Error", description: "Unexpected error occurred", variant: "destructive" });
       }
     };
 
     return () => {
-      console.log("🧹 DEBUG cleanup");
-      window.onAdCompleted = originalMining;
-      window.onRewardAdCompleted = originalDaily;
+      window.onAdCompleted = undefined;
       window.onAdFailed = undefined;
+      window.onRewardAdCompleted = undefined;
     };
   }, [uid, mining]);
 
   const handleStartMining = () => {
-    console.log("🔹 DEBUG: Start Mining button clicked, waitingForAd =", waitingForAd);
     if (waitingForAd) return;
-
     if (window.AndroidBridge?.startMiningRewardedAd) {
-      console.log("🔹 DEBUG: AndroidBridge detected, calling startMiningRewardedAd");
       setWaitingForAd(true);
       try {
         window.AndroidBridge.setAdPurpose?.("mining");
         window.AndroidBridge.startMiningRewardedAd();
-      } catch (err) {
-        console.error("🔹 DEBUG: startMiningRewardedAd error:", err);
+      } catch {
         setWaitingForAd(false);
-        toast({
-          title: "Ad Error",
-          description: "Could not start rewarded ad",
-          variant: "destructive",
-        });
+        toast({ title: "Ad Error", description: "Could not start rewarded ad", variant: "destructive" });
       }
-    } else {
-      console.log("🔹 DEBUG: AndroidBridge not found, calling backend directly");
-      startMiningBackend();
-    }
+    } else startMiningBackend();
   };
 
   const startMiningBackend = async () => {
     if (!uid) return;
-
     try {
       const result = await mineForUser();
-
       if (result.status === "error") {
-        toast({
-          title: "Mining Error",
-          description: result.message || "Could not start mining",
-          variant: "destructive",
-        });
+        toast({ title: "Mining Error", description: result.message || "Could not start mining", variant: "destructive" });
         return;
       }
-
-      toast({
-        title: "Mining Started",
-        description: "24h mining activated",
-      });
+      toast({ title: "Mining Started", description: "24h mining activated" });
     } catch {
-      toast({
-        title: "Mining Error",
-        description: "Unexpected error occurred",
-        variant: "destructive",
-      });
+      toast({ title: "Mining Error", description: "Unexpected error occurred", variant: "destructive" });
     }
   };
 
   const handleDailyReward = async () => {
     if (!uid || dailyWaiting) return;
-
     if (window.AndroidBridge?.startDailyRewardedAd) {
       setDailyWaiting(true);
       try {
@@ -336,11 +249,7 @@ export default function MiningDashboard() {
         window.AndroidBridge.startDailyRewardedAd();
       } catch {
         setDailyWaiting(false);
-        toast({
-          title: "Ad Error",
-          description: "Could not start rewarded ad",
-          variant: "destructive",
-        });
+        toast({ title: "Ad Error", description: "Could not start rewarded ad", variant: "destructive" });
       }
     }
   };
@@ -349,47 +258,25 @@ export default function MiningDashboard() {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
-    return `${h.toString().padStart(2, "0")}:${m
-      .toString()
-      .padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
-  if (!uid) {
-    return (
-      <div className="text-center mt-20 text-lg text-red-500">
-        User not authenticated
-      </div>
-    );
-  }
+  if (!uid) return <div className="text-center mt-20 text-lg text-red-500">User not authenticated</div>;
 
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4">
-        <h2 className="text-3xl font-bold text-center text-blue-600">
-          Pall Mining ⛏️
-        </h2>
+        <h2 className="text-3xl font-bold text-center text-blue-600">Pall Mining ⛏️</h2>
       </CardHeader>
-
       <CardContent className="text-center space-y-6 px-6 pb-8">
-        {/* Balance Card */}
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground mb-2">
-            Current Balance
-          </p>
-          <p className="text-3xl font-bold text-blue-600">
-            {uiBalance.toFixed(8)} PALL
-          </p>
+          <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
+          <p className="text-3xl font-bold text-blue-600">{uiBalance.toFixed(8)} PALL</p>
         </div>
-
-        {/* Mining Circle */}
         <div className="relative w-48 h-48 mx-auto">
           <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
-
           {mining && timeRemaining > 0 && (
-            <svg
-              className="absolute inset-0 w-full h-full transform -rotate-90"
-              viewBox="0 0 100 100"
-            >
+            <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <circle
                 cx="50"
                 cy="50"
@@ -399,76 +286,40 @@ export default function MiningDashboard() {
                 fill="none"
                 className="text-blue-500"
                 strokeDasharray="264"
-                strokeDashoffset={
-                  264 - ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264
-                }
+                strokeDashoffset={264 - ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264}
                 strokeLinecap="round"
               />
             </svg>
           )}
-
           <div className="absolute inset-4 bg-white dark:bg-card rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
             {mining ? (
               <>
                 <div className="text-3xl mb-2">⛏️</div>
-                <p className="text-base font-bold text-green-600">
-                  Mining Active
-                </p>
-                <p className="text-base font-bold text-muted-foreground">
-                  Standard Rate
-                </p>
-                <p className="text-base font-mono font-bold text-blue-600 mt-1">
-                  {formatTime(timeRemaining)}
-                </p>
+                <p className="text-base font-bold text-green-600">Mining Active</p>
+                <p className="text-base font-bold text-muted-foreground">Standard Rate</p>
+                <p className="text-base font-mono font-bold text-blue-600 mt-1">{formatTime(timeRemaining)}</p>
               </>
             ) : (
               <>
                 <div className="text-4xl mb-2">💎</div>
-                <p className="text-sm font-semibold text-gray-600">
-                  Ready to Mine
-                </p>
+                <p className="text-sm font-semibold text-gray-600">Ready to Mine</p>
                 <p className="text-xs text-muted-foreground">Standard Mining</p>
               </>
             )}
           </div>
         </div>
 
-        {/* Start Mining Button */}
-        <Button
-          disabled={mining || waitingForAd || !canStartMining}
-          onClick={handleStartMining}
-          className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
-        >
-          {waitingForAd
-            ? "📺 Showing Ad..."
-            : mining
-            ? `Mining ⛏ (${formatTime(timeRemaining)})`
-            : "Start Mining ⛏"}
+        <Button disabled={mining || waitingForAd || !canStartMining} onClick={handleStartMining} className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg">
+          {waitingForAd ? "📺 Showing Ad..." : mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
         </Button>
 
-        {/* Daily Reward Card */}
         <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 p-4 rounded-xl border border-yellow-100 dark:border-yellow-800 shadow-md">
-          <h3 className="text-lg font-bold mb-2 text-center text-orange-600">
-            Get Daily Reward
-          </h3>
-
-          <p className="text-center text-sm mb-4 text-muted-foreground">
-            {claimedCount} / 10
-          </p>
-
-          <Button
-            disabled={claimedCount >= 10 || dailyWaiting}
-            onClick={handleDailyReward}
-            className="w-full py-3 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold shadow"
-          >
+          <h3 className="text-lg font-bold mb-2 text-center text-orange-600">Get Daily Reward</h3>
+          <p className="text-center text-sm mb-4 text-muted-foreground">{claimedCount} / 10</p>
+          <Button disabled={claimedCount >= 10 || dailyWaiting} onClick={handleDailyReward} className="w-full py-3 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold shadow">
             {dailyWaiting ? "📺 Showing Ad..." : "Watch Ad & Get 0.1 Pall"}
           </Button>
-
-          {claimedCount < 10 && (
-            <div className="mt-2 text-center text-yellow-600 animate-bounce">
-              ⬆️
-            </div>
-          )}
+          {claimedCount < 10 && <div className="mt-2 text-center text-yellow-600 animate-bounce">⬆️</div>}
         </Card>
       </CardContent>
     </Card>
