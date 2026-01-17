@@ -91,7 +91,6 @@ export default function MiningDashboard() {
       const data = snap.data();
       if (typeof data.pallBalance === "number") {
         setBalance(data.pallBalance);
-        if (!mining) setUiBalance(data.pallBalance);
       }
 
       if (data.miningActive && data.lastStart) {
@@ -101,6 +100,10 @@ export default function MiningDashboard() {
             : new Date(data.lastStart.seconds * 1000);
 
         const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
+
+        const minedAmount = elapsed * baseMiningRate;
+
+        setUiBalance(data.pallBalance + minedAmount);
 
         if (elapsed >= MAX_SECONDS) {
           setMining(false);
@@ -237,6 +240,8 @@ export default function MiningDashboard() {
       // 🔒 HARD LOCK lagao
       waitingForAdRef.current = true;
       setWaitingForAd(true);
+
+      adPurposeRef.current = "mining";
 
       try {
         window.AndroidBridge.setAdPurpose?.("mining");
