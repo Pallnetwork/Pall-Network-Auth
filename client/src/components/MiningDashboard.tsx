@@ -154,58 +154,6 @@ export default function MiningDashboard() {
       return null;
     };
 
-    // Mining Ad completed (FINAL FIX)
-    window.onAdCompleted = async () => {
-      console.log("🔥 JS CALLBACK: onAdCompleted start");
-
-      // 🔒 HARD LOCK (double callback protection)
-      if (!waitingForAdRef.current) return;
-
-      waitingForAdRef.current = false;
-      setWaitingForAd(false);
-
-      const user = await waitForAuthUser();
-      console.log("User from waitForAuthUser:", user);
-
-      if (!user) {
-        console.warn("⛔️ No authenticated user found!");
-        toast({
-          title: "Auth Error",
-          description: "User not ready yet",
-          variant: "destructive",
-        });
-        return;
-      }
-      console.log("✅ Authenticated user found:", user.uid);
-
-      try {
-        const result = await mineForUser();
-        console.log("mineForUser result:", result);
-
-        if (result.status === "error") {
-          toast({
-            title: "Mining Error",
-            description: result.message || "Could not start mining",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        toast({
-          title: "Mining Started",
-          description: "24h mining activated",
-        });
-      } catch (err) {
-        console.error("🔥 mineForUser() threw error:", err);
-        toast({
-          title: "Mining Error",
-          description: "Unexpected error occurred",
-          variant: "destructive",
-        });
-      }
-    };
-    console.log("🔥 JS CALLBACK: onAdCompleted end");
-
     // Mining Ad failed
     window.onAdFailed = () => {
       setWaitingForAd(false);
@@ -279,7 +227,6 @@ export default function MiningDashboard() {
       console.log("🧹 Cleaning Android callbacks");
       window.onAdCompleted = undefined;
       window.onAdFailed = undefined;
-      window.onRewardAdCompleted = undefined;
     };
   }, [uid]);
 
