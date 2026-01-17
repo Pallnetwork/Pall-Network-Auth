@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-// 👉 logo import (path adjust agar alag ho)
+// 👉 logo import
 import logo from "@/assets/logo.png";
 
 export default function Signup() {
@@ -75,6 +75,7 @@ export default function Signup() {
         }
       }
 
+      // ✅ Save user document
       await setDoc(doc(db, "users", uid), {
         id: uid,
         name: form.fullName,
@@ -84,6 +85,21 @@ export default function Signup() {
         referredBy: referredByUID,
         createdAt: new Date(),
         referralCode: `${form.username}-${uid.slice(0, 5)}`,
+      });
+
+      // ✅ Create Wallet document for mining
+      const walletRef = doc(db, "wallets", uid);
+      await setDoc(walletRef, {
+        pallBalance: 0,
+        miningActive: false,
+        lastStart: null,
+        lastMinedAt: null,
+      });
+
+      // ✅ Create Daily Reward doc
+      const dailyRef = doc(db, "dailyRewards", uid);
+      await setDoc(dailyRef, {
+        claimedCount: 0,
       });
 
       toast({
