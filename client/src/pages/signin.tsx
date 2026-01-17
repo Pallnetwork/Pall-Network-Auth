@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
+import logo from "@/assets/logo.png"; // ✅ REAL LOGO IMPORT
 
 export default function SignIn() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -100,9 +101,12 @@ export default function SignIn() {
           <CardContent className="p-8 space-y-6">
             {/* Logo + Title */}
             <div className="text-center space-y-2">
-              <div className="mx-auto w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center text-white font-bold text-xl">
-                P
-              </div>
+              <img
+                src={logo}
+                alt="Pall Network Logo"
+                className="mx-auto w-16 h-16 rounded-xl object-contain"
+              />
+
               <h1 className="text-2xl font-semibold text-white">
                 Welcome to Pall Network
               </h1>
