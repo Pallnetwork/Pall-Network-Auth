@@ -33,6 +33,11 @@ export default function MiningDashboard() {
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"mining" | "daily" | null>(null);
 
+  window.onRewardAdCompleted = () => {
+    console.log("🎁 JS EVENT: dailyRewardCompleted dispatched");
+    window.dispatchEvent(new Event("dailyRewardCompleted"));
+  }
+
   // Daily Reward States
   const [claimedCount, setClaimedCount] = useState(0);
   const [dailyWaiting, setDailyWaiting] = useState(false);
@@ -161,7 +166,7 @@ export default function MiningDashboard() {
     };
 
     // Daily Reward Ad completed
-    window.onRewardAdCompleted = async () => {
+    window.onRewardAdCompleted = () => {
       console.log("🎁 JS CALLBACK: onRewardAdCompleted");
 
       const purpose = adPurposeRef.current;
@@ -200,35 +205,41 @@ export default function MiningDashboard() {
       // =====================
       // 🎁 DAILY REWARD AD COMPLETE
       // =====================
-      if (purpose === "daily") {
-        setDailyWaiting(false);
+      useEffect(() => {
+        if (!user?.uid) return;
 
-        const res = await claimDailyReward(user.uid);
+        const handler = async () => {
+          console.log("🎁 React handler fired");
 
-        if (res.status === "success") {
-          setClaimedCount(res.data.newCount);
-          setUiBalance((prev) => prev + 0.1);
+          setDailyWaiting(true);
 
-          toast({
-            title: "🎉 Reward Received",
-            description: "+0.1 Pall added successfully",
-          });
-        } else {
-          toast({
-            title: "Daily Reward",
-            description: res.message || "Reward already claimed",
-            variant: "destructive",
-          });
-        }
-      }
-    };
+          const res = await claimDailyReward(user.uid);
 
-    return () => {
-      console.log("🧹 Cleaning Android callbacks");
-      window.onAdCompleted = undefined;
-      window.onAdFailed = undefined;
-    };
-  }, [uid]);
+          if (res.status === "success") {
+            setClaimedCount(res.data!.newCount);
+            setUiBalance((prev) => prev + 0.1);
+
+            toast({
+              title: "🎉 Reward Received",
+              description: "+0.1 Pall added successfully",
+            });
+          } else {
+            toast({
+              title: "Daily Reward",
+              description: res.message || "Reward already claimed",
+              variant: "destructive",
+            });
+          }
+
+          setDailyWaiting(false);
+        };
+
+        window.addEventListener("dailyRewardCompleted", handler);
+
+        return () => {
+          window.removeEventListener("dailyRewardCompleted", handler);
+        };
+      }, [user?.uid]);
 
   const handleStartMining = () => {
     if (waitingForAdRef.current) return;

@@ -1,54 +1,213 @@
-import { useState } from "react"; import { useLocation } from "wouter"; import { auth, db } from "@/lib/firebase"; import { createUserWithEmailAndPassword } from "firebase/auth"; import { doc, setDoc, getDocs, query, collection, where } from "firebase/firestore"; import { useToast } from "@/hooks/use-toast";
+// client/src/pages/signup.tsx
 
-interface User { id: string; name: string; username: string; email: string; referredBy?: string; package?: string; }
+import { useState } from "react";
+import { useLocation, Link } from "wouter";
+import { auth, db } from "@/lib/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  doc,
+  setDoc,
+  getDocs,
+  query,
+  collection,
+  where,
+} from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-export default function Signup() { const [form, setForm] = useState({ fullName: "", username: "", email: "", password: "", confirmPassword: "", referralCode: "" }); const [loading, setLoading] = useState(false); const { toast } = useToast(); const [, navigate] = useLocation(); // wouter compatible
+// 👉 logo import (path adjust agar alag ho)
+import logo from "@/assets/logo.png";
 
-const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => { setForm({ ...form, [e.target.name]: e.target.value }); };
-
-const handleSignup = async () => { if (form.password !== form.confirmPassword) { toast({ title: "Error", description: "Passwords do not match", variant: "destructive" }); return; }
-
-setLoading(true);
-try {
-  // Create user in Firebase Auth
-  const userCred = await createUserWithEmailAndPassword(auth, form.email, form.password);
-  const uid = userCred.user.uid;
-
-  let referredByUID: string | null = null;
-
-  if (form.referralCode.trim() !== "") {
-    // Fetch the user with that referral code
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("referralCode", "==", form.referralCode));
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      referredByUID = snap.docs[0].id; // ✅ UID only
-    } else {
-      referredByUID = null; // invalid referral, ignore
-    }
-  }
-
-  // Save user document in Firestore
-  await setDoc(doc(db, "users", uid), {
-    id: uid,
-    name: form.fullName,
-    username: form.username,
-    email: form.email,
-    package: "free",
-    referredBy: referredByUID || null,
-    createdAt: new Date(),
-    referralCode: `${form.username}-${uid.slice(0,5)}` // generate referral code
+export default function Signup() {
+  const [form, setForm] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    referralCode: "",
   });
 
-  toast({ title: "Success", description: "Account created successfully" });
-  navigate("/app/dashboard");
-} catch (error: any) {
-  console.error("Signup error:", error);
-  toast({ title: "Error", description: error.message || "Failed to create account", variant: "destructive" });
-} finally {
-  setLoading(false);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (form.password !== form.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const userCred = await createUserWithEmailAndPassword(
+        auth,
+        form.email,
+        form.password
+      );
+      const uid = userCred.user.uid;
+
+      let referredByUID: string | null = null;
+
+      if (form.referralCode.trim() !== "") {
+        const usersRef = collection(db, "users");
+        const q = query(
+          usersRef,
+          where("referralCode", "==", form.referralCode)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          referredByUID = snap.docs[0].id;
+        }
+      }
+
+      await setDoc(doc(db, "users", uid), {
+        id: uid,
+        name: form.fullName,
+        username: form.username,
+        email: form.email,
+        package: "free",
+        referredBy: referredByUID,
+        createdAt: new Date(),
+        referralCode: `${form.username}-${uid.slice(0, 5)}`,
+      });
+
+      toast({
+        title: "Success",
+        description: "Account created successfully",
+      });
+
+      navigate("/app/dashboard");
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create account",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-blue-700 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 text-white shadow-xl">
+        <CardHeader className="space-y-4 text-center">
+          <img
+            src={logo}
+            alt="Pall Network Logo"
+            className="mx-auto w-14 h-14 rounded-xl object-contain"
+          />
+          <div>
+            <h2 className="text-2xl font-bold">Create Account</h2>
+            <p className="text-sm text-white/70">
+              Join Pall Network & start mining
+            </p>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <form onSubmit={handleSignup} className="space-y-4">
+            <div>
+              <Label>Full Name</Label>
+              <Input
+                name="fullName"
+                value={form.fullName}
+                onChange={handleChange}
+                required
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+              />
+            </div>
+
+            <div>
+              <Label>Username</Label>
+              <Input
+                name="username"
+                value={form.username}
+                onChange={handleChange}
+                required
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+              />
+            </div>
+
+            <div>
+              <Label>Email</Label>
+              <Input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                required
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+              />
+            </div>
+
+            <div>
+              <Label>Password</Label>
+              <Input
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+              />
+            </div>
+
+            <div>
+              <Label>Confirm Password</Label>
+              <Input
+                type="password"
+                name="confirmPassword"
+                value={form.confirmPassword}
+                onChange={handleChange}
+                required
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+              />
+            </div>
+
+            <div>
+              <Label>Referral Code (optional)</Label>
+              <Input
+                name="referralCode"
+                value={form.referralCode}
+                onChange={handleChange}
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-white text-blue-600 hover:bg-white/90"
+            >
+              {loading ? "Creating..." : "Create Account"}
+            </Button>
+
+            <p className="text-sm text-center text-white/70">
+              Already have an account?{" "}
+              <Link href="/app/signin" className="underline text-white">
+                Sign In
+              </Link>
+            </p>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
-
-};
-
-return ( <div className="max-w-md mx-auto p-6 space-y-4"> <h2 className="text-2xl font-bold text-center">Create Account</h2> <input type="text" name="fullName" placeholder="Full Name" value={form.fullName} onChange={handleChange} className="input" /> <input type="text" name="username" placeholder="Username" value={form.username} onChange={handleChange} className="input" /> <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} className="input" /> <input type="password" name="password" placeholder="Password" value={form.password} onChange={handleChange} className="input" /> <input type="password" name="confirmPassword" placeholder="Confirm Password" value={form.confirmPassword} onChange={handleChange} className="input" /> <input type="text" name="referralCode" placeholder="Referral Code (optional)" value={form.referralCode} onChange={handleChange} className="input" /> <button onClick={handleSignup} disabled={loading} className="btn w-full">{loading ? "Creating..." : "Create Account"}</button> </div> ); }
