@@ -64,6 +64,61 @@ export default function MiningDashboard() {
   };
 
   useEffect(() => {
+    const waitForAuthUser = async (retries = 5, delay = 500) => {
+      for (let i = 0; i < retries; i++) {
+        if (auth.currentUser) return auth.currentUser;
+        await new Promise((r) => setTimeout(r, delay));
+      }
+      return null;
+    };
+    
+    window.onAdCompleted = async () => {
+      console.log("🔥 onAdCompleted fired (MINING)");
+
+      if (!waitingForAdRef.current) return;
+
+      waitingForAdRef.current = false;
+      setWaitingForAd(false);
+
+      const user = await waitForAuthUser();
+      if (!user) {
+        toast({
+          title: "Auth Error",
+          description: "User not ready",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const result = await mineForUser();
+      if (result.status === "error") {
+        toast({
+          title: "Mining Error",
+          description: result.message || "Could not start mining",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Mining Started",
+        description: "24h mining activated",
+      });
+    }
+
+    window.onAdFailed = () => {
+      waitingForAdRef.current = false;
+      setWaitingForAd(false);
+      setDailyWaiting(false);
+    };
+
+    return () => {
+      window.onAdCompleted = undefined
+      window.onAdFailed = undefined;
+    };
+  }, [toast]);
+
+  useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) setUid(user.uid);
       else setUid(null);
@@ -90,7 +145,6 @@ export default function MiningDashboard() {
       const data = snap.data();
       if (typeof data.pallBalance === "number") {
         setBalance(data.pallBalance);
-        if (!mining) setUiBalance(data.pallBalance);
       }
 
       if (data.miningActive && data.lastStart) {
