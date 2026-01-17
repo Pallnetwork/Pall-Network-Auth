@@ -4,7 +4,7 @@ import { Link, useLocation } from "wouter";
 import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,15 +18,12 @@ export default function SignIn() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  // ✅ Check if user already logged in with WebView considerations
+  // 🔒 Auth check (UNCHANGED)
   useEffect(() => {
     let authCheckTimeout: NodeJS.Timeout;
-    
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        console.log("🔄 User already signed in:", user.uid);
-
-        // First-time login → ensure wallet exists
         const walletRef = doc(db, "wallets", user.uid);
         const walletSnap = await getDoc(walletRef);
         if (!walletSnap.exists()) {
@@ -36,15 +33,16 @@ export default function SignIn() {
             lastStart: null,
             lastMinedAt: null,
           });
-          console.log("⚡ Wallet auto-created for first-time user");
         }
 
         const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
-        const delay = isAndroidApp ? 1000 : 100; // 1s for Android WebView
-        authCheckTimeout = setTimeout(() => navigate("/app/dashboard", { replace: true }), delay);
+        authCheckTimeout = setTimeout(
+          () => navigate("/app/dashboard", { replace: true }),
+          isAndroidApp ? 1000 : 100
+        );
       }
     });
-    
+
     return () => {
       unsubscribe();
       if (authCheckTimeout) clearTimeout(authCheckTimeout);
@@ -62,39 +60,29 @@ export default function SignIn() {
     setError("");
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
-      const user = userCredential.user;
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        form.email,
+        form.password
+      );
 
-      console.log("🔥 REAL AUTH USER:", auth.currentUser);
+      localStorage.setItem("userId", userCredential.user.uid);
 
-      // LocalStorage save (extra layer)
-      localStorage.setItem("userId", user.uid);
-
-      toast({ title: "Success", description: "You have been signed in successfully!" });
-      console.log("✅ User signed in successfully:", user.uid);
-
-      // First-time login → ensure wallet exists
-      const walletRef = doc(db, "wallets", user.uid);
-      const walletSnap = await getDoc(walletRef);
-      if (!walletSnap.exists()) {
-        await setDoc(walletRef, {
-          pallBalance: 0,
-          miningActive: false,
-          lastStart: null,
-          lastMinedAt: null,
-        });
-        console.log("⚡ Wallet auto-created for first-time user");
-      }
+      toast({
+        title: "Success",
+        description: "Signed in successfully",
+      });
 
       const isAndroidApp = /PallNetworkApp/i.test(navigator.userAgent);
-      if (isAndroidApp) setTimeout(() => navigate("/app/dashboard", { replace: true }), 1500);
-      else navigate("/app/dashboard", { replace: true });
+      setTimeout(
+        () => navigate("/app/dashboard", { replace: true }),
+        isAndroidApp ? 1500 : 0
+      );
     } catch (err: any) {
-      console.error("❌ Signin error:", err);
       if (err.code === "auth/user-not-found") setError("No account found with this email.");
       else if (err.code === "auth/wrong-password") setError("Incorrect password.");
       else if (err.code === "auth/invalid-email") setError("Invalid email address.");
-      else if (err.code === "auth/too-many-requests") setError("Too many failed attempts. Try later.");
+      else if (err.code === "auth/too-many-requests") setError("Too many attempts. Try later.");
       else setError("Sign in failed. Please try again.");
     } finally {
       setIsLoading(false);
@@ -102,46 +90,90 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Sign In</h2>
-            <div className="w-3 h-3 rounded-full bg-primary"></div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={handleSignin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="Enter your email" value={form.email} onChange={handleChange} required data-testid="input-email"/>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" placeholder="Enter your password" value={form.password} onChange={handleChange} required data-testid="input-password"/>
-            </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 px-4">
+      <div className="relative w-full max-w-md">
+        {/* Floating glass shapes */}
+        <div className="absolute -top-10 -left-10 w-24 h-24 bg-white/20 rounded-2xl blur-xl" />
+        <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-white/10 rounded-2xl blur-xl" />
 
-            {error && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive flex items-center">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                {error}
+        <Card className="relative backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl rounded-2xl">
+          <CardContent className="p-8 space-y-6">
+            {/* Logo + Title */}
+            <div className="text-center space-y-2">
+              <div className="mx-auto w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center text-white font-bold text-xl">
+                P
               </div>
-            )}
-
-            <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-signin">
-              {isLoading ? "Signing In..." : "Sign In"}
-            </Button>
-
-            <div className="space-y-2 text-center">
-              <Link href="/app/forgot-password" className="text-sm text-primary hover:underline block" data-testid="link-forgot-password">Forgot Password?</Link>
-              <div className="text-sm text-muted-foreground">
-                Don't have an account?{" "}
-                <Link href="/app/signup" className="text-primary hover:underline" data-testid="link-signup">Create Account</Link>
-              </div>
+              <h1 className="text-2xl font-semibold text-white">
+                Welcome to Pall Network
+              </h1>
+              <p className="text-sm text-white/70">
+                Sign in to continue mining
+              </p>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+
+            <form onSubmit={handleSignin} className="space-y-4">
+              <div className="space-y-1">
+                <Label className="text-white/80">Email</Label>
+                <Input
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  className="bg-white/20 border-white/20 text-white placeholder:text-white/60"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-white/80">Password</Label>
+                <Input
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                  className="bg-white/20 border-white/20 text-white placeholder:text-white/60"
+                />
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/20 text-red-200 text-sm">
+                  <AlertCircle className="w-4 h-4" />
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-xl"
+              >
+                {isLoading ? "Signing In..." : "Sign In"}
+              </Button>
+
+              <div className="text-center space-y-2 text-sm">
+                <Link
+                  href="/app/forgot-password"
+                  className="text-white/80 hover:underline"
+                >
+                  Forgot Password?
+                </Link>
+                <div className="text-white/70">
+                  Don’t have an account?{" "}
+                  <Link
+                    href="/app/signup"
+                    className="text-white font-medium hover:underline"
+                  >
+                    Create Account
+                  </Link>
+                </div>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
