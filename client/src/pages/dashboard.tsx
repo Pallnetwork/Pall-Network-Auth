@@ -484,7 +484,7 @@ export default function Dashboard() {
 
         <Button
           variant="ghost"
-          size="sm"
+          size="sm" 
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="text-white hover:bg-green-700"
           data-testid="button-menu"
@@ -539,7 +539,25 @@ export default function Dashboard() {
               <Button
                 variant={currentPage === "WALLET" ? "secondary" : "ghost"}
                 className="w-full justify-start py-3 text-base font-medium"
-                onClick={() => { navigate("/app/dashboard/wallet"); setSidebarOpen(false); }}
+                onClick={() => {
+                  const walletAdShown = sessionStorage.getItem("walletAdShown");
+
+                  // 👇 1 ad per app open
+                  if (!walletAdShown && window.AndroidBridge?.showInterstitialForWallet) {
+                    sessionStorage.setItem("walletAdShown", "true");
+
+                    window.AndroidBridge.showInterstitialForWallet(() => {
+                      navigate("/app/dashboard/wallet");
+                      setSidebarOpen(false);
+                    });
+
+                    return;
+                  }
+
+                  // 👇 already ad shown in this session
+                  navigate("/app/dashboard/wallet");
+                  setSidebarOpen(false);
+                }}
                 data-testid="nav-wallet"
               >
                 <Wallet className="w-5 h-5 mr-3" />
