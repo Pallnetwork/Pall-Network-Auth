@@ -20,7 +20,7 @@ function Router() {
   return (
     <Switch>
       {/* SPLASH (APP START) */}
-      <Route path="/" component={Splash} />
+      <Route path="/app" component={Splash} />
 
       {/* AUTH */}
       <Route path="/app/signin" component={SignIn} />
@@ -32,6 +32,11 @@ function Router() {
 
       {/* KYC */}
       <Route path="/app/kyc" component={KYCPage} />
+
+      {/* ROOT */}
+      <Route path="/">
+        <Redirect to="/app" />
+      </Route>
 
       {/* 404 */}
       <Route component={NotFound} />
