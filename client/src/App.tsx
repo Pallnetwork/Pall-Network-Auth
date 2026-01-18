@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-
+import Splash from "@/pages/Splash";
 import SignIn from "@/pages/signin";
 import SignUp from "@/pages/signup";
 import ForgotPassword from "@/pages/forgot-password";
@@ -19,6 +19,9 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
+      {/* SPLASH (APP START) */}
+      <Route path="/" component={Splash} />
+
       {/* AUTH */}
       <Route path="/app/signin" component={SignIn} />
       <Route path="/app/signup" component={SignUp} />
@@ -29,11 +32,6 @@ function Router() {
 
       {/* KYC */}
       <Route path="/app/kyc" component={KYCPage} />
-
-      {/* ROOT → DASHBOARD */}
-      <Route path="/">
-        <Redirect to="/app/dashboard" />
-      </Route>
 
       {/* 404 */}
       <Route component={NotFound} />
