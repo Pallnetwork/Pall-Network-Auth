@@ -85,7 +85,7 @@ export default function Dashboard() {
   const [pallBalance, setPallBalance] = useState(0);
   const [usdtBalance, setUsdtBalance] = useState(0);
   const [miningStatus, setMiningStatus] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [form, setForm] = useState({
@@ -467,6 +467,21 @@ export default function Dashboard() {
   // Commission Totals
   const totalF1 = referralData?.f1Commission || 0;
   const totalF2 = referralData?.f2Commission || 0;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground"></p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
