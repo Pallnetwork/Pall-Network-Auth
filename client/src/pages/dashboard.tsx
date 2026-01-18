@@ -12,6 +12,7 @@ import { LogOut, Menu, X, Home, User, Users, CreditCard, Info, Wallet, Shield, P
 import MiningDashboard from "@/components/MiningDashboard";
 import UpgradePage from "@/components/UpgradePage";
 import PoliciesPage from "@/components/PoliciesPage";
+import Splash from "@/pages/Splash";
 import { collection, getDocs, query, where } from "firebase/firestore";
 
 interface User {
@@ -85,7 +86,7 @@ export default function Dashboard() {
   const [pallBalance, setPallBalance] = useState(0);
   const [usdtBalance, setUsdtBalance] = useState(0);
   const [miningStatus, setMiningStatus] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [authInitialized, setAuthInitialized] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [form, setForm] = useState({
@@ -469,18 +470,7 @@ export default function Dashboard() {
   const totalF2 = referralData?.f2Commission || 0;
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground"></p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
+    return <Splash />;
   }
 
   return (
