@@ -38,7 +38,7 @@ export default function MiningDashboard() {
   const [claimedCount, setClaimedCount] = useState(0);
   const [dailyWaiting, setDailyWaiting] = useState(false);
 
-  const toast = useToast();
+  const {toast} = useToast();
 
   const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;

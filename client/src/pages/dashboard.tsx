@@ -486,7 +486,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top Bar with Safe Area */}
-      <div className="flex justify-between items-center bg-green-600 text-white p-2 pt-8 shadow-lg" style={{paddingTop: 'max(2rem, env(safe-area-inset-top, 1rem))'}}>
+      <div className="flex justify-between items-center bg-green-600 text-white p-2 pt-8 shadow-lg" style={{paddingTop: 'max(1rem, env(safe-area-inset-top, 1rem))'}}>
         <div className="flex items-center space-x-3">
           <img src="/logo192.png" alt="Pall Network" className="w-8 h-8 rounded-full" />
           <h1 className="text-xl font-bold">Pall Network</h1>
@@ -616,9 +616,8 @@ export default function Dashboard() {
           {currentPage === "HOME" && (
             <div className="space-y-6">
               <div className="text-center">
-                <h2 className="text-3xl font-bold mb-2">Welcome to Pall Network Dashboard! 🚀</h2>
+                <h2 className="text-3xl font-bold mb-2"></h2>
                 <p className="text-muted-foreground mb-6">
-                  A decentralized crypto mining and commerce platform
                 </p>
               </div>
 

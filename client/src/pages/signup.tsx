@@ -1,5 +1,4 @@
 // client/src/pages/signup.tsx
-
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { auth, db } from "@/lib/firebase";
@@ -87,13 +86,17 @@ export default function Signup() {
         referralCode: `${form.username}-${uid.slice(0, 5)}`,
       });
 
-      // ✅ Create Wallet document for mining
+      // ✅ Fixed Wallet document for mining
       const walletRef = doc(db, "wallets", uid);
       await setDoc(walletRef, {
+        userId: uid,
         pallBalance: 0,
         miningActive: false,
         lastStart: null,
         lastMinedAt: null,
+        adWatched: false,       // 🔹 NEW
+        totalEarnings: 0,       // 🔹 NEW
+        createdAt: new Date(),
       });
 
       // ✅ Create Daily Reward doc
