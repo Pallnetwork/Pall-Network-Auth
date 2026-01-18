@@ -627,25 +627,14 @@ export default function Dashboard() {
               </div>
 
               {/* Quick Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
-                  <CardContent className="p-6 text-center">
-                    <h3 className="text-2xl font-bold text-blue-600 mb-2">{pallBalance.toFixed(4)}</h3>
-                    <p className="text-sm font-medium text-muted-foreground">PALL Balance</p>
-                  </CardContent>
-                </Card>
+              <div className>
                 <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
                   <CardContent className="p-6 text-center">
                     <h3 className="text-2xl font-bold text-green-600 mb-2">{referrals.length}</h3>
                     <p className="text-sm font-medium text-muted-foreground">Total Referrals</p>
                   </CardContent>
                 </Card>
-                <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
-                  <CardContent className="p-6 text-center">
-                    <h3 className="text-2xl font-bold text-purple-600 mb-2">{(totalF1 + totalF2).toFixed(2)}</h3>
-                    <p className="text-sm font-medium text-muted-foreground">USDT Earnings</p>
-                  </CardContent>
-                </Card>
+                <Card className>
                 <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20">
                   <CardContent className="p-6 text-center">
                     <h3 className={`text-2xl font-bold mb-2 ${miningStatus ? 'text-green-600' : 'text-gray-500'}`}>
