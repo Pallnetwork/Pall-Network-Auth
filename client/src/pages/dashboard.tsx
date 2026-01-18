@@ -600,7 +600,7 @@ export default function Dashboard() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 pt-24">
         <div className="container mx-auto max-w-4xl">
           {/* HOME Page */}
           {currentPage === "HOME" && (
@@ -993,7 +993,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div className="pt-20 px-4"></div>
 
 
 
