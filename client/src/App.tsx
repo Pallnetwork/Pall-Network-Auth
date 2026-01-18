@@ -1,13 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Switch, Route, Redirect } from "wouter";
-import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+
+import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+
 import Splash from "@/pages/Splash";
 import SignIn from "@/pages/signin";
 import SignUp from "@/pages/signup";
@@ -19,15 +21,12 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
-      {/* SPLASH (APP START) */}
-      <Route path="/app" component={Splash} />
-
       {/* AUTH */}
       <Route path="/app/signin" component={SignIn} />
       <Route path="/app/signup" component={SignUp} />
       <Route path="/app/forgot-password" component={ForgotPassword} />
 
-      {/* MAIN DASHBOARD (ALL MENU PAGES INSIDE THIS) */}
+      {/* DASHBOARD */}
       <Route path="/app/dashboard/:section?" component={Dashboard} />
 
       {/* KYC */}
@@ -35,7 +34,7 @@ function Router() {
 
       {/* ROOT */}
       <Route path="/">
-        <Redirect to="/app" />
+        <Redirect to="/app/signin" />
       </Route>
 
       {/* 404 */}
@@ -45,15 +44,23 @@ function Router() {
 }
 
 function App() {
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // 🔐 Token logic (tumhara existing)
       if (user) {
         const token = await user.getIdToken(true);
         localStorage.setItem("firebaseToken", token);
       } else {
         localStorage.removeItem("firebaseToken");
       }
+
+      // 🌊 GLOBAL SPLASH (har auth change par)
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+      }, 1200); // ⏳ splash duration
     });
 
     return () => unsubscribe();
@@ -64,6 +71,11 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <Toaster />
+
+          {/* 🔥 GLOBAL SPLASH */}
+          {loading && <Splash />}
+
+          {/* APP */}
           <Router />
         </TooltipProvider>
       </ThemeProvider>
