@@ -402,12 +402,12 @@ export default function MiningDashboard() {
         </Button>
 
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md">
-          <h3 className="text-lg font-bold mb-2 text-center text-orange-600">Get Daily Reward</h3>
+          <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
           <p className="text-center text-sm mb-4 text-muted-foreground">{claimedCount} / 10</p>
-          <Button disabled={claimedCount >= 10 || dailyWaiting} onClick={handleDailyReward} className="w-full py-3 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold shadow">
+          <Button disabled={claimedCount >= 10 || dailyWaiting} onClick={handleDailyReward} className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold shadow">
             {dailyWaiting ? "📺 Showing Ad..." : "Watch Ad & Get 0.1 Pall"}
           </Button>
-          {claimedCount < 10 && <div className="mt-2 text-center text-yellow-600 animate-bounce">⬆️</div>}
+          {claimedCount < 10 && <div className="mt-2 text-center text-blue-600 animate-bounce">⬆️</div>}
         </Card>
       </CardContent>
     </Card>
