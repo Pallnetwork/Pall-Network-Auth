@@ -481,10 +481,8 @@ export default function Dashboard() {
           <img src="/logo192.png" alt="Pall Network" className="w-10 h-10 rounded-full" />
           <h1 className="text-x2 font-bold">Pall Network</h1>
         </div>
-        {/* 👇 THIS IS THE FIX */}
-        <div className="h-20"></div>
-        {/* PAGE CONTENT STARTS HERE */}
-         <div className="px-4"></div>
+        {/* ✅ CONTENT WRAPPER */}
+        <div className="pt-20 px-4"></div>
 
         <Button
           variant="ghost"
