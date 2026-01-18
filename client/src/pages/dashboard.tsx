@@ -627,14 +627,14 @@ export default function Dashboard() {
               </div>
 
               {/* Quick Stats */}
-              <div className>
+              <div>
                 <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
                   <CardContent className="p-6 text-center">
                     <h3 className="text-2xl font-bold text-green-600 mb-2">{referrals.length}</h3>
                     <p className="text-sm font-medium text-muted-foreground">Total Referrals</p>
                   </CardContent>
                 </Card>
-                <Card className>
+    
                 <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20">
                   <CardContent className="p-6 text-center">
                     <h3 className={`text-2xl font-bold mb-2 ${miningStatus ? 'text-green-600' : 'text-gray-500'}`}>
