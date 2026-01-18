@@ -468,25 +468,10 @@ export default function Dashboard() {
   const totalF1 = referralData?.f1Commission || 0;
   const totalF2 = referralData?.f2Commission || 0;
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top Bar with Safe Area */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-green-600 text-white p-2 pt-8 shadow-lg" style={{paddingTop: 'max(0.5rem, env(safe-area-inset-top, 1rem))'}}>
+      <div className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-green-600 text-white p-2 pt-8 shadow-lg" style={{paddingTop: 'max(0.6rem, env(safe-area-inset-top, 1rem))'}}>
         <div className="flex items-center space-x-3">
           <img src="/logo192.png" alt="Pall Network" className="w-8 h-8 rounded-full" />
           <h1 className="text-xl font-bold">Pall Network</h1>
