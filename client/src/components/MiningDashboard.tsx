@@ -407,7 +407,7 @@ export default function MiningDashboard() {
           <Button disabled={claimedCount >= 10 || dailyWaiting} onClick={handleDailyReward} className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold shadow">
             {dailyWaiting ? "📺 Showing Ad..." : "Watch Ad & Get 0.1 Pall"}
           </Button>
-          {claimedCount < 10 && <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.6s]">
+          {claimedCount < 10 && <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.9s]">
             <span className="text-green-500 font-extrabold text-3xl leading-none">↑</span></div>}
         </Card>
       </CardContent>
