@@ -33,19 +33,17 @@ export default function MiningDashboard() {
   const [canStartMining, setCanStartMining] = useState(false);
 
   const [waitingForAd, setWaitingForAd] = useState(false);
-  const waitingForAdRef = useRef(false);
-
-  const adPurposeRef = useRef<"mining" | "daily" | null>(null);
-
-  // Daily reward
-  const [claimedCount, setClaimedCount] = useState(0);
   const [dailyWaiting, setDailyWaiting] = useState(false);
+  const [claimedCount, setClaimedCount] = useState(0);
+
+  const waitingForAdRef = useRef(false);
+  const adPurposeRef = useRef<"mining" | "daily" | null>(null);
 
   const baseMiningRate = 0.00001157;
   const MAX_SECONDS = 24 * 60 * 60;
 
   // ======================
-  // AUTH
+  // AUTH STATE
   // ======================
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((user) => {
@@ -55,38 +53,45 @@ export default function MiningDashboard() {
   }, []);
 
   // ======================
-  // AD CALLBACKS (SINGLE SOURCE)
+  // ANDROID AD CALLBACKS
   // ======================
   useEffect(() => {
-    const waitForAuthUser = async (retries = 5, delay = 500) => {
-      for (let i = 0; i < retries; i++) {
-        if (auth.currentUser) return auth.currentUser;
-        await new Promise((r) => setTimeout(r, delay));
-      }
-      return null;
+    window.onAdCompleted = () => {
+      window.dispatchEvent(new Event("rewardAdCompleted"));
     };
 
-    window.onAdCompleted = async () => {
-      if (!waitingForAdRef.current) return;
+    window.onAdFailed = () => {
+      waitingForAdRef.current = false;
+      setWaitingForAd(false);
+      setDailyWaiting(false);
+
+      toast({
+        title: "Ad Failed",
+        description: "Rewarded ad could not load",
+        variant: "destructive",
+      });
+    };
+
+    return () => {
+      window.onAdCompleted = undefined;
+      window.onAdFailed = undefined;
+    };
+  }, [toast]);
+
+  // ======================
+  // AD RESULT HANDLER (SINGLE SOURCE)
+  // ======================
+  useEffect(() => {
+    if (!uid) return;
+
+    const handler = async () => {
+      const purpose = adPurposeRef.current;
+      adPurposeRef.current = null;
 
       waitingForAdRef.current = false;
       setWaitingForAd(false);
       setDailyWaiting(false);
 
-      const purpose = adPurposeRef.current;
-      adPurposeRef.current = null;
-
-      const user = await waitForAuthUser();
-      if (!user) {
-        toast({
-          title: "Auth Error",
-          description: "User not ready",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 🔹 MINING
       if (purpose === "mining") {
         const result = await mineForUser();
         if (result.status === "error") {
@@ -104,39 +109,30 @@ export default function MiningDashboard() {
         });
       }
 
-      // 🔹 DAILY REWARD
-      if (purpose === "daily" && uid) {
+      if (purpose === "daily") {
         const res = await claimDailyReward(uid);
         if (res.status === "success") {
           setUiBalance((p) => p + 0.1);
           toast({
             title: "🎉 Reward Received",
-            description: "+0.1 Pall added successfully",
+            description: "+0.1 Pall added",
           });
         } else {
           toast({
             title: "Daily Reward",
-            description: res.message || "Reward already claimed",
+            description: res.message || "Already claimed",
             variant: "destructive",
           });
         }
       }
     };
 
-    window.onAdFailed = () => {
-      waitingForAdRef.current = false;
-      setWaitingForAd(false);
-      setDailyWaiting(false);
-    };
-
-    return () => {
-      window.onAdCompleted = undefined;
-      window.onAdFailed = undefined;
-    };
-  }, [toast, uid]);
+    window.addEventListener("rewardAdCompleted", handler);
+    return () => window.removeEventListener("rewardAdCompleted", handler);
+  }, [uid, toast]);
 
   // ======================
-  // WALLET SNAPSHOT (SOURCE OF TRUTH)
+  // FIRESTORE WALLET SYNC (MASTER LOGIC)
   // ======================
   useEffect(() => {
     if (!uid) return;
@@ -167,9 +163,6 @@ export default function MiningDashboard() {
             : new Date(data.lastStart.seconds * 1000);
 
         const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
-        const minedAmount = elapsed * baseMiningRate;
-
-        setUiBalance(data.pallBalance + minedAmount);
 
         if (elapsed >= MAX_SECONDS) {
           setMining(false);
@@ -181,6 +174,7 @@ export default function MiningDashboard() {
           setCanStartMining(false);
           setLastStart(start);
           setTimeRemaining(MAX_SECONDS - elapsed);
+          setUiBalance(data.pallBalance + elapsed * baseMiningRate);
         }
       } else {
         setMining(false);
@@ -191,14 +185,13 @@ export default function MiningDashboard() {
     });
 
     return () => unsub();
-  }, [uid]);
+  }, [uid, mining]);
 
   // ======================
   // DAILY REWARD SNAPSHOT
   // ======================
   useEffect(() => {
     if (!uid) return;
-
     const ref = doc(db, "dailyRewards", uid);
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
@@ -208,32 +201,25 @@ export default function MiningDashboard() {
         }
       }
     });
-
     return () => unsub();
   }, [uid]);
 
   // ======================
-  // UI TIMER (SMOOTH ONLY)
+  // UI TIMER
   // ======================
   useEffect(() => {
     if (!mining || !lastStart) return;
 
-    const uiInterval = setInterval(() => {
-      setUiBalance((prev) => prev + baseMiningRate);
+    const tick = setInterval(() => {
+      setUiBalance((p) => p + baseMiningRate);
+      setTimeRemaining((t) => (t > 0 ? t - 1 : 0));
     }, 1000);
 
-    const countdown = setInterval(() => {
-      setTimeRemaining((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-
-    return () => {
-      clearInterval(uiInterval);
-      clearInterval(countdown);
-    };
+    return () => clearInterval(tick);
   }, [mining, lastStart]);
 
   // ======================
-  // HANDLERS
+  // ACTIONS
   // ======================
   const handleStartMining = () => {
     if (waitingForAdRef.current || mining) return;
@@ -242,6 +228,8 @@ export default function MiningDashboard() {
       waitingForAdRef.current = true;
       setWaitingForAd(true);
       adPurposeRef.current = "mining";
+
+      window.AndroidBridge.setAdPurpose?.("mining");
       window.AndroidBridge.startMiningRewardedAd();
     }
   };
@@ -252,6 +240,7 @@ export default function MiningDashboard() {
     if (window.AndroidBridge?.startDailyRewardedAd) {
       setDailyWaiting(true);
       adPurposeRef.current = "daily";
+      window.AndroidBridge.setAdPurpose?.("daily");
       window.AndroidBridge.startDailyRewardedAd();
     }
   };
@@ -271,6 +260,10 @@ export default function MiningDashboard() {
         User not authenticated
       </div>
     );
+
+  // ======================
+  // UI
+  // ======================
 
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
