@@ -30,6 +30,7 @@ export default function MiningDashboard() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [canStartMining, setCanStartMining] = useState(true);
   const [waitingForAd, setWaitingForAd] = useState(false);
+  const [dailyCooldown, setDailyCooldown] = useState(0);
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"mining" | "daily" | null>(null);
@@ -154,12 +155,45 @@ export default function MiningDashboard() {
     const ref = doc(db, "dailyRewards", uid);
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
-        const data = snap.data();
-        if (typeof data.claimedCount === "number") setClaimedCount(data.claimedCount);
+        setClaimedCount(0);
+        setDailyCooldown(0);
+        return;
+      }
+
+      const data = snap.data();
+      const claimed = typeof data.claimedCount === "number" ? data.claimedCount : 0;
+      setClaimedCount(claimed);
+
+      // 24h cooldown timer
+      if (claimed >= 10 && data.lastClaim) {
+        const last = data.lastClaim.toDate ? data.lastClaim.toDate() : new Date(data.lastClaim.seconds * 1000);
+        const elapsed = Math.floor((Date.now() - last.getTime()) / 1000);
+        const remaining = 24 * 60 * 60 - elapsed;
+        setDailyCooldown(remaining > 0 ? remaining : 0);
+      } else {
+        setDailyCooldown(0);
       }
     });
+
     return () => unsub();
   }, [uid]);
+
+  // ⏳ Daily Reward 24h cooldown countdown (UI timer)
+  useEffect(() => {
+    if (dailyCooldown <= 0) return;
+
+    const interval = setInterval(() => {
+      setDailyCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [dailyCooldown]);
 
   // ======================
   // UI MINING TIMER
@@ -333,14 +367,22 @@ export default function MiningDashboard() {
 
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md">
           <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
-          <p className="text-center text-sm mb-4 text-muted-foreground">{claimedCount} / 10</p>
+          <p className="text-center text-sm mb-4">
+            <span className="font-bold text-orange-500">{claimedCount}</span>/10
+          </p>
           <Button
             disabled={claimedCount >= 10 || dailyWaiting}
             onClick={handleDailyReward}
             className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold shadow"
           >
-            {dailyWaiting ? "📺 Showing Ad..." : "Watch Ad & Get 0.1 Pall"}
+            {dailyCooldown > 0
+              ? `Reward 🎁 ${formatTime(dailyCooldown)} ⏳`
+              : dailyWaiting
+                ? "📺 Showing Ad..."
+                : "Watch Ad & Get 0.1 Pall"}
           </Button>
+          {claimedCount < 10 && <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.8s]">
+            <span className="text-orange-500 font-extrabold text-3xl leading-none">▲</span></div>}
         </Card>
       </CardContent>
     </Card>
