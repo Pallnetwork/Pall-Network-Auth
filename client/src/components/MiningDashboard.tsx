@@ -143,8 +143,10 @@ export default function MiningDashboard() {
       }
 
       const data = snap.data();
+
       if (typeof data.pallBalance === "number") {
         setBalance(data.pallBalance);
+        if (!mining) setUiBalance(data.pallBalance);
       }
 
       if (data.miningActive && data.lastStart) {
