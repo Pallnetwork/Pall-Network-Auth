@@ -155,14 +155,11 @@ export default function MiningDashboard() {
     const ref = doc(db, "dailyRewards", uid);
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
-        setClaimedCount(0);
-        setDailyCooldown(0);
-        return;
-      }
 
-      const data = snap.data();
-      const claimed = typeof data.claimedCount === "number" ? data.claimedCount : 0;
-      setClaimedCount(claimed);
+        const data = snap.data();
+        
+        if (typeof data.claimedCount === "number") setClaimedCount (data.claimedCount);
+      }
 
       // 24h cooldown timer
       if (claimed >= 10 && data.lastClaim) {
@@ -368,7 +365,7 @@ export default function MiningDashboard() {
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md">
           <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
           <p className="text-center text-sm mb-4">
-            <span className="font-bold text-orange-500">{claimedCount}</span>/10
+            <span className="font-bold text-orange-500">{claimedCount} / 10</span>
           </p>
           <Button
             disabled={claimedCount >= 10 || dailyWaiting}
