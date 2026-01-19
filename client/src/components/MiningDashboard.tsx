@@ -132,8 +132,8 @@ export default function MiningDashboard() {
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) {
         if (!waitingForAd) {
-          setMining(false);
-          setCanStartMining(true);
+          setMining(true);
+          setCanStartMining(false);
           setTimeRemaining(0);
           setLastStart(null);
           setBalance(0);
