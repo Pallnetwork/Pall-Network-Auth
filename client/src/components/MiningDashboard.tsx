@@ -193,6 +193,25 @@ export default function MiningDashboard() {
   }, [dailyCooldown]);
 
   // ======================
+  // ⏳ DAILY REWARD UI TIMER  ✅ (1s countdown)
+  // ======================
+  useEffect(() => {
+    if (dailyCooldown <= 0) return;
+
+    const interval = setInterval(() => {
+      setDailyCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [dailyCooldown]);
+
+  // ======================
   // UI MINING TIMER
   // ======================
   useEffect(() => {
@@ -372,8 +391,15 @@ export default function MiningDashboard() {
             onClick={handleDailyReward}
             className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold shadow"
           >
-            {dailyCooldown > 0 ? "📺 Showing Ad..." : Reward ? `Reward 🎁 (${formatTime(dailyCooldown)})⏳` : "Watch Ad & Get 0.1 Pall 🤩"}
+            {
+              dailyWaiting
+              ? "📺 Showing Ad..."
+              : dailyCooldown > 0
+              ? `Reward 🎁 (${formatTime(dailyCooldown)})`
+              : "Watch Ad & Get 0.1 Pall 🤩"
+            }
           </Button>
+          
           {claimedCount < 10 && <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.8s]">
             <span className="text-orange-500 font-extrabold text-3xl leading-none">▲</span></div>}
         </Card>
