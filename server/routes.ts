@@ -27,6 +27,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adWatched: true,
       });
 
+      // 🔁 AUTO RESET if old mining completed (24h passed)
+      if (wallet.miningActive && wallet.lastStart) {
+        const elapsed = Date.now() - wallet.lastStart;
+
+        if (elapsed >= ONE_DAY_MS) {
+          await updateDoc(walletRef, {
+            miningActive: false,
+            lastStart: null,
+          });
+        }
+      }
+
       return res.json({ success: true, message: "Ad verified successfully" });
     } catch (err) {
       console.error("Ad verification error:", err);

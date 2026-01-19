@@ -1,77 +1,57 @@
-// client/src/lib/dailyReward.ts
-import { db } from "./firebase";
-import { doc, getDoc, setDoc, updateDoc, increment } from "firebase/firestore";
+import { db, auth } from "./firebase";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
-interface ClaimResult {
-  status: "success" | "error";
-  message?: string;
-  data?: {
-    newCount: number;
-  };
-}
+export async function claimDailyReward(uid: string) {
+  const ref = doc(db, "dailyRewards", uid);
+  const snap = await getDoc(ref);
+  const now = Date.now();
 
-/**
- * claimDailyReward
- * 
- * Handles the daily reward logic:
- * - Max 10 rewards per day
- * - Adds 0.1 Pall to user balance
- * - Resets count after 24 hours
- */
-export const claimDailyReward = async (uid: string): Promise<ClaimResult> => {
-  if (!uid) {
-    return { status: "error", message: "User not authenticated" };
-  }
+  if (!snap.exists()) {
+    await updateDoc(ref, {
+      claimedCount: 1,
+      lastClaim: serverTimestamp(),
+    }).catch(() => null);
 
-  const dailyRef = doc(db, "dailyRewards", uid);
-  const walletRef = doc(db, "wallets", uid);
+    // Add 0.1 Pall to user wallet
+    const walletRef = doc(db, "wallets", uid);
+    const walletSnap = await getDoc(walletRef);
+    const currentBalance = walletSnap.exists() && typeof walletSnap.data().pallBalance === "number" ? walletSnap.data().pallBalance : 0;
 
-  try {
-    const snap = await getDoc(dailyRef);
-    const now = Date.now();
-
-    let claimedCount = 0;
-    let lastClaimAt: number | null = null;
-
-    if (snap.exists()) {
-      const data = snap.data();
-      claimedCount = data.claimedCount || 0;
-      lastClaimAt = data.lastClaimAt?.toMillis?.() || 0;
-    }
-
-    // Check if 24h passed since first claim
-    if (!lastClaimAt || now - lastClaimAt > 24 * 60 * 60 * 1000) {
-      claimedCount = 0;
-      lastClaimAt = null;
-    }
-
-    if (claimedCount >= 10) {
-      return { status: "error", message: "Daily limit reached" };
-    }
-
-    const newCount = claimedCount + 1;
-
-    // Update Firestore
-    await setDoc(
-      dailyRef,
-      {
-        claimedCount: newCount,
-        lastClaimAt: lastClaimAt ? lastClaimAt : new Date(),
-      },
-      { merge: true }
-    );
-
-    // Increment wallet balance
     await updateDoc(walletRef, {
-      pallBalance: increment(0.1),
+      pallBalance: currentBalance + 0.1,
     });
 
-    return {
-      status: "success",
-      data: { newCount },
-    };
-  } catch (err: any) {
-    console.error("Daily Reward Error:", err);
-    return { status: "error", message: err.message || "Unknown error" };
+    return { status: "success" };
   }
-};
+
+  const data = snap.data();
+  let claimedCount = typeof data.claimedCount === "number" ? data.claimedCount : 0;
+  const lastClaim = data.lastClaim?.toDate ? data.lastClaim.toDate() : new Date(0);
+
+  // Reset daily reward if 24h passed
+  if (now - lastClaim.getTime() > 24 * 60 * 60 * 1000) {
+    claimedCount = 0;
+  }
+
+  if (claimedCount >= 10) {
+    return { status: "error", message: "Daily reward limit reached. Try after 24h" };
+  }
+
+  claimedCount += 1;
+
+  await updateDoc(ref, {
+    claimedCount,
+    lastClaim: serverTimestamp(),
+  });
+
+  // Add 0.1 Pall to user wallet
+  const walletRef = doc(db, "wallets", uid);
+  const walletSnap = await getDoc(walletRef);
+  const currentBalance = walletSnap.exists() && typeof walletSnap.data().pallBalance === "number" ? walletSnap.data().pallBalance : 0;
+
+  await updateDoc(walletRef, {
+    pallBalance: currentBalance + 0.1,
+  });
+
+  return { status: "success" };
+}
