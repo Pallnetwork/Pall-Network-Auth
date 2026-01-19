@@ -25,10 +25,10 @@ export default function MiningDashboard() {
   const [uid, setUid] = useState<string | null>(auth.currentUser?.uid || null);
   const [balance, setBalance] = useState(0);
   const [uiBalance, setUiBalance] = useState(0);
-  const [mining, setMining] = useState(false);
+  const [mining, setMining] = useState(true);
   const [lastStart, setLastStart] = useState<Date | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
-  const [canStartMining, setCanStartMining] = useState(true);
+  const [canStartMining, setCanStartMining] = useState(false);
   const [waitingForAd, setWaitingForAd] = useState(false);
 
   const waitingForAdRef = useRef(false);
