@@ -126,6 +126,13 @@ export default function MiningDashboard() {
         setUiBalance((data.pallBalance || 0) + minedAmount);
 
         if (elapsed >= MAX_SECONDS) {
+          // 🔥 AUTO CLAIM BACKEND
+          fetch("/api/mining/claim", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: uid }),
+          }).catch(() => {});
+
           setMining(false);
           setCanStartMining(true);
           setTimeRemaining(0);
