@@ -155,18 +155,19 @@ export default function MiningDashboard() {
 
     const ref = doc(db, "dailyRewards", uid);
     const unsub = onSnapshot(ref, (snap) => {
-      if (snap.exists()) {
+      if (!snap.exists()) {
         setClaimedCount(0);
         return;
       }
 
       const data = snap.data();
-        
+
+      // ads count
       if (typeof data.claimedCount === "number") {
-        setClaimedCount (data.claimedCount);
+        setClaimedCount(data.claimedCount);
       }
 
-      // 24h cooldown calculation
+      // 🔒 only INITIALIZE cooldown (not overwrite)
       if (data.claimedCount >= 10 && data.lastClaim) {
         const last =
         typeof data.lastClaim.toDate === "function"
@@ -176,34 +177,17 @@ export default function MiningDashboard() {
         const elapsed = Math.floor((Date.now() - last.getTime()) / 1000);
         const remaining = 24 * 60 * 60 - elapsed;
 
-        setDailyCooldown(remaining > 0 ? remaining : 0);
-      } else {
-        setDailyCooldown(0);
+        if (remaining > 0 && dailyCooldown === 0) {
+          setDailyCooldown(remaining);
+        }
       }
     });
 
     return () => unsub();
-  }, [uid]);
-
-  // ⏳ Daily Reward 24h cooldown countdown (UI timer)
-  useEffect(() => {
-    if (dailyCooldown <= 0) return;
-
-    const interval = setInterval(() => {
-      setDailyCooldown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [dailyCooldown]);
+  }, [uid, dailyCooldown]);
 
   // ======================
-  // ⏳ DAILY REWARD UI TIMER  ✅ (1s countdown)
+  // ⏳ DAILY REWARD UI TIMER (24h countdown)
   // ======================
   useEffect(() => {
     if (dailyCooldown <= 0) return;
