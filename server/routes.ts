@@ -23,23 +23,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Wallet not found" });
       }
 
+      // ✅ Sirf ad flag set karo
       await updateDoc(walletRef, {
         adWatched: true,
       });
 
-      // 🔁 AUTO RESET if old mining completed (24h passed)
-      if (wallet.miningActive && wallet.lastStart) {
-        const elapsed = Date.now() - wallet.lastStart;
-
-        if (elapsed >= ONE_DAY_MS) {
-          await updateDoc(walletRef, {
-            miningActive: false,
-            lastStart: null,
-          });
-        }
-      }
-
-      return res.json({ success: true, message: "Ad verified successfully" });
+      return res.json({
+        success: true,
+        message: "Ad verified successfully",
+      });
     } catch (err) {
       console.error("Ad verification error:", err);
       return res.status(500).json({ error: "Failed to verify ad" });
@@ -64,22 +56,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const wallet = walletSnap.data();
 
-      // ❌ Check if user watched ad
-      if (!wallet.adWatched) {
-        return res.status(400).json({ error: "Please watch reward ad before starting mining" });
+      // 🔁 AUTO RESET agar purani mining 24h complete ho chuki ho
+      if (wallet.miningActive && wallet.lastStart) {
+        const elapsed = Date.now() - wallet.lastStart;
+
+        if (elapsed >= ONE_DAY_MS) {
+          await updateDoc(walletRef, {
+            miningActive: false,
+            lastStart: null,
+          });
+          wallet.miningActive = false; // important
+        }
       }
 
+      // ❌ Ad nahi dekhi
+      if (!wallet.adWatched) {
+        return res
+          .status(400)
+          .json({ error: "Please watch reward ad before starting mining" });
+      }
+
+      // ❌ Abhi bhi active hai
       if (wallet.miningActive === true) {
         return res.status(400).json({ error: "Mining already active" });
       }
 
+      // ✅ Start fresh mining
       await updateDoc(walletRef, {
         miningActive: true,
         lastStart: Date.now(),
-        adWatched: false, // Reset ad flag for next mining
+        adWatched: false, // reset for next cycle
       });
 
-      return res.json({ success: true, message: "Mining started" });
+      return res.json({
+        success: true,
+        message: "Mining started",
+      });
     } catch (err) {
       console.error("Start mining error:", err);
       return res.status(500).json({ error: "Failed to start mining" });
@@ -117,7 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // ✅ 1 PALL per 24 hours
+      // ✅ 24h complete → reward + stop mining
       await updateDoc(walletRef, {
         pallBalance: increment(1),
         totalEarnings: increment(1),
