@@ -183,7 +183,7 @@ export default function MiningDashboard() {
     });
 
     return () => unsub();
-  }, [uid, dailyCooldown]);
+  }, [uid]);
 
   // ⏳ Daily Reward 24h cooldown countdown (UI timer)
   useEffect(() => {
