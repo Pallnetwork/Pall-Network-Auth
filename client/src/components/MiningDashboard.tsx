@@ -167,7 +167,7 @@ export default function MiningDashboard() {
     });
 
     return () => unsub();
-  }, [uid, mining]);
+  }, [uid]);
 
   // ======================
   // DAILY REWARD SNAPSHOT
