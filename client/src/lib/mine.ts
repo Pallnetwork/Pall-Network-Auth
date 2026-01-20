@@ -36,16 +36,17 @@ export async function mineForUser() {
     const token =
       localStorage.getItem("firebaseToken") ??
       (await user.getIdToken(true));
-      
+
     console.log("🔥 Using Firebase Token:", token);
 
+    // 🔹 Proper payload with userId
     const res = await fetch("https://pall-network-auth.onrender.com/api/mine", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ test: "rootCauseCheck" }),
+      body: JSON.stringify({ userId: user.uid }), // ✅ userId send kar rahe
     });
 
     const data = await res.json();

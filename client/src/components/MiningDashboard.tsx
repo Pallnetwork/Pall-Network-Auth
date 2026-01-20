@@ -93,52 +93,81 @@ export default function MiningDashboard() {
   // ======================
   useEffect(() => {
     if (!uid) return;
+
     const ref = doc(db, "wallets", uid);
+
     const unsub = onSnapshot(ref, (snap) => {
-      const data = snap.exists() ? snap.data() : null;
-
-      // Update balance
-      if (data && typeof data.pallBalance === "number") {
-        setBalance(data.pallBalance);
-        if (!mining) setUiBalance(data.pallBalance);
-      }
-
-      // Mining active check
-      if (data && data.miningActive && data.lastStart) {
-        const start = data.lastStart.toDate ? data.lastStart.toDate() : new Date(data.lastStart.seconds * 1000);
-        const elapsed = Math.floor((Date.now() - start.getTime()) / 1000);
-
-        const minedAmount = elapsed * baseMiningRate;
-        setUiBalance((data.pallBalance || 0) + minedAmount);
-
-        if (elapsed >= MAX_SECONDS) {
-          // 🔥 AUTO CLAIM BACKEND
-          fetch("/api/mining/claim", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: uid }),
-          }).catch(() => {});
-
-          setMining(false);
-          setCanStartMining(true);
-          setTimeRemaining(0);
-          setLastStart(null);
-        } else {
-          setMining(true);
-          setCanStartMining(false);
-          setLastStart(start);
-          setTimeRemaining(MAX_SECONDS - elapsed);
-        }
-      } else {
+      if (!snap.exists()) {
         setMining(false);
         setCanStartMining(true);
         setTimeRemaining(0);
         setLastStart(null);
+        return;
       }
+
+      const data = snap.data();
+
+      // 🔹 Balance sync
+      if (typeof data.pallBalance === "number") {
+        setBalance(data.pallBalance);
+        if (!mining) setUiBalance(data.pallBalance);
+      }
+
+      // 🔹 Mining inactive
+      if (!data.miningActive || !data.lastStart) {
+        setMining(false);
+        setCanStartMining(true);
+        setTimeRemaining(0);
+        setLastStart(null);
+        return;
+      }
+
+      // 🔹 SAFE lastStart conversion (Timestamp | number)
+      let startMs: number;
+
+      if (typeof data.lastStart === "number") {
+        startMs = data.lastStart;
+      } else if (data.lastStart.toMillis) {
+        startMs = data.lastStart.toMillis();
+      } else {
+        // fallback safety
+        setMining(false);
+        setCanStartMining(true);
+        setTimeRemaining(0);
+        setLastStart(null);
+        return;
+      }
+
+      const elapsedSeconds = Math.floor((Date.now() - startMs) / 1000);
+
+      // 🔹 UI mining preview
+      const minedAmount = elapsedSeconds * baseMiningRate;
+      setUiBalance((data.pallBalance || 0) + minedAmount);
+
+      // 🔥 Mining complete → auto claim
+      if (elapsedSeconds >= MAX_SECONDS) {
+        fetch("/api/mining/claim", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: uid }),
+        }).catch(() => {});
+
+        setMining(false);
+        setCanStartMining(true);
+        setTimeRemaining(0);
+        setLastStart(null);
+        return;
+      }
+
+      // ⏳ Mining still running
+      setMining(true);
+      setCanStartMining(false);
+      setLastStart(new Date(startMs));
+      setTimeRemaining(MAX_SECONDS - elapsedSeconds);
     });
 
     return () => unsub();
-  }, [uid]);
+  }, [uid, mining]);
 
   // ======================
   // DAILY REWARD SNAPSHOT
