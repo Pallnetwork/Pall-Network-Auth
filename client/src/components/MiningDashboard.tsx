@@ -152,28 +152,38 @@ export default function MiningDashboard() {
   // ======================
   useEffect(() => {
     if (!uid) return;
+
     const ref = doc(db, "dailyRewards", uid);
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
-
-        const data = snap.data();
-        
-        if (typeof data.claimedCount === "number") setClaimedCount (data.claimedCount);
+        setClaimedCount(0);
+        return;
       }
 
-      // 24h cooldown timer
-      if (claimed >= 10 && data.lastClaim) {
-        const last = data.lastClaim.toDate ? data.lastClaim.toDate() : new Date(data.lastClaim.seconds * 1000);
+      const data = snap.data();
+        
+      if (typeof data.claimedCount === "number") {
+        setClaimedCount (data.claimedCount);
+      }
+
+      // ⛔ ONLY INITIALIZE cooldown, NOT overwrite every time
+      if (data.claimedCount >= 10 && data.lastClaim) {
+        const last =
+        typeof data.lastClaim.toDate === "function"
+        ? data.lastClaim.toDate()
+        : new Date(data.lastClaim.seconds * 1000);
+
         const elapsed = Math.floor((Date.now() - last.getTime()) / 1000);
         const remaining = 24 * 60 * 60 - elapsed;
-        setDailyCooldown(remaining > 0 ? remaining : 0);
-      } else {
-        setDailyCooldown(0);
+
+        if (remaining > 0 && dailyCooldown === 0) {
+          setDailyCooldown(remaining);
+        }
       }
     });
 
     return () => unsub();
-  }, [uid]);
+  }, [uid, dailyCooldown]);
 
   // ⏳ Daily Reward 24h cooldown countdown (UI timer)
   useEffect(() => {
@@ -387,7 +397,7 @@ export default function MiningDashboard() {
             <span className="font-bold text-blue-500">{claimedCount} ♦️ 10</span>
           </p>
           <Button
-            disabled={claimedCount >= 10 || dailyWaiting}
+            disabled={dailyWaiting || dailyCooldown > 0}
             onClick={handleDailyReward}
             className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold shadow"
           >
