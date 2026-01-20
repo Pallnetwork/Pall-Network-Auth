@@ -176,9 +176,9 @@ export default function MiningDashboard() {
         const elapsed = Math.floor((Date.now() - last.getTime()) / 1000);
         const remaining = 24 * 60 * 60 - elapsed;
 
-        if (remaining > 0 && dailyCooldown === 0) {
-          setDailyCooldown(remaining);
-        }
+        setDailyCooldown(remaining > 0 ? remaining : 0);
+      } else {
+        setDailyCooldown(0);
       }
     });
 
