@@ -166,7 +166,7 @@ export default function MiningDashboard() {
         setClaimedCount (data.claimedCount);
       }
 
-      // ⛔ ONLY INITIALIZE cooldown, NOT overwrite every time
+      // 24h cooldown calculation
       if (data.claimedCount >= 10 && data.lastClaim) {
         const last =
         typeof data.lastClaim.toDate === "function"
@@ -394,7 +394,7 @@ export default function MiningDashboard() {
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md">
           <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
           <p className="text-center text-sm mb-4">
-            <span className="font-bold text-blue-500">{claimedCount} ♦️ 10</span>
+            <span className="font-bold text-blue-500">{claimedCount} 🔶 10</span>
           </p>
           <Button
             disabled={dailyWaiting || dailyCooldown > 0}
@@ -405,13 +405,13 @@ export default function MiningDashboard() {
               dailyWaiting
               ? "📺 Showing Ad..."
               : dailyCooldown > 0
-              ? `Reward 🎁 (${formatTime(dailyCooldown)})`
-              : "Watch Ad & Get 0.1 Pall 🤩"
+              ? `Reward ⛏️ (${formatTime(dailyCooldown)})`
+              : "Watch Ad & Get 0.1 Pall 🎁"
             }
           </Button>
           
           {claimedCount < 10 && <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.8s]">
-            <span className="text-orange-500 font-extrabold text-3xl leading-none">▲</span></div>}
+            <span className="text-orange-500 font-extrabold text-3xl leading-none">🎉</span></div>}
         </Card>
       </CardContent>
     </Card>
