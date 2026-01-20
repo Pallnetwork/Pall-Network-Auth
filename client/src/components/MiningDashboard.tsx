@@ -54,37 +54,23 @@ export default function MiningDashboard() {
     waitingForAdRef.current = false;
     setWaitingForAd(false);
     setDailyWaiting(false);
-    toast({ title: "Ad Failed", description: "Rewarded ad could not load", variant: "destructive" });
+    toast({
+     title: "Ad Failed",
+     description: "Rewarded ad could not load",
+     variant: "destructive" ,
+    });
   };
 
   useEffect(() => {
-    const waitForAuthUser = async (retries = 5, delay = 500) => {
-      for (let i = 0; i < retries; i++) {
-        if (auth.currentUser) return auth.currentUser;
-        await new Promise((r) => setTimeout(r, delay));
-      }
-      return null;
-    };
-
     window.onAdCompleted = async () => {
       if (!waitingForAdRef.current) return;
 
+      // ❌ IMPORTANT: yahan mining start nahi hogi
       waitingForAdRef.current = false;
       setWaitingForAd(false);
 
-      const user = await waitForAuthUser();
-      if (!user) {
-        toast({ title: "Auth Error", description: "User not ready", variant: "destructive" });
-        return;
-      }
-
-      const result = await mineForUser();
-      if (result.status === "error") {
-        toast({ title: "Mining Error", description: result.message || "Could not start mining", variant: "destructive" });
-        return;
-      }
-
-      toast({ title: "Mining Started", description: "24h mining activated" });
+      // sirf signal dispatch hoga
+      window.dispatchEvent(new Event("rewardAdCompleted"));
     };
 
     return () => {
@@ -396,7 +382,7 @@ export default function MiningDashboard() {
               dailyWaiting
               ? "📺 Showing Ad..."
               : dailyCooldown > 0
-              ? `Reward ⛏️ (${formatTime(dailyCooldown)})`
+              ? `Reward ⛏ (${formatTime(dailyCooldown)})`
               : "Watch Ad & Get 0.1 Pall 🎁"
             }
           </Button>
