@@ -3,6 +3,11 @@ dist
 .DS_Store
 .env
 serviceAccountKey.json
+.firebase/
+.env
+.env.local
+.env.production
 server/public
+Thumbs.db
 vite.config.ts.*
 *.tar.gz
