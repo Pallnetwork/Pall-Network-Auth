@@ -618,7 +618,7 @@ export default function Dashboard() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 p-6 pt-18">
+      <div className="flex-1 p-6 pt-20">
         <div className="container mx-auto max-w-4xl">
           {/* HOME Page */}
           {currentPage === "HOME" && (
