@@ -174,7 +174,6 @@ export default function MiningDashboard() {
   // ======================
   useEffect(() => {
     if (!uid) return;
-
     const ref = doc(db, "dailyRewards", uid);
     const unsub = onSnapshot(ref, async (snap) => {
       if (!snap.exists()) {
@@ -184,36 +183,39 @@ export default function MiningDashboard() {
       }
 
       const data = snap.data();
-      const claimed = typeof data.claimedCount === "number" ? data.claimedCount : 0;
+      const claimed =
+        typeof data.claimedCount === "number" ? data.claimedCount : 0;
+      setClaimedCount(claimed);
 
-      if (data.lastClaim) {
-        const last = data.lastClaim.toDate
-        ? data.lastClaim.toDate()
-        : new Date(data.lastClaim.seconds * 1000);
+      // ❌ cooldown sirf tab jab 10 ads complete hon
+      if (claimed < 10) {
+        setDailyCooldown(0);
+        return;
+      }
 
-        const elapsedMs = Date.now() - last.getTime();
-        // ✅ 24 HOURS COMPLETE → RESET
+      // ✅ cooldown logic ONLY for 10/10
+      if (data.cycleStart) {
+        const start = data.cycleStart.toDate
+          ? data.cycleStart.toDate()
+          : new Date(data.cycleStart.seconds * 1000);
+
+        const elapsedMs = Date.now() - start.getTime();
+
+        // ✅ 24 hours complete → reset
         if (elapsedMs >= 24 * 60 * 60 * 1000) {
           setClaimedCount(0);
           setDailyCooldown(0);
 
-          // Firestore reset (important)
           updateDoc(ref, {
             claimedCount: 0,
-            lastClaim: null,
+            cycleStart: null,
           }).catch(() => {});
         } else {
-          // ⏳ still cooldown running
           const remaining = Math.floor(
             (24 * 60 * 60 * 1000 - elapsedMs) / 1000
           );
-          setClaimedCount(claimed);
           setDailyCooldown(remaining);
         }
-      } else {
-        // first time / no claim yet
-        setClaimedCount(claimed);
-        setDailyCooldown(0);
       }
     });
 
