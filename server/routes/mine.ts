@@ -63,12 +63,8 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
     const snap = await walletRef.get();
     const nowMs = Date.now();
 
-    let isNewUser = false;
-
-    // ✅ First-time wallet create (UNCHANGED)
+    // 🆕 Create wallet if not exists
     if (!snap.exists) {
-      isNewUser = true;
-
       await walletRef.set({
         uid,
         pallBalance: 0,
@@ -85,33 +81,38 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
 
     const walletSnap = await walletRef.get();
     const wallet = walletSnap.data()!;
-    const lastStartDate =
-      wallet.lastStart && wallet.lastStart.toDate
-        ? wallet.lastStart.toDate()
-        : null;
 
-    if (wallet.miningActive === true) {
-      return res.status(400).json({ error: "Mining already active" });
-    }
+    // 🔥 AUTO RESET IF 24h COMPLETED
+    if (wallet.miningActive === true && wallet.lastStart) {
+      const lastStartMs =
+        wallet.lastStart.toDate?.().getTime() ??
+        new Date(wallet.lastStart).getTime();
 
-    if (!isNewUser && lastStartDate) {
-      const diff = nowMs - lastStartDate.getTime();
-      if (diff < COOLDOWN_MS) {
+      const diff = nowMs - lastStartMs;
+
+      if (diff >= COOLDOWN_MS) {
+        // ✅ 24h complete → force stop mining
+        await walletRef.update({
+          miningActive: false,
+          lastStart: null,
+        });
+      } else {
+        // ❌ Still running
         const remainingMinutes = Math.ceil((COOLDOWN_MS - diff) / 60000);
         return res.status(400).json({
-          error: "Cooldown active",
+          error: "Mining already active",
           remainingMinutes,
         });
       }
     }
 
-    // 🚀 START MINING + REFERRAL SPEED
+    // 🚀 START NEW MINING SESSION
     const nowTs = admin.firestore.Timestamp.now();
     const miningSpeed = await calculateMiningSpeed(uid);
 
     await walletRef.update({
       miningActive: true,
-      miningSpeed,          // ✅ FINAL SPEED SAVED
+      miningSpeed,
       lastStart: nowTs,
       lastMinedAt: nowTs,
     });
@@ -122,7 +123,7 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
       message: "Mining session started",
     });
   } catch (err) {
-    console.error("Referral mining start error:", err);
+    console.error("Mining start error:", err);
     return res.status(500).json({ error: "Mining failed" });
   }
 });

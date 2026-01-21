@@ -18,7 +18,7 @@ export default function Splash() {
           Digital Network Platform
         </p>
 
-        <div className="mt-6 w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+        <div className="mt-6 w-8 h-8 border-2 border-white/40 border-t-white rounded-full animate-spin" />
       </div>
     </div>
   );
