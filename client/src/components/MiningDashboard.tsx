@@ -278,6 +278,9 @@ export default function MiningDashboard() {
 
       if (purpose === "daily") {
         const res = await claimDailyReward(uid);
+
+        setDailyWaiting(false);
+        setClaimedCount((prev) => prev + (res.status === "success" ? 1 : 0));
         if (res.status === "success") {
           setUiBalance((p) => p + 0.1);
           toast({ title: "🎉 Reward Received", description: "+0.1 Pall added successfully" });
