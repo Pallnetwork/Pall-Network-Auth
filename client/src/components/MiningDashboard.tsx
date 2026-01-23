@@ -7,14 +7,23 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
 import { claimDailyReward } from "@/lib/dailyReward";
-import {
-  NativeAdView,
-  HeadlineView,
-  TaglineView,
-  CallToActionView,
-  AdvertiserView,
-  AdMediaView,
-} from "react-native-google-mobile-ads";
+
+// Only import NativeAdView if running in React Native (mobile)
+let NativeAdView: any, HeadlineView: any, TaglineView: any,
+CallToActionView: any, AdvertiserView: any, AdMediaView: any;
+
+const isMobile = typeof navigator !== "undefined" &&
+/android|ios/i.test(navigator.userAgent);
+
+if (isMobile) {
+  const RNAds = require("react-native-google-mobile-ads");
+  NativeAdView = RNAds.NativeAdView;
+  HeadlineView = RNAds.HeadlineView;
+  TaglineView = RNAds.TaglineView;
+  CallToActionView = RNAds.CallToActionView;
+  AdvertiserView = RNAds.AdvertiserView;
+  AdMediaView = RNAds.AdMediaView;
+}
 
 declare global {
   interface Window {
