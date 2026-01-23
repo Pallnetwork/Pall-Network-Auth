@@ -7,6 +7,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
 import { claimDailyReward } from "@/lib/dailyReward";
+import {
+  NativeAdView,
+  HeadlineView,
+  TaglineView,
+  CallToActionView,
+  AdvertiserView,
+  AdMediaView,
+} from "react-native-google-mobile-ads";
 
 declare global {
   interface Window {
@@ -174,8 +182,10 @@ export default function MiningDashboard() {
   // ======================
   useEffect(() => {
     if (!uid) return;
+
     const ref = doc(db, "dailyRewards", uid);
-    const unsub = onSnapshot(ref, async (snap) => {
+
+    const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) {
         setClaimedCount(0);
         setDailyCooldown(0);
@@ -183,63 +193,20 @@ export default function MiningDashboard() {
       }
 
       const data = snap.data();
+
       const claimed =
-        typeof data.claimedCount === "number" ? data.claimedCount : 0;
+      typeof data.claimedCount === "number" ? data.claimedCount : 0;
       setClaimedCount(claimed);
 
-      // ❌ cooldown sirf tab jab 10 ads complete hon
-      if (claimed < 10) {
-        setDailyCooldown(0);
-        return;
-      }
+      // 🔥 SIMPLE LOGIC
+      // Backend har roz 5 AM reset karega
+      // Frontend ko cooldown ka koi matlab nahi
 
-      // ✅ cooldown logic ONLY for 10/10
-      if (data.cycleStart) {
-        const start = data.cycleStart.toDate
-          ? data.cycleStart.toDate()
-          : new Date(data.cycleStart.seconds * 1000);
-
-        const elapsedMs = Date.now() - start.getTime();
-
-        // ✅ 24 hours complete → reset
-        if (elapsedMs >= 24 * 60 * 60 * 1000) {
-          setClaimedCount(0);
-          setDailyCooldown(0);
-
-          updateDoc(ref, {
-            claimedCount: 0,
-            cycleStart: null,
-          }).catch(() => {});
-        } else {
-          const remaining = Math.floor(
-            (24 * 60 * 60 * 1000 - elapsedMs) / 1000
-          );
-          setDailyCooldown(remaining);
-        }
-      }
+      setDailyCooldown(0);
     });
 
     return () => unsub();
   }, [uid]);
-
-  // ======================
-  // ⏳ DAILY REWARD UI TIMER (24h countdown)
-  // ======================
-  useEffect(() => {
-    if (dailyCooldown <= 0) return;
-
-    const interval = setInterval(() => {
-      setDailyCooldown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [dailyCooldown]);
 
   // ======================
   // UI MINING TIMER
@@ -413,15 +380,44 @@ export default function MiningDashboard() {
           {waitingForAd ? "📺 Showing Ad..." : mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
         </Button>
 
+        {/* ======================
+        NATIVE ADVANCED AD (SAFE)
+        ====================== */}
+        <Card className="bg-white dark:bg-card p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md">
+          <NativeAdView
+          adUnitId="ca-app-pub-3940256099942544/2247696110" // ✅ TEST AD
+          onAdLoaded={() => console.log("✅ Native Ad Loaded")}
+          onAdFailedToLoad={(e) => console.log("❌ Native Ad Failed", e)}
+          >
+            <HeadlineView className="text-lg font-bold text-gray-800 mb-2" />
+
+            <AdMediaView className="w-full h-40 rounded-lg mb-2" />
+
+            <TaglineView className="text-sm text-gray-600 mb-2" />
+
+            <AdvertiserView className="text-xs text-gray-400 mb-2" />
+
+            <CallToActionView
+            className="bg-blue-500 text-white py-2 rounded-lg text-center font-bold"
+            />
+          </NativeAdView>
+        </Card>
+
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md">
           <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
           <p className="text-center text-sm mb-4">
             <span className="font-bold text-blue-500">{claimedCount} 🔶 10</span>
           </p>
           <Button
-            disabled={dailyWaiting || dailyCooldown > 0}
+            disabled={dailyWaiting || dailyCooldown >= 10}
             onClick={handleDailyReward}
-            className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold shadow"
+            className={`w-full py-3 rounded-xl font-bold shadow transition
+              ${
+                claimedCount >= 10
+                ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
+                : "bg-blue-500 hover:bg-blue-600 text-white"
+              }
+            `}
           >
             {
               dailyWaiting
