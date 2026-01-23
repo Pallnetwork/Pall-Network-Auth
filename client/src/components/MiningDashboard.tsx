@@ -8,23 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
 import { claimDailyReward } from "@/lib/dailyReward";
 
-// Only import NativeAdView if running in React Native (mobile)
-let NativeAdView: any, HeadlineView: any, TaglineView: any,
-CallToActionView: any, AdvertiserView: any, AdMediaView: any;
-
-const isMobile = typeof navigator !== "undefined" &&
-/android|ios/i.test(navigator.userAgent);
-
-if (isMobile) {
-  const RNAds = require("react-native-google-mobile-ads");
-  NativeAdView = RNAds.NativeAdView;
-  HeadlineView = RNAds.HeadlineView;
-  TaglineView = RNAds.TaglineView;
-  CallToActionView = RNAds.CallToActionView;
-  AdvertiserView = RNAds.AdvertiserView;
-  AdMediaView = RNAds.AdMediaView;
-}
-
 declare global {
   interface Window {
     AndroidBridge?: {
@@ -388,32 +371,6 @@ export default function MiningDashboard() {
         >
           {waitingForAd ? "📺 Showing Ad..." : mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
         </Button>
-
-        {/* ======================
-        NATIVE ADVANCED AD (MOBILE ONLY)
-        ====================== */}
-        {typeof window !== "undefined" &&
-        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && (
-        <Card className="bg-white dark:bg-card p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md">
-          <NativeAdView
-          adUnitId="ca-app-pub-3940256099942544/2247696110" // ✅ TEST AD
-          onAdLoaded={() => console.log("✅ Native Ad Loaded")}
-          onAdFailedToLoad={(e) => console.log("❌ Native Ad Failed", e)}
-          >
-            <HeadlineView className="text-lg font-bold text-gray-800 mb-2" />
-
-            <AdMediaView className="w-full h-40 rounded-lg mb-2" />
-
-            <TaglineView className="text-sm text-gray-600 mb-2" />
-
-            <AdvertiserView className="text-xs text-gray-400 mb-2" />
-
-            <CallToActionView
-            className="bg-blue-500 text-white py-2 rounded-lg text-center font-bold"
-            />
-          </NativeAdView>
-        </Card>
-        )}
 
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md">
           <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>

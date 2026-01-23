@@ -18,8 +18,8 @@ import Dashboard from "@/pages/dashboard";
 import KYCPage from "@/pages/kyc";
 import NotFound from "@/pages/not-found";
 
-// ✅ AdMob Import
 import { initialize } from 'react-native-google-mobile-ads';
+initialize();
 
 function Router() {
   return (
@@ -49,11 +49,9 @@ function Router() {
 function App() {
   const [loading, setLoading] = useState(true);
 
-  // ✅ Initialize AdMob ONCE at app start
-  initialize();
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // 🔐 Token logic (tumhara existing)
       if (user) {
         const token = await user.getIdToken(true);
         localStorage.setItem("firebaseToken", token);
@@ -61,10 +59,11 @@ function App() {
         localStorage.removeItem("firebaseToken");
       }
 
+      // 🌊 GLOBAL SPLASH (har auth change par)
       setLoading(true);
       setTimeout(() => {
         setLoading(false);
-      }, 1200);
+      }, 1200); // ⏳ splash duration
     });
 
     return () => unsubscribe();
