@@ -1,27 +1,34 @@
 import { db, storage } from "./firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { getDoc } from "firebase/firestore";
 
 export async function saveUserProfile(
   uid: string,
   data: any,
-  photoFile?: File
+  photoFile?: File | null
 ) {
   try {
-    let photoURL = "";
+    if (!uid) {
+      console.error("❌ UID missing");
+      return false;
+    }
 
-    if (photoFile) {
-      const photoRef = ref(storage, `profilePhotos/${uid}.jpg`);
+    let photoURL = data.photoURL || "";
+
+    // ✅ Upload photo ONLY if real file exists
+    if (photoFile instanceof File) {
+      const photoRef = ref(storage, `profilePhotos/${uid}`);
       await uploadBytes(photoRef, photoFile);
       photoURL = await getDownloadURL(photoRef);
     }
 
+    // ✅ Firestore save (merge = safe)
     await setDoc(
       doc(db, "profiles", uid),
       {
         ...data,
         photoURL,
+        userId: uid,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -29,12 +36,19 @@ export async function saveUserProfile(
 
     return true;
   } catch (err) {
-    console.error("Profile save error:", err);
+    console.error("❌ Profile save error:", err);
     return false;
   }
 }
 
 export async function getUserProfile(uid: string) {
-  const snap = await getDoc(doc(db, "profiles", uid));
-  return snap.exists() ? snap.data() : null;
+  try {
+    if (!uid) return null;
+
+    const snap = await getDoc(doc(db, "profiles", uid));
+    return snap.exists() ? snap.data() : null;
+  } catch (err) {
+    console.error("❌ Profile fetch error:", err);
+    return null;
+  }
 }

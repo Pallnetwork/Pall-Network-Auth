@@ -352,7 +352,7 @@ export default function MiningDashboard() {
               </>
             ) : (
               <>
-                <div className="text-4xl mb-2">💎</div>
+                <div className="text-4xl mb-2">🎓📚</div>
                 <p className="text-sm font-semibold text-gray-600">Ready to Mine</p>
                 <p className="text-xs text-muted-foreground">Standard Mining</p>
               </>

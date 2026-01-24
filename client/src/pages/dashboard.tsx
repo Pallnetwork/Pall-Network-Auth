@@ -397,45 +397,46 @@ export default function Dashboard() {
     }
   };
 
-  const saveProfile = async () => {
-    if (!user) return;
+  const handleSaveProfile = async () => {
+   if (!user) return;
 
-    if (profile) {
-      toast({
-       title: "Profile already exists",
-       description: "Profile can only be saved once.",
-       variant: "destructive",
-      });
-      return;
+   if (profile) {
+     toast({
+      title: "Profile Locked",
+      description: "Profile already submitted",
+      variant: "destructive",
+     });
+     return;
     }
 
-    try {
-      const savedProfile = await saveUserProfile(
-       user.id,
-       {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        dob: form.dob,
-        gender: form.gender,
-        phone: form.phone,
-        address: form.address,
-       },
-       photoFile ? photoFile : undefined
-      )
+    const success = await saveUserProfile(
+     user.id,
+     {
+      firstName: form.firstName,
+      lastName: form.lastName,
+      dob: form.dob,
+      gender: form.gender,
+      phone: form.phone,
+      address: form.address,
+     },
+     photoFile
+    );
 
-      setProfile(savedProfile);
-
+    if (success) {
       toast({
-       title: "Success ✅",
+       title: "Success",
        description: "Profile saved successfully",
       });
 
-      setAuthTimestampNow();
-    } catch (err) {
-      console.error("Profile save error:", err);
+      setProfile({
+        ...form,
+        userId: user.id,
+        createdAt: new Date(),
+      });
+    } else {
       toast({
        title: "Error",
-       description: "Profile save failed. Try again.",
+       description: "Profile save failed",
        variant: "destructive",
       });
     }
@@ -871,9 +872,9 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <Button
-                      onClick={saveProfile}
+                     type="button"
+                      onClick={handleSaveProfile}
                       className="w-full bg-green-600 hover:bg-green-700"
-                      data-testid="button-save-profile"
                     >
                       Save Profile
                     </Button>
