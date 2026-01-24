@@ -402,38 +402,45 @@ export default function Dashboard() {
 
     if (profile) {
       toast({
-        title: "Profile already exists",
-        description: "Profile can only be saved once.",
-        variant: "destructive",
+       title: "Profile already exists",
+       description: "Profile can only be saved once.",
+       variant: "destructive",
       });
       return;
     }
-  
-  try {
-    const savedProfile = await saveUserProfile(
-      user.id,
-      (
-        photoFile || undefined
-      );
+
+    try {
+      const savedProfile = await saveUserProfile(
+       user.id,
+       {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        dob: form.dob,
+        gender: form.gender,
+        phone: form.phone,
+        address: form.address,
+       },
+       photoFile ? photoFile : undefined
+      )
 
       setProfile(savedProfile);
 
       toast({
-        title: "Success ✅",
-        description: "Profile saved successfully",
+       title: "Success ✅",
+       description: "Profile saved successfully",
       });
 
       setAuthTimestampNow();
     } catch (err) {
-      console.error(err);
+      console.error("Profile save error:", err);
       toast({
-        title: "Error",
-        description: "Profile save failed. Try again.",
-        variant: "destructive",
+       title: "Error",
+       description: "Profile save failed. Try again.",
+       variant: "destructive",
       });
     }
   };
-  
+
   const handleLogout = async () => {
     try {
       // Sign out from Firebase Auth (this will trigger the auth state listener)
