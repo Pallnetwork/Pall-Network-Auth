@@ -178,28 +178,19 @@ export default function MiningDashboard() {
 
    const unsub = onSnapshot(ref, (snap) => {
      if (!snap.exists()) {
-       setClaimedCount(0);
-       return;
+      setClaimedCount(0);
+      return;
      }
 
      const data = snap.data();
-     const claimed =
-       typeof data.claimedCount === "number" ? data.claimedCount : 0;
-
-     const now = new Date();
-     const pakistanOffset = 5 * 60; // +5 hours in minutes
-     const nowUTC = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
-     const nowPak = new Date(nowUTC.getTime() + pakistanOffset * 60000);
-     if (nowPak.getHours() >= 5 && claimedCount >= 10) {
-       setClaimedCount(0);
-     } else {
-      setClaimedCount(claimed);
-     }
+     setClaimedCount(
+       typeof data.claimedCount === "number" ? data.claimedCount : 0
+     );
     });
 
     return () => unsub();
-  }, [uid, claimedCount]);
-
+  }, [uid]);
+  
   // ======================
   // UI MINING TIMER
   // ======================
