@@ -12,7 +12,7 @@ export async function saveUserProfile(
     let photoURL = "";
 
     if (photoFile) {
-      const photoRef = ref(storage, profilePhotos/${uid}.jpg);
+      const photoRef = ref(storage, `profilePhotos/${uid}.jpg`);
       await uploadBytes(photoRef, photoFile);
       photoURL = await getDownloadURL(photoRef);
     }
