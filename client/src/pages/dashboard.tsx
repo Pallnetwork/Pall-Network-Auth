@@ -73,6 +73,27 @@ function isAuthExpired(): boolean {
   }
 }
 
+// ================== 👇 TRADING CARDS SLIDER STATE START 👇 ==================
+
+const tradingCards = [
+  { emoji: "🧠", title: "Trade Smart, Not Hard", bgColor: "#f4a261" },
+  { emoji: "🎯", title: "Discipline Wins", bgColor: "#e76f51" },
+  { emoji: "📈", title: "Learn Before You Earn", bgColor: "#0f4c81" },
+  { emoji: "⚖️", title: "Risk Before Reward", bgColor: "#1a936f" },
+];
+
+const [currentCardIndex, setCurrentCardIndex] = useState(0);
+
+useEffect(() => {
+  const interval = setInterval(() => {
+    setCurrentCardIndex((prev) => (prev + 1) % tradingCards.length);
+  }, 3000); // 3 seconds per card
+
+  return () => clearInterval(interval);
+}, []);
+
+// ================== 👆 TRADING CARDS SLIDER STATE END 👆 ==================
+
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -641,6 +662,20 @@ export default function Dashboard() {
                 </p>
               </div>
 
+               {/* ==================👇 TRADING CARDS SLIDER START 👇================== */}
+
+               <div className="mb-6">
+                <div
+                className="p-6 rounded-xl shadow-lg text-white text-center font-bold text-lg transition-all duration-500"
+                style={{ backgroundColor: tradingCards[currentCardIndex].bgColor }}
+                >
+                  <span className="mr-2">{tradingCards[currentCardIndex].emoji}</span>
+                  {tradingCards[currentCardIndex].title}
+                </div>
+              </div>
+              
+              {/* ================== 👆 TRADING CARDS SLIDER END 👆 ================== */}
+
               {/* Mining Dashboard - Main Feature */}
               <div className="mb-8">
                 {user && <MiningDashboard userId={user.id} />}
@@ -704,7 +739,7 @@ export default function Dashboard() {
                           className="w-full py-3 font-bold rounded-xl hover:scale-105 transition-all duration-200"
                           data-testid="button-copy-link"
                         >
-                          📋 Copy Link
+                          📋  Copy Link
                         </Button>
                         <Button
                           onClick={shareViaWhatsApp}
