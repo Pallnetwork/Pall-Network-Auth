@@ -651,16 +651,20 @@ export default function Dashboard() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 p-6 pt-18">
+      <div className="flex-1 p-4 pt-19">
         <div className="container mx-auto max-w-4xl">
           {/* HOME Page */}
           {currentPage === "HOME" && (
-            <div className="space-y-6">
+            <div
+              className="space-y-6 min-h-screen bg-cover bg-center bg-no-repeat"
+              style={{
+                backgroundImage: "url('/images/dashboard-bg.jpg')",
+              }}
+              >
               <div className="text-center">
                 <h2 className="text-3xl font-bold mb-2"></h2>
-                <p className="text-muted-foreground mb-6">
-                </p>
-              </div>
+                <p className="text-muted-foreground mb-6"></p>
+             </div>
 
                {/* ==================👇 TRADING CARDS SLIDER START 👇================== */}
 
