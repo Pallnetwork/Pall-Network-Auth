@@ -176,8 +176,14 @@ export default function MiningDashboard() {
 
    const ref = doc(db, "dailyRewards", uid);
 
-   const unsub = onSnapshot(ref, (snap) => {
+   const unsub = onSnapshot(ref, async (snap) => {
      if (!snap.exists()) {
+      // ✅ NEW USER → INITIALIZE DOCUMENT
+      await updateDoc(ref, {
+        claimedCount: 0,
+        createdAt: serverTimestamp(),
+      }).catch(() => {});
+
       setClaimedCount(0);
       return;
      }
@@ -190,7 +196,7 @@ export default function MiningDashboard() {
 
     return () => unsub();
   }, [uid]);
-  
+
   // ======================
   // UI MINING TIMER
   // ======================
