@@ -14,6 +14,8 @@ import UpgradePage from "@/components/UpgradePage";
 import PoliciesPage from "@/components/PoliciesPage";
 import Splash from "@/pages/Splash";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import { saveUserProfile } from "@/lib/profile";
+import { auth } from "@/lib/firebase";
 
 interface User {
   id: string;
@@ -396,40 +398,42 @@ export default function Dashboard() {
   };
 
   const saveProfile = async () => {
+    if (!user) return;
+
     if (profile) {
       toast({
         title: "Profile already exists",
-        description: "Profile already filled, cannot edit again!",
+        description: "Profile can only be saved once.",
         variant: "destructive",
       });
       return;
     }
+  
+  try {
+    const savedProfile = await saveUserProfile(
+      user.id,
+      (
+        photoFile || undefined
+      );
 
-    if (!user) return;
+      setProfile(savedProfile);
 
-    try {
-      await setDoc(doc(db, "profiles", user.id), {
-        ...form,
-        userId: user.id,
-        createdAt: new Date(),
-      });
-      setProfile({ ...form, userId: user.id, createdAt: new Date() });
       toast({
-        title: "Success",
-        description: "Profile saved successfully!",
+        title: "Success ✅",
+        description: "Profile saved successfully",
       });
-      // refresh timestamp - user performed an action
+
       setAuthTimestampNow();
-    } catch (error) {
-      console.error("Error saving profile:", error);
+    } catch (err) {
+      console.error(err);
       toast({
         title: "Error",
-        description: "Failed to save profile. Please try again.",
+        description: "Profile save failed. Try again.",
         variant: "destructive",
       });
     }
   };
-
+  
   const handleLogout = async () => {
     try {
       // Sign out from Firebase Auth (this will trigger the auth state listener)
