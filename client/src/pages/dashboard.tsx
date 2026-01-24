@@ -15,8 +15,7 @@ import PoliciesPage from "@/components/PoliciesPage";
 import Splash from "@/pages/Splash";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { saveUserProfile } from "@/lib/profile";
-import { useTheme } from "next-themes";
-import { Skull Crossbones } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 
 interface User {
   id: string;
@@ -666,19 +665,15 @@ export default function Dashboard() {
           {/* HOME Page */}
           {currentPage === "HOME" && (
             <div className="space-y-6">
-              {/* 🌙☀️ Dark Mode Toggle */}
-              <div className="flex justify-end">
+              {/* 🌙/☠️ Dark Mode Toggle */}
+              <div className="flex justify-end mb-4">
                <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="rounded-full"
               >
-                {theme === "dark" ? (
-                 <Skull className="h-5 w-5 text-yellow-400" />
-                ):(
-                 <Crossbones className="h-5 w-5 text-blue-500" />
-                )} 
+                {theme === "dark" ? "☠️" : "💀"} {/* Dark → ☠️, Light → 💀 */}
                </Button>
               </div>
               <div className="text-center">
