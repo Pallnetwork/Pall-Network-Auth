@@ -15,7 +15,6 @@ import PoliciesPage from "@/components/PoliciesPage";
 import Splash from "@/pages/Splash";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { saveUserProfile } from "@/lib/profile";
-import { auth } from "@/lib/firebase";
 
 interface User {
   id: string;
@@ -73,28 +72,29 @@ function isAuthExpired(): boolean {
   }
 }
 
-// ================== 👇 TRADING CARDS SLIDER STATE START 👇 ==================
-
-const tradingCards = [
-  { emoji: "🧠", title: "Trade Smart, Not Hard", bgColor: "#f4a261" },
-  { emoji: "🎯", title: "Discipline Wins", bgColor: "#e76f51" },
-  { emoji: "📈", title: "Learn Before You Earn", bgColor: "#0f4c81" },
-  { emoji: "⚖️", title: "Risk Before Reward", bgColor: "#1a936f" },
-];
-
-const [currentCardIndex, setCurrentCardIndex] = useState(0);
-
-useEffect(() => {
-  const interval = setInterval(() => {
-    setCurrentCardIndex((prev) => (prev + 1) % tradingCards.length);
-  }, 3000); // 3 seconds per card
-
-  return () => clearInterval(interval);
-}, []);
-
-// ================== 👆 TRADING CARDS SLIDER STATE END 👆 ==================
-
 export default function Dashboard() {
+
+  // ================== 👇 TRADING CARDS SLIDER STATE START 👇 ==================
+
+ const tradingCards = [
+   { emoji: "🧠", title: "Trade Smart, Not Hard", bgColor: "#f4a261" },
+   { emoji: "🎯", title: "Discipline Wins", bgColor: "#e76f51" },
+   { emoji: "📈", title: "Learn Before You Earn", bgColor: "#0f4c81" },
+   { emoji: "⚖️", title: "Risk Before Reward", bgColor: "#1a936f" },
+ ];
+
+ const [currentCardIndex, setCurrentCardIndex] = useState(0);
+
+ useEffect(() => {
+   const interval = setInterval(() => {
+     setCurrentCardIndex((prev) => (prev + 1) % tradingCards.length);
+   }, 3000);
+
+   return () => clearInterval(interval);
+ }, []);
+
+ // ================== 👆 TRADING CARDS SLIDER STATE END 👆 =================
+ 
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [referrals, setReferrals] = useState<User[]>([]);
