@@ -169,9 +169,9 @@ export default function MiningDashboard() {
     return () => unsub();
   }, [uid]);
 
-  // ======================
-  // DAILY REWARD SNAPSHOT
-  // ======================
+  // ==========================================
+  // DAILY REWARD SNAPSHOT (FINAL SAFE VERSION)
+  // ==========================================
   useEffect(() => {
     if (!uid) return;
 
@@ -187,13 +187,24 @@ export default function MiningDashboard() {
       const data = snap.data();
 
       const claimed =
+<<<<<<< HEAD
       typeof data.claimedCount === "number" ? data.claimedCount : 0;
-      setClaimedCount(claimed);
+=======
+       typeof data.claimedCount === "number" ? data.claimedCount : 0;
 
+>>>>>>> c89e99a (Fix mining dashboard logic and UI timers)
+      setClaimedCount(claimed);
       // 🔥 SIMPLE LOGIC
       // Backend har roz 5 AM reset karega
       // Frontend ko cooldown ka koi matlab nahi
 
+<<<<<<< HEAD
+      // 🔥 SIMPLE LOGIC
+      // Backend har roz 5 AM reset karega
+      // Frontend ko cooldown ka koi matlab nahi
+
+=======
+>>>>>>> c89e99a (Fix mining dashboard logic and UI timers)
       setDailyCooldown(0);
     });
 
@@ -378,7 +389,11 @@ export default function MiningDashboard() {
             <span className="font-bold text-blue-500">{claimedCount} 🔶 10</span>
           </p>
           <Button
+<<<<<<< HEAD
             disabled={dailyWaiting || dailyCooldown >= 10}
+=======
+            disabled={dailyWaiting || claimedCount >= 10}
+>>>>>>> c89e99a (Fix mining dashboard logic and UI timers)
             onClick={handleDailyReward}
             className={`w-full py-3 rounded-xl font-bold shadow transition
               ${
