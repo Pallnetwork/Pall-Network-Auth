@@ -18,8 +18,6 @@ import Dashboard from "@/pages/dashboard";
 import KYCPage from "@/pages/kyc";
 import NotFound from "@/pages/not-found";
 
-import { initialize } from 'react-native-google-mobile-ads';
-initialize();
 
 function Router() {
   return (

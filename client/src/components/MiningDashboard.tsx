@@ -30,7 +30,6 @@ export default function MiningDashboard() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [canStartMining, setCanStartMining] = useState(true);
   const [waitingForAd, setWaitingForAd] = useState(false);
-  const [dailyCooldown, setDailyCooldown] = useState(0);
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"mining" | "daily" | null>(null);
@@ -169,47 +168,37 @@ export default function MiningDashboard() {
     return () => unsub();
   }, [uid]);
 
-  // ==========================================
-  // DAILY REWARD SNAPSHOT (FINAL SAFE VERSION)
-  // ==========================================
-  useEffect(() => {
-    if (!uid) return;
+ // ======================
+ // DAILY REWARD SNAPSHOT & BUTTON LOGIC
+ // ======================
+ useEffect(() => {
+   if (!uid) return;
 
-    const ref = doc(db, "dailyRewards", uid);
+   const ref = doc(db, "dailyRewards", uid);
 
-    const unsub = onSnapshot(ref, (snap) => {
-      if (!snap.exists()) {
-        setClaimedCount(0);
-        setDailyCooldown(0);
-        return;
-      }
+   const unsub = onSnapshot(ref, (snap) => {
+     if (!snap.exists()) {
+       setClaimedCount(0);
+       return;
+     }
 
-      const data = snap.data();
-
-      const claimed =
-<<<<<<< HEAD
-      typeof data.claimedCount === "number" ? data.claimedCount : 0;
-=======
+     const data = snap.data();
+     const claimed =
        typeof data.claimedCount === "number" ? data.claimedCount : 0;
 
->>>>>>> c89e99a (Fix mining dashboard logic and UI timers)
+     const now = new Date();
+     const pakistanOffset = 5 * 60; // +5 hours in minutes
+     const nowUTC = new Date(now.getTime() + now.getTimezoneOffset() * 60000);
+     const nowPak = new Date(nowUTC.getTime() + pakistanOffset * 60000);
+     if (nowPak.getHours() >= 5 && claimedCount >= 10) {
+       setClaimedCount(0);
+     } else {
       setClaimedCount(claimed);
-      // 🔥 SIMPLE LOGIC
-      // Backend har roz 5 AM reset karega
-      // Frontend ko cooldown ka koi matlab nahi
-
-<<<<<<< HEAD
-      // 🔥 SIMPLE LOGIC
-      // Backend har roz 5 AM reset karega
-      // Frontend ko cooldown ka koi matlab nahi
-
-=======
->>>>>>> c89e99a (Fix mining dashboard logic and UI timers)
-      setDailyCooldown(0);
+     }
     });
 
     return () => unsub();
-  }, [uid]);
+  }, [uid, claimedCount]);
 
   // ======================
   // UI MINING TIMER
@@ -264,7 +253,6 @@ export default function MiningDashboard() {
         const res = await claimDailyReward(uid);
 
         setDailyWaiting(false);
-        setClaimedCount((prev) => prev + (res.status === "success" ? 1 : 0));
         if (res.status === "success") {
           setUiBalance((p) => p + 0.1);
           toast({ title: "🎉 Reward Received", description: "+0.1 Pall added successfully" });
@@ -383,39 +371,40 @@ export default function MiningDashboard() {
           {waitingForAd ? "📺 Showing Ad..." : mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
         </Button>
 
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md">
-          <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
-          <p className="text-center text-sm mb-4">
-            <span className="font-bold text-blue-500">{claimedCount} 🔶 10</span>
-          </p>
-          <Button
-<<<<<<< HEAD
-            disabled={dailyWaiting || dailyCooldown >= 10}
-=======
-            disabled={dailyWaiting || claimedCount >= 10}
->>>>>>> c89e99a (Fix mining dashboard logic and UI timers)
-            onClick={handleDailyReward}
-            className={`w-full py-3 rounded-xl font-bold shadow transition
-              ${
-                claimedCount >= 10
-                ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
-              }
-            `}
-          >
-            {
-              dailyWaiting
-              ? "📺 Showing Ad..."
-              : dailyCooldown > 0
-              ? `Reward ⛏ (${formatTime(dailyCooldown)})`
-              : "Watch Ad & Get 0.1 Pall 🎁"
-            }
-          </Button>
-          
-          {claimedCount < 10 && <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.8s]">
-            <span className="text-orange-500 font-extrabold text-3xl leading-none">🎉</span></div>}
-        </Card>
-      </CardContent>
-    </Card>
+        {/* ======================
+         DAILY REWARD BUTTON JSX
+         ====================== */}
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md mt-4">
+        <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
+        <p className="text-center text-sm mb-4">
+          <span className="font-bold text-blue-500">{claimedCount} 🔶 10</span>
+        </p>
+
+        <Button
+        disabled={dailyWaiting || claimedCount >= 10}
+        onClick={handleDailyReward}
+        className={`w-full py-3 rounded-xl font-bold shadow transition
+          ${
+            claimedCount >= 10
+            ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
+            : "bg-blue-500 hover:bg-blue-600 text-white"
+          }
+        `}
+        >
+          {dailyWaiting
+          ? "📺 Showing Ad..."
+          : claimedCount < 10
+          ? `Watch Ad & Get 0.1 Pall 🎁 (${claimedCount}/10)`
+          : "Daily Reward Completed ✅"}
+        </Button>
+
+        {claimedCount < 10 && (
+          <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.8s]">
+            <span className="text-orange-500 font-extrabold text-3xl leading-none">🎉</span>
+          </div>
+        )}
+     </Card>
+    </CardContent>
+  </Card>
   );
 }
