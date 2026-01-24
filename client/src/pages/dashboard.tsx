@@ -15,7 +15,8 @@ import PoliciesPage from "@/components/PoliciesPage";
 import Splash from "@/pages/Splash";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { saveUserProfile } from "@/lib/profile";
-import { useTheme } from "@/components/ThemeProvider";
+import { useTheme } from "next-themes";
+import { Moon, Sun } from "lucide-react";
 
 interface User {
   id: string;
@@ -75,13 +76,6 @@ function isAuthExpired(): boolean {
 
 export default function Dashboard() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-   setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
 
   // ================== 👇 TRADING CARDS SLIDER STATE START 👇 ==================
 
@@ -665,15 +659,19 @@ export default function Dashboard() {
           {/* HOME Page */}
           {currentPage === "HOME" && (
             <div className="space-y-6">
-              {/* 🌙/☠️ Dark Mode Toggle */}
-              <div className="flex justify-end mb-4">
+              {/* 🌙☀️ Dark Mode Toggle */}
+              <div className="flex justify-end">
                <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="rounded-full"
               >
-                {theme === "dark" ? "☠️" : "💀"} {/* Dark → ☠️, Light → 💀 */}
+                {theme === "dark" ? (
+                 <Sun className="h-5 w-5 text-yellow-400" />
+                ):(
+                 <Moon className="h-5 w-5 text-blue-500" />
+                )} 
                </Button>
               </div>
               <div className="text-center">
