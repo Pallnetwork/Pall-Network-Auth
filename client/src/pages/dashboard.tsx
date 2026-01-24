@@ -15,6 +15,9 @@ import PoliciesPage from "@/components/PoliciesPage";
 import Splash from "@/pages/Splash";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { saveUserProfile } from "@/lib/profile";
+import { useTheme } from "next-themes";
+import { Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface User {
   id: string;
@@ -73,6 +76,7 @@ function isAuthExpired(): boolean {
 }
 
 export default function Dashboard() {
+  const { theme, setTheme } = useTheme();
 
   // ================== 👇 TRADING CARDS SLIDER STATE START 👇 ==================
 
@@ -651,20 +655,31 @@ export default function Dashboard() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 p-4 pt-19">
+      <div className="flex-1 p-4 pt-16">
         <div className="container mx-auto max-w-4xl">
           {/* HOME Page */}
           {currentPage === "HOME" && (
-            <div
-              className="space-y-6 min-h-screen bg-cover bg-center bg-no-repeat"
-              style={{
-                backgroundImage: "url('/images/dashboard-bg.jpg')",
-              }}
+            <div className="space-y-6">
+              {/* 🌙☀️ Dark Mode Toggle */}
+              <div className="flex justify-end">
+               <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="rounded-full"
               >
+                {theme === "dark" ? (
+                 <Sun className="h-5 w-5 text-yellow-400" />
+                ):(
+                 <Moon className="h-5 w-5 text-blue-500" />
+                )} 
+               </Button>
+              </div>
               <div className="text-center">
                 <h2 className="text-3xl font-bold mb-2"></h2>
-                <p className="text-muted-foreground mb-6"></p>
-             </div>
+                <p className="text-muted-foreground mb-6">
+                </p>
+              </div>
 
                {/* ==================👇 TRADING CARDS SLIDER START 👇================== */}
 
