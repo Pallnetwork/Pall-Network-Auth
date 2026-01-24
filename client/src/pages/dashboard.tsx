@@ -94,7 +94,7 @@ export default function Dashboard() {
  }, []);
 
  // ================== 👆 TRADING CARDS SLIDER STATE END 👆 =================
- 
+
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [referrals, setReferrals] = useState<User[]>([]);
@@ -651,7 +651,7 @@ export default function Dashboard() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 p-6 pt-20">
+      <div className="flex-1 p-6 pt-18">
         <div className="container mx-auto max-w-4xl">
           {/* HOME Page */}
           {currentPage === "HOME" && (
@@ -666,7 +666,7 @@ export default function Dashboard() {
 
                <div className="mb-6">
                 <div
-                className="p-6 rounded-xl shadow-lg text-white text-center font-bold text-lg transition-all duration-500"
+                className="p-4 rounded-xl shadow-lg text-white text-center font-bold text-lg transition-all duration-500"
                 style={{ backgroundColor: tradingCards[currentCardIndex].bgColor }}
                 >
                   <span className="mr-2">{tradingCards[currentCardIndex].emoji}</span>
