@@ -16,8 +16,7 @@ import Splash from "@/pages/Splash";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { saveUserProfile } from "@/lib/profile";
 import { useTheme } from "next-themes";
-import { Moon, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Skull Crossbones } from "lucide-react";
 
 interface User {
   id: string;
@@ -77,6 +76,13 @@ function isAuthExpired(): boolean {
 
 export default function Dashboard() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+   setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   // ================== 👇 TRADING CARDS SLIDER STATE START 👇 ==================
 
@@ -669,9 +675,9 @@ export default function Dashboard() {
                 className="rounded-full"
               >
                 {theme === "dark" ? (
-                 <Sun className="h-5 w-5 text-yellow-400" />
+                 <Skull className="h-5 w-5 text-yellow-400" />
                 ):(
-                 <Moon className="h-5 w-5 text-blue-500" />
+                 <Crossbones className="h-5 w-5 text-blue-500" />
                 )} 
                </Button>
               </div>
