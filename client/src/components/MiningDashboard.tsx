@@ -177,42 +177,43 @@ export default function MiningDashboard() {
     const ref = doc(db, "dailyRewards", uid);
 
     const unsub = onSnapshot(ref, async (snap) => {
-      const now = new Date();
 
-      // 🔥 Daily reset time = 7:30 PM
-      const todayResetTime = new Date();
-      todayResetTime.setHours(19, 30, 0, 0); // 7:30 PM
+     // 🕛 today midnight
+     const today = new Date();
+     today.setHours(0, 0, 0, 0);
 
-      // ✅ First time user
-      if (!snap.exists()) {
-        await setDoc(ref, {
-          claimedCount: 0,
-          lastResetAt: serverTimestamp(),
-          createdAt: serverTimestamp(),
-        });
-        setClaimedCount(0);
-        return;
-      }
-
-      const data = snap.data();
-      const claimed = typeof data.claimedCount === "number" ? data.claimedCount : 0;
-      const lastReset = data.lastResetAt?.toDate?.();
-
-      // 🔁 AUTO ENABLE AFTER 7 PM (ONLY IF 10 CLAIMS COMPLETED)
-      if (
-        lastReset &&
-        now >= todayResetTime &&
-        lastReset < todayResetTime
-      ){
+     // 👤 first time user
+     if (!snap.exists()) {
        await updateDoc(ref, {
-        claimedCount: 0,
-        lastResetAt: serverTimestamp(),
-       });
+         claimedCount: 0,
+         lastResetDate: serverTimestamp(),
+         createdAt: serverTimestamp(),
+       }).catch(() => {});
        setClaimedCount(0);
        return;
       }
 
-      setClaimedCount(claimed);
+
+      const data = snap.data();
+
+      const lastReset =
+        data.lastResetDate?.toDate?.() || new Date(0);
+
+        const claimed =
+          typeof data.claimedCount === "number"
+          ? data.claimedCount
+          : 0;
+
+      // 🔄 new day → reset
+      if (lastReset < today) {
+        await updateDoc(ref, {
+          claimedCount: 0,
+          lastResetDate: serverTimestamp(),
+        });
+        setClaimedCount(0);
+      } else {
+        setClaimedCount(claimed);
+      }
     });
 
     return () => unsub();
