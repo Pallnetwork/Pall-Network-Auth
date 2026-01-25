@@ -15,7 +15,7 @@ import PoliciesPage from "@/components/PoliciesPage";
 import Splash from "@/pages/Splash";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { saveUserProfile } from "@/lib/profile";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
 
 interface User {
