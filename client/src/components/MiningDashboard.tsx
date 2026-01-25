@@ -179,9 +179,9 @@ export default function MiningDashboard() {
     const unsub = onSnapshot(ref, async (snap) => {
       const now = new Date();
 
-      // 🔥 Daily reset time = 7:00 PM
+      // 🔥 Daily reset time = 7:30 PM
       const todayResetTime = new Date();
-      todayResetTime.setHours(19, 0, 0, 0); // 7 PM
+      todayResetTime.setHours(19, 30, 0, 0); // 7:30 PM
 
       // ✅ First time user
       if (!snap.exists()) {
@@ -200,17 +200,16 @@ export default function MiningDashboard() {
 
       // 🔁 AUTO ENABLE AFTER 7 PM (ONLY IF 10 CLAIMS COMPLETED)
       if (
-        claimed >= 10 &&
         lastReset &&
         now >= todayResetTime &&
         lastReset < todayResetTime
       ){
-        await updateDoc(ref, {
-          claimedCount: 0,
-          lastResetAt: serverTimestamp(),
-        });
-        setClaimedCount(0);
-        return;
+       await updateDoc(ref, {
+        claimedCount: 0,
+        lastResetAt: serverTimestamp(),
+       });
+       setClaimedCount(0);
+       return;
       }
 
       setClaimedCount(claimed);
