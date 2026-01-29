@@ -58,19 +58,26 @@ export default function Signup() {
         form.email,
         form.password
       );
+
+      await userCred.user.getIdToken(true);
       const uid = userCred.user.uid;
 
       let referredByUID: string | null = null;
 
       if (form.referralCode.trim() !== "") {
-        const usersRef = collection(db, "users");
-        const q = query(
-          usersRef,
-          where("referralCode", "==", form.referralCode)
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          referredByUID = snap.docs[0].id;
+        try {
+          const usersRef = collection(db, "users");
+          const q = query(
+            usersRef,
+            where("referralCode", "==", form.referralCode)
+          );
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            referredByUID = snap.docs[0].id;
+          }
+        } catch (err) {
+          console.error("Referral lookup failed:", err);
+          // 🔕 referral optional — ignore failure
         }
       }
 
