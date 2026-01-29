@@ -1,3 +1,4 @@
+// client/src/pages/signup.tsx
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { auth, db } from "@/lib/firebase";
@@ -9,13 +10,14 @@ import {
   query,
   collection,
   where,
-  serverTimestamp,
 } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+// 👉 logo import
 import logo from "@/assets/logo.png";
 
 export default function Signup() {
@@ -51,63 +53,56 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // 1️⃣ Create Firebase Auth user
       const userCred = await createUserWithEmailAndPassword(
         auth,
         form.email,
         form.password
       );
+      const uid = userCred.user.uid;
 
-      const user = userCred.user;
-      const uid = user.uid;
-
-      // 2️⃣ Resolve referral (optional)
       let referredByUID: string | null = null;
 
       if (form.referralCode.trim() !== "") {
-        try {
-          const usersRef = collection(db, "users");
-          const q = query(
-            usersRef,
-            where("referralCode", "==", form.referralCode)
-          );
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            referredByUID = snap.docs[0].id;
-          }
-        } catch (err) {
-          console.error("Referral lookup failed:", err);
+        const usersRef = collection(db, "users");
+        const q = query(
+          usersRef,
+          where("referralCode", "==", form.referralCode)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          referredByUID = snap.docs[0].id;
         }
       }
 
-      // 3️⃣ Create USER document (🔥 THIS was missing before dashboard)
+      // ✅ Save user document
       await setDoc(doc(db, "users", uid), {
         id: uid,
         name: form.fullName,
         username: form.username,
-        email: user.email,
+        email: form.email,
         package: "free",
         referredBy: referredByUID,
-        createdAt: serverTimestamp(),
+        createdAt: new Date(),
         referralCode: `${form.username}-${uid.slice(0, 5)}`,
       });
 
-      // 4️⃣ Create Wallet
-      await setDoc(doc(db, "wallets", uid), {
+      // ✅ Fixed Wallet document for mining
+      const walletRef = doc(db, "wallets", uid);
+      await setDoc(walletRef, {
         userId: uid,
         pallBalance: 0,
         miningActive: false,
         lastStart: null,
         lastMinedAt: null,
-        adWatched: false,
-        totalEarnings: 0,
-        createdAt: serverTimestamp(),
+        adWatched: false,       // 🔹 NEW
+        totalEarnings: 0,       // 🔹 NEW
+        createdAt: new Date(),
       });
 
-      // 5️⃣ Create Daily Reward
-      await setDoc(doc(db, "dailyRewards", uid), {
+      // ✅ Create Daily Reward doc
+      const dailyRef = doc(db, "dailyRewards", uid);
+      await setDoc(dailyRef, {
         claimedCount: 0,
-        lastClaim: null,
       });
 
       toast({
@@ -115,7 +110,6 @@ export default function Signup() {
         description: "Account created successfully",
       });
 
-      // 6️⃣ NOW we are allowed to enter the app
       navigate("/app/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -155,7 +149,7 @@ export default function Signup() {
                 value={form.fullName}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white"
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
               />
             </div>
 
@@ -166,7 +160,7 @@ export default function Signup() {
                 value={form.username}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white"
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
               />
             </div>
 
@@ -178,7 +172,7 @@ export default function Signup() {
                 value={form.email}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white"
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
               />
             </div>
 
@@ -190,7 +184,7 @@ export default function Signup() {
                 value={form.password}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white"
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
               />
             </div>
 
@@ -202,7 +196,7 @@ export default function Signup() {
                 value={form.confirmPassword}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white"
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
               />
             </div>
 
@@ -212,7 +206,7 @@ export default function Signup() {
                 name="referralCode"
                 value={form.referralCode}
                 onChange={handleChange}
-                className="bg-white/20 border-white/30 text-white"
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
               />
             </div>
 
