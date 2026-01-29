@@ -1,4 +1,3 @@
-// client/src/pages/signup.tsx
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { auth, db } from "@/lib/firebase";
@@ -10,14 +9,13 @@ import {
   query,
   collection,
   where,
+  serverTimestamp,
 } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-// 👉 logo import
 import logo from "@/assets/logo.png";
 
 export default function Signup() {
@@ -53,15 +51,17 @@ export default function Signup() {
     setLoading(true);
 
     try {
+      // 1️⃣ Create Firebase Auth user
       const userCred = await createUserWithEmailAndPassword(
         auth,
         form.email,
         form.password
       );
 
-      await userCred.user.getIdToken(true);
-      const uid = userCred.user.uid;
+      const user = userCred.user;
+      const uid = user.uid;
 
+      // 2️⃣ Resolve referral (optional)
       let referredByUID: string | null = null;
 
       if (form.referralCode.trim() !== "") {
@@ -77,39 +77,37 @@ export default function Signup() {
           }
         } catch (err) {
           console.error("Referral lookup failed:", err);
-          // 🔕 referral optional — ignore failure
         }
       }
 
-      // ✅ Save user document
+      // 3️⃣ Create USER document (🔥 THIS was missing before dashboard)
       await setDoc(doc(db, "users", uid), {
         id: uid,
         name: form.fullName,
         username: form.username,
-        email: form.email,
+        email: user.email,
         package: "free",
         referredBy: referredByUID,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
         referralCode: `${form.username}-${uid.slice(0, 5)}`,
       });
 
-      // ✅ Fixed Wallet document for mining
-      const walletRef = doc(db, "wallets", uid);
-      await setDoc(walletRef, {
+      // 4️⃣ Create Wallet
+      await setDoc(doc(db, "wallets", uid), {
         userId: uid,
         pallBalance: 0,
         miningActive: false,
         lastStart: null,
         lastMinedAt: null,
-        adWatched: false,       // 🔹 NEW
-        totalEarnings: 0,       // 🔹 NEW
-        createdAt: new Date(),
+        adWatched: false,
+        totalEarnings: 0,
+        createdAt: serverTimestamp(),
       });
 
-      // ✅ Create Daily Reward doc
-      const dailyRef = doc(db, "dailyRewards", uid);
-      await setDoc(dailyRef, {
+      // 5️⃣ Create Daily Reward
+      await setDoc(doc(db, "dailyRewards", uid), {
         claimedCount: 0,
+        lastClaim: null,
       });
 
       toast({
@@ -117,6 +115,7 @@ export default function Signup() {
         description: "Account created successfully",
       });
 
+      // 6️⃣ NOW we are allowed to enter the app
       navigate("/app/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -156,7 +155,7 @@ export default function Signup() {
                 value={form.fullName}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
@@ -167,7 +166,7 @@ export default function Signup() {
                 value={form.username}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
@@ -179,7 +178,7 @@ export default function Signup() {
                 value={form.email}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
@@ -191,7 +190,7 @@ export default function Signup() {
                 value={form.password}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
@@ -203,7 +202,7 @@ export default function Signup() {
                 value={form.confirmPassword}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
@@ -213,7 +212,7 @@ export default function Signup() {
                 name="referralCode"
                 value={form.referralCode}
                 onChange={handleChange}
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
