@@ -10,6 +10,7 @@ import {
   query,
   collection,
   where,
+  serverTimestamp,
 } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -92,11 +93,14 @@ export default function Signup() {
         userId: uid,
         pallBalance: 0,
         miningActive: false,
-        lastStart: null,
+
+        // 🔥 VERY IMPORTANT — NULL nahi hona chahiye
+        lastStart: serverTimestamp(),
+
         lastMinedAt: null,
-        adWatched: false,       // 🔹 NEW
-        totalEarnings: 0,       // 🔹 NEW
-        createdAt: new Date(),
+        adWatched: false,
+        totalEarnings: 0,
+        createdAt: serverTimestamp(),
       });
 
       // ✅ Create Daily Reward doc

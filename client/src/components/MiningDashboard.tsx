@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
 import { claimDailyReward } from "@/lib/dailyReward";
+import { setDoc } from "firebase/firestore";
 
 declare global {
   interface Window {
@@ -184,11 +185,11 @@ export default function MiningDashboard() {
 
      // 👤 first time user
      if (!snap.exists()) {
-       await updateDoc(ref, {
+       await setDoc(ref, {
          claimedCount: 0,
          lastResetDate: serverTimestamp(),
          createdAt: serverTimestamp(),
-       }).catch(() => {});
+       });
        setClaimedCount(0);
        return;
       }
