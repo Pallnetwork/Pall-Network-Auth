@@ -3,7 +3,6 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import http from "http";
 import { setupVite, serveStatic, log } from "./vite";
-import mineRouter from "./routes/mine";
 import stopRoutes from "./routes/stop";
 
 const app = express();
@@ -13,7 +12,6 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cors());
 
 // Routes
-app.use("/api/mine", mineRouter);
 app.use("/api/stop", stopRoutes);
 
 app.get("/api/health", (_req, res) =>
