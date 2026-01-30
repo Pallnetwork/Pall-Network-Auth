@@ -1,7 +1,7 @@
 // lib/mine.ts
 import { auth } from "./firebase";
 
-// 🔹 Wait for Firebase user reliably
+// 🔹 Wait for Firebase user reliably (Web + Android WebView safe)
 async function waitForAuthUser(maxRetries = 5, delay = 1500): Promise<any> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const user = auth.currentUser;
@@ -15,11 +15,14 @@ async function waitForAuthUser(maxRetries = 5, delay = 1500): Promise<any> {
     const unsub = auth.onAuthStateChanged((user) => {
       unsub();
       if (user) resolve(user);
-      else reject(new Error("No Firebase user found after retries"));
+      else reject(new Error("No Firebase user found"));
     });
   });
 }
 
+// ===============================
+// 🚀 START MINING (NEW SYSTEM)
+// ===============================
 export async function mineForUser() {
   try {
     const user = auth.currentUser ?? (await waitForAuthUser());
@@ -27,39 +30,40 @@ export async function mineForUser() {
     if (!user) {
       console.warn("⚠️ User not authenticated");
       return {
-        status: "error",
-        message: "User not authenticated",
+        status: "error", message: "User not authenticated",
       };
     }
 
     // 🔹 Always get correct token (WebView + Android safe)
-    const token =
-      localStorage.getItem("firebaseToken") ??
-      (await user.getIdToken(true));
+    const token =    
+      await user.getIdToken(true);
 
-    console.log("🔥 Using Firebase Token:", token);
+    console.log("🔥 Firebase UID:", user.uid);
+    console.log("🔥 Firebase Token:", token);
 
-    // 🔹 Proper payload with userId
-    const res = await fetch("https://pall-network-auth.onrender.com/api/mine", {
+    // ✅ ONLY call new backend (Firestore based)
+    const res = await fetch("/api/mining/start", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ userId: user.uid }), // ✅ userId send kar rahe
+      body: JSON.stringify({
+        userId: user.uid
+      }),
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      console.warn("⚠️ API returned error:", data?.error);
+      console.warn("❌ Mining start failed:", data?.error);
       return { status: "error", message: data?.error };
     }
 
-    console.log("✅ Mining started successfully", data);
+    console.log("✅ Mining started:", data);
     return { status: "success", data };
   } catch (err: any) {
-    console.error("🔥 Mining API call failed:", err);
+    console.error("🔥 Mining API error:", err);
     return { status: "error", message: err.message };
   }
 }
