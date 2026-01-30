@@ -22,6 +22,27 @@ declare global {
   }
 }
 
+async function stopMiningBackend() {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const token = await user.getIdToken(true);
+
+  const res = await fetch("https://pall-network-auth.onrender.com/api/stop", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) throw new Error(data.error || "Stop mining failed");
+
+  return data;
+}
+
 export default function MiningDashboard() {
   const [uid, setUid] = useState<string | null>(auth.currentUser?.uid || null);
   const [balance, setBalance] = useState(0);
@@ -146,11 +167,20 @@ export default function MiningDashboard() {
 
       // 🔥 Mining complete → auto claim
       if (elapsedSeconds >= MAX_SECONDS) {
-        fetch("/api/mining/claim", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: uid }),
-        }).catch(() => {});
+        stopMiningBackend()
+        .then((res) => {
+          toast({
+            title: "⛏ Mining Completed",
+            description: `You earned ${res.earned.toFixed(6)} PALL`,
+          });
+        })
+        .catch((e) => {
+          toast({
+            title: "Mining Save Failed",
+            description: e.message,
+            variant: "destructive",
+          });
+        });
 
         setMining(false);
         setCanStartMining(true);
