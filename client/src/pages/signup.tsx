@@ -94,10 +94,10 @@ export default function Signup() {
         pallBalance: 0,
         miningActive: false,
 
-        // 🔥 VERY IMPORTANT — NULL nahi hona chahiye
+        // ❗ NEVER NULL — new users
         lastStart: serverTimestamp(),
-
-        lastMinedAt: null,
+        lastMinedAt: serverTimestamp(),
+        
         adWatched: false,
         totalEarnings: 0,
         createdAt: serverTimestamp(),

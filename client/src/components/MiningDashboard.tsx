@@ -185,15 +185,10 @@ export default function MiningDashboard() {
 
      // 👤 first time user
      if (!snap.exists()) {
-       await setDoc(ref, {
-         claimedCount: 0,
-         lastResetDate: serverTimestamp(),
-         createdAt: serverTimestamp(),
-       });
-       setClaimedCount(0);
-       return;
-      }
-
+      // 👤 First time user → just allow UI
+      setClaimedCount(0);
+      return;
+     }
 
       const data = snap.data();
 
