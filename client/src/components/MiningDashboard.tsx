@@ -1,7 +1,6 @@
-// client/src/components/MiningDashboard.tsx
 import React, { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
-import { doc, onSnapshot, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +26,9 @@ export default function MiningDashboard() {
 
   const { toast } = useToast();
 
+  // ======================
   // AUTH STATE
+  // ======================
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((user) => {
       setUid(user ? user.uid : null);
@@ -35,7 +36,9 @@ export default function MiningDashboard() {
     return () => unsub();
   }, []);
 
+  // ======================
   // WALLET SNAPSHOT (BALANCE)
+  // ======================
   useEffect(() => {
     if (!uid) return;
 
@@ -51,11 +54,14 @@ export default function MiningDashboard() {
     return () => unsub();
   }, [uid]);
 
+  // ======================
   // DAILY REWARD SNAPSHOT
+  // ======================
   useEffect(() => {
     if (!uid) return;
 
     const ref = doc(db, "dailyRewards", uid);
+
     const unsub = onSnapshot(ref, async (snap) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -88,7 +94,9 @@ export default function MiningDashboard() {
     return () => unsub();
   }, [uid]);
 
+  // ======================
   // DAILY REWARD AD CALLBACKS
+  // ======================
   useEffect(() => {
     window.onAdFailed = () => {
       setDailyWaiting(false);
@@ -100,7 +108,9 @@ export default function MiningDashboard() {
     };
   }, [toast]);
 
+  // ======================
   // DAILY REWARD HANDLER
+  // ======================
   const handleDailyReward = () => {
     if (dailyWaiting || claimedCount >= 10) return;
 
@@ -134,7 +144,7 @@ export default function MiningDashboard() {
             </p>
           </div>
 
-          {/* START MINING BUTTON */}
+          {/* START MINING BUTTON (POPUP ONLY) */}
           <Button
             onClick={() => setShowMiningPopup(true)}
             className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
@@ -157,9 +167,10 @@ export default function MiningDashboard() {
               disabled={dailyWaiting || claimedCount >= 10}
               onClick={handleDailyReward}
               className={`w-full py-3 rounded-xl font-bold shadow
-                ${claimedCount >= 10
-                  ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
-                  : "bg-blue-500 hover:bg-blue-600 text-white"
+                ${
+                  claimedCount >= 10
+                    ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
+                    : "bg-blue-500 hover:bg-blue-600 text-white"
                 }`}
             >
               {dailyWaiting
@@ -173,8 +184,11 @@ export default function MiningDashboard() {
       </Card>
 
       {/* START MINING POPUP */}
-      {showMiningPopup && (
-        <StartMiningPopup uid={uid} onClose={() => setShowMiningPopup(false)} />
+      {showMiningPopup && uid && (
+        <StartMiningPopup
+          uid={uid}
+          onClose={() => setShowMiningPopup(false)}
+        />
       )}
     </>
   );
