@@ -30,6 +30,41 @@ export default function MiningDashboard() {
   const { toast } = useToast();
   const rewardEventEmitter = useRef(new EventTarget()).current;
 
+ // ======================
+ // GLOBAL CALLBACKS
+ // ======================
+ window.onRewardAdCompleted = () => {
+   window.dispatchEvent(new Event("rewardAdCompleted"));
+ };
+
+ window.onAdFailed = () => {
+   waitingForAdRef.current = false
+   setWaitingForAd(false);
+   setDailyWaiting(false);
+   toast({
+     title: "Ad Failed",
+     description: "Rewarded ad could not load",
+     variant: "destructive" ,
+   });
+ }
+
+ useEffect(() => {
+  window.onAdCompleted = async () => {
+    if (!waitingForAdRef.current) return;
+
+     // ❌ IMPORTANT: yahan mining start nahi hogi
+     waitingForAdRef.current = false;
+     setWaitingForAd(false);
+
+     // sirf signal dispatch hoga
+     window.dispatchEvent(new Event("rewardAdCompleted"));
+   };
+
+   return () => {
+     window.onAdCompleted = undefined;
+   };
+ }, [toast]);
+
   // ======================
   // AUTH STATE
   // ======================
@@ -110,46 +145,6 @@ export default function MiningDashboard() {
   }, [uid]);
 
   // ======================
-  // DAILY REWARD HANDLER
-  // ======================
-  useEffect(() => {
-    const handler = async () => {
-      if (!uid) return;
-
-      setDailyWaiting(true); // lock button
-      try {
-        const res = await claimDailyReward(uid);
-        if (res.status === "success") {
-          setClaimedCount(prev => Math.min(prev + 1, 10));
-          toast({
-            title: "🎉 Reward Received",
-            description: "+0.1 Pall Received Successfully",
-          });
-        } else {
-          toast({
-            title: "Reward Failed",
-            description: res.message || "Something went wrong",
-            variant: "destructive",
-          });
-        }
-      } catch (err) {
-        toast({
-          title: "Error",
-          description: "Unexpected error while claiming reward",
-          variant: "destructive",
-        });
-      } finally {
-        setDailyWaiting(false); // unlock button
-      }
-    };
-
-    rewardEventEmitter.addEventListener("claimDailyReward", handler);
-    return () => {
-      rewardEventEmitter.removeEventListener("claimDailyReward", handler);
-    };
-  }, [uid, toast, rewardEventEmitter]);
-
-  // ======================
   // ANDROID BRIDGE CALLBACKS
   // ======================
   useEffect(() => {
@@ -168,18 +163,76 @@ export default function MiningDashboard() {
   }, [toast, rewardEventEmitter]);
 
   // ======================
-  // HANDLE BUTTON CLICK
+  // DAILY REWARD HANDLER (ANDROID ONLY)
   // ======================
-  const handleDailyReward = () => {
+  const handleDailyReward = async () => {
     if (dailyWaiting || claimedCount >= 10) return;
+    if (!uid) return;
 
-    if (window.AndroidBridge?.startDailyRewardedAd) {
-      setDailyWaiting(true);
+    // lock button immediately
+    setDailyWaiting(true);
+
+    try {
+      if (!window.AndroidBridge?.startDailyRewardedAd) {
+        throw new Error("AndroidBridge not available");
+      }
+
+      // Set purpose for ad
       window.AndroidBridge.setAdPurpose?.("daily");
+
+      // Event listener for ad completion
+      const onAdComplete = async () => {
+        // remove listener immediately to prevent double firing
+        window.removeEventListener("rewardAdCompleted", onAdComplete);
+
+        try {
+          // Claim reward on Firestore after ad completes
+          const res = await claimDailyReward(uid);
+          if (res.status === "success") {
+            setClaimedCount(prev => Math.min(prev + 1, 10));
+            toast({
+              title: "🎉 Reward Received",
+              description: "+0.1 Pall Received Successfully",
+            });
+          } else {
+            toast({
+              title: "Reward Failed",
+              description: res.message || "Something went wrong",
+              variant: "destructive",
+            });
+          }
+        } catch (err: any) {
+          console.error("Reward claim error:", err);
+          toast({
+            title: "Error",
+            description: "Failed to claim reward",
+            variant: "destructive",
+          });
+        } finally {
+          setDailyWaiting(false);
+        }
+      };
+
+      // Attach listener
+      window.addEventListener("rewardAdCompleted", onAdComplete);
+
+      // Start the rewarded ad
       window.AndroidBridge.startDailyRewardedAd();
 
-      // Safety timer in case ad hangs
-      setTimeout(() => setDailyWaiting(false), 15000);
+      // Safety fallback: unlock button after 15s in case ad hangs
+      setTimeout(() => {
+        setDailyWaiting(false);
+        window.removeEventListener("rewardAdCompleted", onAdComplete);
+      }, 15000);
+
+    } catch (err: any) {
+      console.error("Daily reward failed:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Unexpected error",
+        variant: "destructive",
+      });
+      setDailyWaiting(false);
     }
   };
 
