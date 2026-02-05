@@ -28,6 +28,9 @@ export default function MiningDashboard() {
 
   const { toast } = useToast();
 
+  // ======================
+  // AUTH STATE
+  // ======================
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((user) => {
       setUid(user ? user.uid : null);
@@ -35,6 +38,9 @@ export default function MiningDashboard() {
     return () => unsub();
   }, []);
 
+  // ======================
+  // WALLET SNAPSHOT + incremental balance for 24h mining
+  // ======================
   useEffect(() => {
     if (!uid) return;
 
@@ -49,6 +55,7 @@ export default function MiningDashboard() {
       const miningActive = data.miningActive ?? false;
 
       if (miningActive && lastStart) {
+        // Incremental balance counting
         const interval = setInterval(() => {
           const elapsed = Date.now() - lastStart.getTime();
           const progress = Math.min(elapsed / ONE_DAY_MS, 1);
@@ -64,15 +71,21 @@ export default function MiningDashboard() {
     return () => unsub();
   }, [uid]);
 
+  // ======================
+  // DAILY REWARD SNAPSHOT
+  // ======================
   useEffect(() => {
     if (!uid) return;
 
     const ref = doc(db, "dailyRewards", uid);
 
     const unsub = onSnapshot(ref, async (snap) => {
+      
+      // 🕛 today midnight
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      // 👤 first time user
       if (!snap.exists()) {
         await setDoc(ref, {
           claimedCount: 0,
@@ -92,7 +105,8 @@ export default function MiningDashboard() {
         typeof data.claimedCount === "number"
           ? data.claimedCount
           : 0;
-
+      
+      // 🔄 new day → reset    
       if (lastReset < today) {
         await updateDoc(ref, {
           claimedCount: 0,
@@ -107,6 +121,9 @@ export default function MiningDashboard() {
     return () => unsub();
   }, [uid]);
 
+  // ======================
+  // DAILY REWARD AD CALLBACKS
+  // ======================
   useEffect(() => {
     window.onAdFailed = () => {
       setDailyWaiting(false);
@@ -118,6 +135,9 @@ export default function MiningDashboard() {
     };
   }, [toast]);
 
+  // ======================
+  // DAILY REWARD HANDLER
+  // ======================
   const handleDailyReward = () => {
     if (dailyWaiting || claimedCount >= 10) return;
 
@@ -126,6 +146,13 @@ export default function MiningDashboard() {
       window.AndroidBridge.setAdPurpose?.("daily");
       window.AndroidBridge.startDailyRewardedAd();
     }
+  };
+
+  const formatTime = (s: number) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
   if (!uid) {
@@ -141,6 +168,7 @@ export default function MiningDashboard() {
       <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
         <CardHeader />
         <CardContent className="text-center space-y-6 px-6 pb-8">
+          {/* BALANCE */}
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border shadow-sm">
             <p className="text-sm font-medium text-muted-foreground mb-2">
               Current Balance
@@ -150,6 +178,7 @@ export default function MiningDashboard() {
             </p>
           </div>
 
+          {/* START MINING BUTTON (POPUP ONLY) */}
           <Button
             onClick={() => setShowMiningPopup(true)}
             className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
@@ -157,6 +186,7 @@ export default function MiningDashboard() {
             Start Mining ⛏
           </Button>
 
+          {/* DAILY REWARD */}
           <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md mt-4">
             <h3 className="text-lg font-bold mb-2 text-center text-blue-600">
               Get Daily Reward
@@ -194,6 +224,7 @@ export default function MiningDashboard() {
         </CardContent>
       </Card>
 
+      {/* START MINING POPUP */}
       {showMiningPopup && uid && (
         <StartMiningPopup
           uid={uid}
