@@ -17,6 +17,8 @@ declare global {
   }
 }
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 export default function MiningDashboard() {
   const [uid, setUid] = useState<string | null>(auth.currentUser?.uid || null);
   const [balance, setBalance] = useState(0);
@@ -37,7 +39,7 @@ export default function MiningDashboard() {
   }, []);
 
   // ======================
-  // WALLET SNAPSHOT (BALANCE)
+  // WALLET SNAPSHOT + incremental balance for 24h mining
   // ======================
   useEffect(() => {
     if (!uid) return;
@@ -46,8 +48,23 @@ export default function MiningDashboard() {
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
-      if (typeof data.pallBalance === "number") {
-        setBalance(data.pallBalance);
+      if (!data) return;
+
+      const baseBalance = typeof data.pallBalance === "number" ? data.pallBalance : 0;
+      const lastStart = data.lastStart?.toDate?.() || null;
+      const miningActive = data.miningActive ?? false;
+
+      if (miningActive && lastStart) {
+        // Incremental balance counting
+        const interval = setInterval(() => {
+          const elapsed = Date.now() - lastStart.getTime();
+          const progress = Math.min(elapsed / ONE_DAY_MS, 1);
+          setBalance(baseBalance + 0.5 * progress);
+        }, 1000);
+
+        return () => clearInterval(interval);
+      } else {
+        setBalance(baseBalance);
       }
     });
 
@@ -61,7 +78,6 @@ export default function MiningDashboard() {
     if (!uid) return;
 
     const ref = doc(db, "dailyRewards", uid);
-
     const unsub = onSnapshot(ref, async (snap) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -167,10 +183,9 @@ export default function MiningDashboard() {
               disabled={dailyWaiting || claimedCount >= 10}
               onClick={handleDailyReward}
               className={`w-full py-3 rounded-xl font-bold shadow
-                ${
-                  claimedCount >= 10
-                    ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
-                    : "bg-blue-500 hover:bg-blue-600 text-white"
+                ${claimedCount >= 10
+                  ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
+                  : "bg-blue-500 hover:bg-blue-600 text-white"
                 }`}
             >
               {dailyWaiting
