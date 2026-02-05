@@ -16,10 +16,13 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
   const { toast } = useToast();
   const [miningActive, setMiningActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(ONE_DAY_MS);
+  const [waitingAd, setWaitingAd] = useState(false);
+  const [multiplier, setMultiplier] = useState(0.5); // normal 0.5, 2× = 1
+  const [uiBalance, setUiBalance] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // ======================
-  // Sync Mining state from Firestore on popup open
+  // Sync Mining state from Firestore
   // ======================
   useEffect(() => {
     if (!uid) return;
@@ -33,14 +36,17 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
         const wallet = snap.data();
         const lastStart = wallet.lastStart?.toDate?.() || null;
         const active = wallet.miningActive ?? false;
+        const savedMultiplier = wallet.miningMultiplier ?? 0.5;
+        const baseBalance = wallet.pallBalance ?? 0;
+
+        setUiBalance(baseBalance);
 
         if (active && lastStart) {
-          const now = Date.now();
-          const elapsed = now - lastStart.getTime();
+          const elapsed = Date.now() - lastStart.getTime();
           const remaining = Math.max(ONE_DAY_MS - elapsed, 0);
-
-          setMiningActive(true);
           setTimeRemaining(remaining);
+          setMultiplier(savedMultiplier);
+          setMiningActive(true);
         }
       } catch (err: any) {
         console.error("Failed to fetch mining state:", err);
@@ -51,7 +57,7 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
   }, [uid]);
 
   // ======================
-  // Timer logic
+  // Timer + gradual balance increment
   // ======================
   useEffect(() => {
     if (!miningActive) return;
@@ -65,10 +71,14 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
         }
         return prev - 1000;
       });
+
+      // gradual UI balance update
+      setUiBalance(prev => prev + (multiplier / ONE_DAY_MS));
+
     }, 1000);
 
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [miningActive]);
+  }, [miningActive, multiplier]);
 
   const formatTime = (ms: number) => {
     const totalSec = Math.floor(ms / 1000);
@@ -84,7 +94,7 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
   };
 
   // ======================
-  // Finish Mining (Atomic Increment)
+  // Finish Mining (atomic increment)
   // ======================
   const finishMining = async () => {
     try {
@@ -93,25 +103,23 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
       await updateDoc(walletRef, {
         miningActive: false,
         lastStart: null,
-        pallBalance: increment(0.5),
-        totalEarnings: increment(0.5),
+        pallBalance: increment(multiplier),
+        totalEarnings: increment(multiplier),
+        miningMultiplier: 0.5,
         lastMinedAt: serverTimestamp(),
       });
 
       setMiningActive(false);
       setTimeRemaining(ONE_DAY_MS);
+      setMultiplier(0.5);
 
       toast({
         title: "⛏ Mining Completed",
-        description: "24h mining done! 0.5 PALL added to your wallet",
+        description: `${multiplier === 1 ? "2× Mining" : "Normal Mining"} done! ${multiplier} PALL added to your wallet`,
       });
     } catch (err: any) {
       console.error("Error finishing mining:", err);
-      toast({
-        title: "Error",
-        description: "Failed to complete mining",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to complete mining", variant: "destructive" });
     }
   };
 
@@ -126,29 +134,71 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
 
     try {
       const walletRef = doc(db, "wallets", uid);
-      const nowTs = new Date();
-
       await updateDoc(walletRef, {
         miningActive: true,
-        lastStart: nowTs,
+        lastStart: new Date(),
+        miningMultiplier: 0.5,
       });
 
+      setMultiplier(0.5);
       setMiningActive(true);
       setTimeRemaining(ONE_DAY_MS);
 
-      toast({
-        title: "Mining Started",
-        description: "Normal 24h mining started!",
-      });
-
+      toast({ title: "Mining Started", description: "Normal 24h mining started!" });
       onClose();
     } catch (err: any) {
-      console.error("Error starting mining:", err);
-      toast({
-        title: "Error",
-        description: "Failed to start mining",
-        variant: "destructive",
+      console.error(err);
+      toast({ title: "Error", description: "Failed to start mining", variant: "destructive" });
+    }
+  };
+
+  // ======================
+  // 2× Mining (Ad required)
+  // ======================
+  const handleAdMining = () => {
+    if (miningActive) {
+      toast({ title: "Mining already active", description: "Wait for 24h", variant: "destructive" });
+      return;
+    }
+
+    setWaitingAd(true);
+
+    if (window.AndroidBridge?.startMiningRewardedAd) {
+      window.AndroidBridge.setAdPurpose?.("mining");
+      window.AndroidBridge.startMiningRewardedAd();
+
+      const onAdComplete = async () => {
+        window.removeEventListener("rewardAdCompleted", onAdComplete);
+        await start2xMining();
+      };
+
+      window.addEventListener("rewardAdCompleted", onAdComplete);
+    } else {
+      // fallback for testing without Android
+      setTimeout(async () => { await start2xMining(); }, 3000);
+    }
+  };
+
+  const start2xMining = async () => {
+    try {
+      const walletRef = doc(db, "wallets", uid);
+      await updateDoc(walletRef, {
+        miningActive: true,
+        lastStart: new Date(),
+        miningMultiplier: 1,
       });
+
+      setMultiplier(1);
+      setMiningActive(true);
+      setTimeRemaining(ONE_DAY_MS);
+      setWaitingAd(false);
+
+      toast({ title: "2× Mining Started", description: "24h mining activated after ad!" });
+      onClose();
+    } catch (err: any) {
+      setWaitingAd(false);
+      console.error(err);
+      toast({ title: "Error", description: "Failed to start 2× mining", variant: "destructive" });
     }
   };
 
@@ -158,6 +208,7 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
         <CardContent className="space-y-6 text-center">
           <h2 className="text-xl font-bold text-blue-600">Start Mining ⛏</h2>
 
+          {/* Timer & Circle */}
           <div className="relative w-48 h-48 mx-auto">
             <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
             {miningActive && (
@@ -173,15 +224,17 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
             )}
             <div className="absolute inset-4 bg-white dark:bg-gray-900 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
               <p className="text-2xl font-mono font-bold text-blue-600">{formatTime(timeRemaining)}</p>
+              <p className="text-sm mt-1">Balance: {uiBalance.toFixed(8)} PALL</p>
+              <p className="text-xs mt-1">{multiplier === 1 ? "2× Mining" : "Normal Mining"}</p>
             </div>
           </div>
 
-          <Button
-            disabled={miningActive}
-            onClick={handleNormalMining}
-            className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
-          >
+          <Button disabled={miningActive || waitingAd} onClick={handleNormalMining} className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg">
             {miningActive ? "Mining Active ⛏" : "Normal Mining ⛏"}
+          </Button>
+
+          <Button disabled={miningActive || waitingAd} onClick={handleAdMining} className="w-full py-4 text-lg font-bold rounded-xl text-white bg-purple-600 hover:bg-purple-700 shadow-lg">
+            {waitingAd ? "📺 Showing Ad..." : "2× Mining (Watch Ad)"}
           </Button>
 
           <Button variant="outline" className="w-full py-2 mt-2" onClick={onClose}>
