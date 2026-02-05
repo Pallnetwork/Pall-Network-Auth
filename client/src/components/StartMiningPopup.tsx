@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { db, auth } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, updateDoc, serverTimestamp, increment } from "firebase/firestore";
 
 interface StartMiningPopupProps {
   uid: string;
@@ -56,7 +56,7 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
   useEffect(() => {
     if (!miningActive) return;
 
-    intervalRef.current = setInterval(async () => {
+    intervalRef.current = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1000) {
           clearInterval(intervalRef.current!);
@@ -84,18 +84,17 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
   };
 
   // ======================
-  // Finish Mining
+  // Finish Mining (Atomic Increment)
   // ======================
   const finishMining = async () => {
     try {
       const walletRef = doc(db, "wallets", uid);
 
-      // Update Firestore: miningActive false + add 0.5 PALL
       await updateDoc(walletRef, {
         miningActive: false,
         lastStart: null,
-        pallBalance: (await getDoc(walletRef)).data()?.pallBalance + 0.5,
-        totalEarnings: (await getDoc(walletRef)).data()?.totalEarnings + 0.5,
+        pallBalance: increment(0.5),
+        totalEarnings: increment(0.5),
         lastMinedAt: serverTimestamp(),
       });
 
