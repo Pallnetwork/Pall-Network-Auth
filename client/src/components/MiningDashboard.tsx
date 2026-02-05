@@ -132,8 +132,7 @@ export default function MiningDashboard() {
       const res = await claimDailyReward(uid);
 
       if (res.status === "success") {
-        // ✅ Fast UI: local increment
-        setClaimedCount((p) => Math.min(p + 1, 10));
+        setClaimedCount((p) => p + 1);
         
         toast({
           title: "🎉 Reward Received",
