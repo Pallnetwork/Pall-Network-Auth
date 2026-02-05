@@ -195,11 +195,13 @@ export default function MiningDashboard() {
       window.AndroidBridge.setAdPurpose?.("daily");
       window.AndroidBridge.startDailyRewardedAd();
 
-      // ⏱️ SAFETY TIMER (very important)
-      setTimeout(() => {
-        setDailyWaiting(false);
-    }, 15000); // 15 sec max wait
-  };
+       // ⏱️ SAFETY TIMER (very important)
+       setTimeout(() => {
+         setDailyWaiting(false);
+       },15000); // 15 sec max wait
+      }
+    };
+
 
   const formatTime = (s: number) => {
     const h = Math.floor(s / 3600);
