@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import StartMiningPopup from "@/components/StartMiningPopup";
+import { claimDailyReward } from "@/lib/dailyReward";
 
 declare global {
   interface Window {
@@ -121,6 +122,39 @@ export default function MiningDashboard() {
     return () => unsub();
   }, [uid]);
 
+  // ======================
+  // REWARDED AD HANDLER
+  // ======================
+  useEffect(() => {
+    const handler = async () => {
+      if (!uid) return;
+
+      const res = await claimDailyReward(uid);
+
+      if (res.status === "success") {
+        setClaimedCount((p) => p + 1);
+        toast({
+          title: "🎉 Reward Received",
+          description: "+0.1 Pall added",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: res.message || "Reward failed",
+          variant: "destructive",
+        });
+      }
+
+      setDailyWaiting(false);
+    };
+
+    // ✅ ANDROID CALLBACK
+    (window as any).onRewardAdCompleted = handler;
+
+    return () => {
+      (window as any).onRewardAdCompleted = undefined;
+    };
+  }, [uid]);
   // ======================
   // DAILY REWARD AD CALLBACKS
   // ======================
