@@ -127,48 +127,43 @@ export default function MiningDashboard() {
   // REWARDED AD HANDLER
   // ======================
   useEffect(() => {
-    const handler = async () => {
-      if (!uid) {
-        setDailyWaiting(false);
-        return;
-      }
+    if (!uid) return;
 
-      try {
-        const res = await claimDailyReward(uid);
+    const ref = doc(db, "dailyRewards", uid);
 
-        if (res.status === "success") {
+    // snapshot listener for real-time update + toast
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const claimed = typeof data.claimedCount === "number" ? data.claimedCount : 0;
 
-          toast({
-            title: "🎉 Reward Received",
-            description: "+0.1 Pall Received Successfully",
-          });
-        } else {
-          toast({
-            title: "Reward Failed",
-            description: res.message || "Something went wrong",
-            variant: "destructive",
-          });
-        }
-      } catch (e) {
+      // update UI
+      setClaimedCount(Math.min(claimed, 10));
+
+      // toast only when claimedCount increased
+      if (claimed > 0 && claimed <= 10) {
         toast({
-          title: "Error",
-          description: "Unexpected error while claiming reward",
-          variant: "destructive",
+          title: "🎉 Reward Received",
+          description: "+0.1 Pall Received Successfully",
         });
       }
+    });
 
-      // 🔓 ALWAYS unlock button
-      setDailyWaiting(false);
+    // Android / JS bridge callback
+    const handler = () => {
+      setDailyWaiting(false); // unlock button after ad complete
     };
 
-    // ⚠️ IMPORTANT: Android expects this exact binding
-    (window as any).onRewardAdCompleted = handler;
+    window.onRewardAdCompleted = handler;
+    window.addEventListener("rewardAdCompleted", handler);
 
     return () => {
-      (window as any).onRewardAdCompleted = undefined;
+      unsub();
+      window.onRewardAdCompleted = undefined;
+      window.removeEventListener("rewardAdCompleted", handler);
     };
   }, [uid, toast]);
-
+  
   // ======================
   // DAILY REWARD AD CALLBACKS
   // ======================
