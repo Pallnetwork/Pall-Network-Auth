@@ -132,10 +132,16 @@ export default function MiningDashboard() {
       const res = await claimDailyReward(uid);
 
       if (res.status === "success") {
-        setClaimedCount((p) => p + 1);
+
+        const ref = doc(db, "dailyRewards", uid);
+        const snap = await getDoc(ref);
+        const data = snap.data();
+        const claimed = typeof data?.claimedCount === "number" ? data.claimedCount : 0;
+        setClaimedCount(claimed); // local state = Firestore state
+
         toast({
           title: "🎉 Reward Received",
-          description: "+0.1 Pall added",
+          description: "+0.1 Pall Recieved Successful",
         });
       } else {
         toast({
