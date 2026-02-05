@@ -129,20 +129,25 @@ export default function MiningDashboard() {
     const handler = async () => {
       if (!uid) return;
 
+      setDailyWaiting(true); // disable button immediately
+
       const res = await claimDailyReward(uid);
 
       if (res.status === "success") {
-
-        const ref = doc(db, "dailyRewards", uid);
-        const snap = await getDoc(ref);
-        const data = snap.data();
-        const claimed = typeof data?.claimedCount === "number" ? data.claimedCount : 0;
-        setClaimedCount(claimed); // local state = Firestore state
-
+        // ✅ Fast UI: local increment
+        setClaimedCount((p) => Math.min(p + 1, 10));
+        
         toast({
           title: "🎉 Reward Received",
           description: "+0.1 Pall Recieved Successful",
         });
+
+        // ✅ Sync with Firestore after short delay
+        const ref = doc(db, "dailyRewards", uid);
+        const snap = await getDoc(ref);
+        const data = snap.data();
+        const claimed = typeof data?.claimedCount === "number" ? data.claimedCount : 0;
+        setClaimedCount(claimed); // ensure exact match with Firestore
       } else {
         toast({
           title: "Error",
@@ -161,6 +166,7 @@ export default function MiningDashboard() {
       (window as any).onRewardAdCompleted = undefined;
     };
   }, [uid]);
+  
   // ======================
   // DAILY REWARD AD CALLBACKS
   // ======================
