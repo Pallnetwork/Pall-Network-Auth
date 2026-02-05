@@ -169,7 +169,7 @@ export default function MiningDashboard() {
       (window as any).onRewardAdCompleted = undefined;
     };
   }, [uid, toast]);
-  
+
   // ======================
   // DAILY REWARD AD CALLBACKS
   // ======================
@@ -194,7 +194,11 @@ export default function MiningDashboard() {
       setDailyWaiting(true);
       window.AndroidBridge.setAdPurpose?.("daily");
       window.AndroidBridge.startDailyRewardedAd();
-    }
+
+      // ⏱️ SAFETY TIMER (very important)
+      setTimeout(() => {
+        setDailyWaiting(false);
+    }, 15000); // 15 sec max wait
   };
 
   const formatTime = (s: number) => {
