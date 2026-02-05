@@ -128,37 +128,48 @@ export default function MiningDashboard() {
   // ======================
   useEffect(() => {
     const handler = async () => {
-      if (!uid) return;
+      if (!uid) {
+        setDailyWaiting(false);
+        return;
+      }
 
-      const res = await claimDailyReward(uid);
+      try {
+        const res = await claimDailyReward(uid);
 
-      if (res.status === "success") {
-        // ✅ SAFE increment (never above 10)
-        setClaimedCount((prev) => Math.min(prev + 1, 10));
-        
-        toast({
-          title: "🎉 Reward Received",
-          description: "+0.1 Pall Recieved Successful",
-        });
-      } else {
+        if (res.status === "success") {
+          setClaimedCount((prev) => Math.min(prev + 1, 10));
+
+          toast({
+            title: "🎉 Reward Received",
+            description: "+0.1 Pall Received Successfully",
+          });
+        } else {
+          toast({
+            title: "Reward Failed",
+            description: res.message || "Something went wrong",
+            variant: "destructive",
+          });
+        }
+      } catch (e) {
         toast({
           title: "Error",
-          description: res.message || "Reward failed",
+          description: "Unexpected error while claiming reward",
           variant: "destructive",
         });
       }
 
+      // 🔓 ALWAYS unlock button
       setDailyWaiting(false);
     };
 
-    // ✅ ANDROID CALLBACK
-    window.onRewardAdCompleted = handler;
+    // ⚠️ IMPORTANT: Android expects this exact binding
+    (window as any).onRewardAdCompleted = handler;
 
     return () => {
-      window.onRewardAdCompleted = undefined;
+      (window as any).onRewardAdCompleted = undefined;
     };
   }, [uid, toast]);
-
+  
   // ======================
   // DAILY REWARD AD CALLBACKS
   // ======================
