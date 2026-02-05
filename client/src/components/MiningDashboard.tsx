@@ -115,7 +115,8 @@ export default function MiningDashboard() {
         });
         setClaimedCount(0);
       } else {
-        setClaimedCount(claimed);
+        // ✅ CLAMP value (never above 10)
+        setClaimedCount(Math.min(claimed, 10));
       }
     });
 
@@ -132,7 +133,8 @@ export default function MiningDashboard() {
       const res = await claimDailyReward(uid);
 
       if (res.status === "success") {
-        setClaimedCount((p) => p + 1);
+        // ✅ SAFE increment (never above 10)
+        setClaimedCount((prev) => Math.min(prev + 1, 10));
         
         toast({
           title: "🎉 Reward Received",
