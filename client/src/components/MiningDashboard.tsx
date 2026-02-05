@@ -152,12 +152,12 @@ export default function MiningDashboard() {
     };
 
     // ✅ ANDROID CALLBACK
-    (window as any).onRewardAdCompleted = handler;
+    window.onRewardAdCompleted = handler;
 
     return () => {
-      (window as any).onRewardAdCompleted = undefined;
+      window.onRewardAdCompleted = undefined;
     };
-  }, [uid]);
+  }, [uid, toast]);
 
   // ======================
   // DAILY REWARD AD CALLBACKS
