@@ -13,16 +13,14 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps) {
   const { toast } = useToast();
-
   const [miningActive, setMiningActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(ONE_DAY_MS);
   const [waitingAd, setWaitingAd] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ⏳ TIMER LOGIC
+  // TIMER
   useEffect(() => {
     if (!miningActive) return;
-
     intervalRef.current = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1000) {
@@ -34,10 +32,7 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
         return prev - 1000;
       });
     }, 1000);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [miningActive]);
 
   const formatTime = (ms: number) => {
@@ -45,17 +40,11 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);
     const s = totalSec % 60;
-    // Extra bold + outlined numbers
-    const styleNumber = (n: number) => (
-      <span style={{
-        fontWeight: "bold",
-        textShadow: "1px 1px 2px rgba(0,0,0,0.3)"
-      }}>{n.toString().padStart(2,"0")}</span>
-    );
+    const styleNumber = (n: number) => <span style={{ fontWeight:"bold", textShadow:"1px 1px 2px rgba(0,0,0,0.3)" }}>{n.toString().padStart(2,"0")}</span>;
     return <>{styleNumber(h)}:{styleNumber(m)}:{styleNumber(s)}</>;
   };
 
-  // ✅ NORMAL MINING BUTTON
+  // NORMAL MINING
   const handleNormalMining = async () => {
     try {
       const res = await fetch("/api/mining/start", {
@@ -75,23 +64,19 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
     }
   };
 
-  // ✅ 2× AD MINING BUTTON
+  // 2× AD MINING
   const handleAdMining = async () => {
     try {
       setWaitingAd(true);
-
-      // Simulate Android Bridge ad (replace with actual bridge)
       if (window.AndroidBridge?.startMiningRewardedAd) {
         window.AndroidBridge.setAdPurpose?.("mining");
         window.AndroidBridge.startMiningRewardedAd();
-        // Listen for ad completion
         const onAdComplete = async () => {
           window.removeEventListener("rewardAdCompleted", onAdComplete);
           await startMiningAfterAd();
         };
         window.addEventListener("rewardAdCompleted", onAdComplete);
       } else {
-        // Web fallback: simulate ad delay
         setTimeout(startMiningAfterAd, 3000);
       }
     } catch (err: any) {
@@ -131,11 +116,7 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
             <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
             {miningActive && (
               <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                <circle
-                  cx="50" cy="50" r="42"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
+                <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="8" fill="none"
                   className="text-blue-500"
                   strokeDasharray="264"
                   strokeDashoffset={264 - ((ONE_DAY_MS - timeRemaining) / ONE_DAY_MS) * 264}
@@ -148,27 +129,17 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
             </div>
           </div>
 
-          <Button
-            disabled={miningActive || waitingAd}
-            onClick={handleNormalMining}
-            className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
-          >
+          <Button disabled={miningActive || waitingAd} onClick={handleNormalMining}
+            className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg">
             Normal Mining ⛏
           </Button>
 
-          <Button
-            disabled={miningActive || waitingAd}
-            onClick={handleAdMining}
-            className="w-full py-4 text-lg font-bold rounded-xl text-white bg-purple-600 hover:bg-purple-700 shadow-lg"
-          >
+          <Button disabled={miningActive || waitingAd} onClick={handleAdMining}
+            className="w-full py-4 text-lg font-bold rounded-xl text-white bg-purple-600 hover:bg-purple-700 shadow-lg">
             {waitingAd ? "📺 Showing Ad..." : "2× Mining (Watch Ad)"}
           </Button>
 
-          <Button
-            variant="outline"
-            className="w-full py-2 mt-2"
-            onClick={onClose}
-          >
+          <Button variant="outline" className="w-full py-2 mt-2" onClick={onClose}>
             Cancel
           </Button>
         </CardContent>
