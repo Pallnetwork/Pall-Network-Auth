@@ -1,0 +1,178 @@
+// client/src/components/StartMiningPopup.tsx
+import React, { useEffect, useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+
+interface StartMiningPopupProps {
+  uid: string;
+  onClose: () => void;
+}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps) {
+  const { toast } = useToast();
+
+  const [miningActive, setMiningActive] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(ONE_DAY_MS);
+  const [waitingAd, setWaitingAd] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ⏳ TIMER LOGIC
+  useEffect(() => {
+    if (!miningActive) return;
+
+    intervalRef.current = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1000) {
+          clearInterval(intervalRef.current!);
+          setMiningActive(false);
+          toast({ title: "⛏ Mining Completed", description: "24h mining done!" });
+          return 0;
+        }
+        return prev - 1000;
+      });
+    }, 1000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [miningActive]);
+
+  const formatTime = (ms: number) => {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    // Extra bold + outlined numbers
+    const styleNumber = (n: number) => (
+      <span style={{
+        fontWeight: "bold",
+        textShadow: "1px 1px 2px rgba(0,0,0,0.3)"
+      }}>{n.toString().padStart(2,"0")}</span>
+    );
+    return <>{styleNumber(h)}:{styleNumber(m)}:{styleNumber(s)}</>;
+  };
+
+  // ✅ NORMAL MINING BUTTON
+  const handleNormalMining = async () => {
+    try {
+      const res = await fetch("/api/mining/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: uid }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to start mining");
+
+      setMiningActive(true);
+      setTimeRemaining(ONE_DAY_MS);
+      toast({ title: "Mining Started", description: "Normal 24h mining started!" });
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Mining start failed", variant: "destructive" });
+    }
+  };
+
+  // ✅ 2× AD MINING BUTTON
+  const handleAdMining = async () => {
+    try {
+      setWaitingAd(true);
+
+      // Simulate Android Bridge ad (replace with actual bridge)
+      if (window.AndroidBridge?.startMiningRewardedAd) {
+        window.AndroidBridge.setAdPurpose?.("mining");
+        window.AndroidBridge.startMiningRewardedAd();
+        // Listen for ad completion
+        const onAdComplete = async () => {
+          window.removeEventListener("rewardAdCompleted", onAdComplete);
+          await startMiningAfterAd();
+        };
+        window.addEventListener("rewardAdCompleted", onAdComplete);
+      } else {
+        // Web fallback: simulate ad delay
+        setTimeout(startMiningAfterAd, 3000);
+      }
+    } catch (err: any) {
+      setWaitingAd(false);
+      toast({ title: "Ad Error", description: err.message || "Ad failed", variant: "destructive" });
+    }
+  };
+
+  const startMiningAfterAd = async () => {
+    try {
+      const res = await fetch("/api/mining/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: uid }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to start mining after ad");
+
+      setMiningActive(true);
+      setTimeRemaining(ONE_DAY_MS);
+      setWaitingAd(false);
+      toast({ title: "2× Mining Started", description: "24h mining activated after ad!" });
+      onClose();
+    } catch (err: any) {
+      setWaitingAd(false);
+      toast({ title: "Error", description: err.message || "Mining start failed", variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
+      <Card className="max-w-md w-full rounded-2xl shadow-lg border-0 bg-white dark:bg-gray-800 p-6">
+        <CardContent className="space-y-6 text-center">
+          <h2 className="text-xl font-bold text-blue-600">Start Mining ⛏</h2>
+
+          <div className="relative w-48 h-48 mx-auto">
+            <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
+            {miningActive && (
+              <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50" cy="50" r="42"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  className="text-blue-500"
+                  strokeDasharray="264"
+                  strokeDashoffset={264 - ((ONE_DAY_MS - timeRemaining) / ONE_DAY_MS) * 264}
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+            <div className="absolute inset-4 bg-white dark:bg-gray-900 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
+              <p className="text-2xl font-mono font-bold text-blue-600">{formatTime(timeRemaining)}</p>
+            </div>
+          </div>
+
+          <Button
+            disabled={miningActive || waitingAd}
+            onClick={handleNormalMining}
+            className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
+          >
+            Normal Mining ⛏
+          </Button>
+
+          <Button
+            disabled={miningActive || waitingAd}
+            onClick={handleAdMining}
+            className="w-full py-4 text-lg font-bold rounded-xl text-white bg-purple-600 hover:bg-purple-700 shadow-lg"
+          >
+            {waitingAd ? "📺 Showing Ad..." : "2× Mining (Watch Ad)"}
+          </Button>
+
+          <Button
+            variant="outline"
+            className="w-full py-2 mt-2"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
