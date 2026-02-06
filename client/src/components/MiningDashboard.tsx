@@ -161,7 +161,6 @@ export default function MiningDashboard() {
         console.log("📊 Reward response:", res);
 
         if (res.status === "success") {
-          setClaimedCount((prev) => Math.min(prev + 1, 10));
           toast({
             title: "🎉 Reward Received",
             description: "+0.1 Pall added successfully",
