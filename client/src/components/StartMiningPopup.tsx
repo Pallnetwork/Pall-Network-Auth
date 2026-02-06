@@ -212,56 +212,79 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
           {/* Timer & Circle */}
           <div className="relative w-48 h-48 mx-auto">
             <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
+
             {miningActive && (
-              <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <svg
+                className="absolute inset-0 w-full h-full transform -rotate-90"
+                viewBox="0 0 100 100"
+              >
                 <circle
-                  cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="8" fill="none"
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
                   className="text-blue-500"
                   strokeDasharray="264"
-                  strokeDashoffset={264 - ((ONE_DAY_MS - timeRemaining)/ONE_DAY_MS)*264}
+                  strokeDashoffset={
+                    264 - ((ONE_DAY_MS - timeRemaining) / ONE_DAY_MS) * 264
+                  }
                   strokeLinecap="round"
                 />
               </svg>
             )}
-          </div>
-          <div className="absolute inset-4 bg-white dark:bg-gray-900 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800 text-center px-2">
-            {/* Timer */}
-            <p className="text-2xl font-mono font-bold text-blue-600 drop-shadow-md">
-              {formatTime(timeRemaining)}
-            </p>
 
-            {/* Balance */}
-            <p className="text-lg font-semibold text-green-600 mt-1 drop-shadow-sm">
-              {uiBalance.toFixed(8)} PALL
-            </p>
+            {/* Center content */}
+            <div className="absolute inset-4 bg-white dark:bg-gray-900 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800 text-center">
+              <p className="text-xl font-mono font-bold text-blue-600">
+                {formatTime(timeRemaining)}
+              </p>
 
-            {/* Multiplier */}
-            <p className={`text-sm font-bold mt-1 ${
-               multiplier === 1 ? "text-red-500" : "text-gray-600"
-            } drop-shadow-sm`}>
-              {multiplier === 1 ? "2× Mining 🔥" : "Normal Mining"}
-            </p>
+              <p className="text-base font-semibold text-green-600 mt-1">
+                {uiBalance.toFixed(6)} PALL
+              </p>
 
-            {/* Optional: tiny glow effect */}
-            {multiplier === 1 && (
-              <span className="absolute w-40 h-40 rounded-full bg-red-500 opacity-20 animate-ping -z-10"></span>
-            )}
+              <p
+                className={`text-xs font-bold mt-1 ${
+                  multiplier === 1 ? "text-red-500" : "text-gray-500"
+                }`}
+              >
+                {multiplier === 1 ? "2× Mining" : "Normal Mining"}
+              </p>
+            </div>
           </div>
 
-          <Button disabled={miningActive || waitingAd} onClick={handleNormalMining} className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg">
+          <Button
+            disabled={miningActive || waitingAd}
+            onClick={handleNormalMining}
+            className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
+          >
             {miningActive ? "Mining Active ⛏" : "Normal Mining ⛏"}
           </Button>
 
-          <Button disabled={miningActive || waitingAd} onClick={handleAdMining} className="w-full py-4 text-lg font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow-lg">
-            {waitingAd ? "📺 Showing Ad..." : "2× Mining🔥Watch▶️"}
+          <Button
+            disabled={miningActive || waitingAd}
+            onClick={handleAdMining}
+            className="w-full py-4 text-lg font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow-lg"
+          >
+            {waitingAd ? "📺 Showing Ad..." : "2× Mining 🔥Watch ⏵️"}
           </Button>
 
           <p className="text-sm text-muted-foreground font-medium">
             Claim for normal reward
-            <span className="font-bold text-blue-600"> | 2× Claim:</span> watch ad to double
+            <span className="font-bold text-blue-600">
+              {" "}
+              | 2× Claim:
+            </span>{" "}
+            watch ad to double
           </p>
 
-          <Button variant="outline" className="w-full py-2 mt-2" onClick={onClose}>
+          <Button
+            variant="outline"
+            className="w-full py-2 mt-2"
+            onClick={onClose}
+          >
             Cancel
           </Button>
         </CardContent>
