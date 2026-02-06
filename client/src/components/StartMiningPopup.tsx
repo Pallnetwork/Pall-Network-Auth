@@ -258,38 +258,6 @@ export default function StartMiningPopup({
         <CardContent className="space-y-6 text-center">
           <h2 className="text-xl font-bold text-blue-600">Start Mining ⛏️</h2>
 
-          <div className="relative w-48 h-48 mx-auto">
-            <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
-
-            {miningActive && (
-              <svg
-                className="absolute inset-0 w-full h-full transform -rotate-90"
-                viewBox="0 0 100 100"
-              >
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
-                  className="text-blue-500"
-                  strokeDasharray="264"
-                  strokeDashoffset={264 - ((ONE_DAY_MS - timeRemaining) / ONE_DAY_MS) * 264}
-                  strokeLinecap="round"
-                />
-              </svg>
-            )}
-
-            <div className="absolute inset-4 bg-white dark:bg-gray-900 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800 text-center">
-              <p className="text-xl font-mono font-bold text-blue-600">{formatTime(timeRemaining)}</p>
-              <p className="text-base font-semibold text-green-700 mt-1">{balance.toFixed(6)} PALL</p>
-              <p className={`text-xs font-bold mt-1 ${multiplier === 1 ? "text-orange-750" : "text-gray-750"}`}>
-                {multiplier === 1 ? "2× Mining" : "Normal Mining"}
-              </p>
-            </div>
-          </div>
-
           <Button
             disabled={miningActive || waitingAd}
             onClick={handleNormalMining}

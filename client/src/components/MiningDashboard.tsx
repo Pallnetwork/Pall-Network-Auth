@@ -44,17 +44,14 @@ export default function MiningDashboard() {
   // ======================
   useEffect(() => {
     window.onAdCompleted = () => {
-      console.log("🔥 onAdCompleted called from Android");
       window.dispatchEvent(new Event("rewardAdCompleted"));
     };
 
     window.onRewardAdCompleted = () => {
-      console.log("🔥 onRewardAdCompleted called from Android");
       window.dispatchEvent(new Event("rewardAdCompleted"));
     };
 
     window.onAdFailed = () => {
-      console.log("❌ Ad failed");
       waitingForAdRef.current = false;
       setDailyWaiting(false);
       toast({
@@ -128,15 +125,15 @@ export default function MiningDashboard() {
   }, [uid]);
 
   // ======================
-  // DAILY REWARD SNAPSHOT
+  // DAILY REWARD SNAPSHOT (FIXED)
   // ======================
   useEffect(() => {
     if (!uid) return;
     const ref = doc(db, "dailyRewards", uid);
 
     const unsub = onSnapshot(ref, async (snap) => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date();
+      const nowUTC = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()).getTime();
 
       if (!snap.exists()) {
         await setDoc(ref, {
@@ -149,11 +146,26 @@ export default function MiningDashboard() {
       }
 
       const data = snap.data();
-      const lastReset = data.lastResetDate?.toDate?.();
       const claimed =
         typeof data.claimedCount === "number" ? data.claimedCount : 0;
 
-      if (lastReset && lastReset.getTime() < today.getTime()) {
+      let lastResetUTC = 0;
+      if (data.lastResetDate?.toDate) {
+        const lastReset = data.lastResetDate.toDate();
+        lastResetUTC = new Date(
+          lastReset.getUTCFullYear(),
+          lastReset.getUTCMonth(),
+          lastReset.getUTCDate()
+        ).getTime();
+      }
+
+      // If last reset is before today (UTC), reset claimedCount
+      if (lastResetUTC < nowUTC) {
+        await setDoc(
+          ref,
+          { claimedCount: 0, lastResetDate: serverTimestamp() },
+          { merge: true }
+        );
         setClaimedCount(0);
       } else {
         setClaimedCount(claimed);
@@ -265,8 +277,7 @@ export default function MiningDashboard() {
                   className="text-blue-500"
                   strokeDasharray="264"
                   strokeDashoffset={
-                    264 -
-                    ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264
+                    264 - ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264
                   }
                   strokeLinecap="round"
                 />
@@ -340,10 +351,7 @@ export default function MiningDashboard() {
 
       {/* START MINING POPUP */}
       {showMiningPopup && uid && (
-        <StartMiningPopup
-          uid={uid}
-          onClose={() => setShowMiningPopup(false)}
-        />
+        <StartMiningPopup uid={uid} onClose={() => setShowMiningPopup(false)} />
       )}
     </>
   );
