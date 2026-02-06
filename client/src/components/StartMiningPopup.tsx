@@ -226,7 +226,7 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
             <div className="absolute inset-4 bg-white dark:bg-gray-900 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
               <p className="text-2xl font-mono font-bold text-blue-600">
                 {formatTime(timeRemaining)}</p>
-              <p className="text-sm mt-1">Balance: {uiBalance.toFixed(8)} PALL</p>
+              <p className="text-sm mt-1"> {uiBalance.toFixed(8)} PALL</p>
               <p className="text-xs mt-1">{multiplier === 1 ? "2× Mining" : "Normal Mining"}</p>
             </div>
           </div>
@@ -235,8 +235,8 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
             {miningActive ? "Mining Active ⛏" : "Normal Mining ⛏"}
           </Button>
 
-          <Button disabled={miningActive || waitingAd} onClick={handleAdMining} className="w-full py-4 text-lg font-bold rounded-xl text-white bg-purple-600 hover:bg-purple-700 shadow-lg">
-            {waitingAd ? "📺 Showing Ad..." : "2× Mining (Watch Ad)"}
+          <Button disabled={miningActive || waitingAd} onClick={handleAdMining} className="w-full py-4 text-lg font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow-lg">
+            {waitingAd ? "📺 Showing Ad..." : "2× Mining 🔥"}
           </Button>
 
           <Button variant="outline" className="w-full py-2 mt-2" onClick={onClose}>
