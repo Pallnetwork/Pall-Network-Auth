@@ -35,6 +35,10 @@ export default function MiningDashboard() {
   // GLOBAL CALLBACKS
   // ======================
   useEffect(() => {
+    window.onAdCompleted = () => {
+      window.dispatchEvent(new Event("rewardAdCompleted"));
+    };
+
     window.onRewardAdCompleted = () => {
       window.dispatchEvent(new Event("rewardAdCompleted"));
     };
@@ -103,11 +107,11 @@ export default function MiningDashboard() {
       }
 
       const data = snap.data();
-      const lastReset = data.lastResetDate?.toDate?.() || new Date(0);
+      const lastReset = data.lastResetDate?.toDate?.();
       const claimed =
         typeof data.claimedCount === "number" ? data.claimedCount : 0;
 
-      if (lastReset < today) {
+      if (lastReset && lastReset.getTime() < today.getTime()) {
         await updateDoc(ref, {
           claimedCount: 0,
           lastResetDate: serverTimestamp(),
