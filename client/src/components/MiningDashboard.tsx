@@ -68,7 +68,7 @@ export default function MiningDashboard() {
   }, []);
 
   // ======================
-  // WALLET SNAPSHOT
+  // // WALLET SNAPSHOT + incremental balance for 24h mining
   // ======================
   useEffect(() => {
     if (!uid) return;
@@ -79,10 +79,21 @@ export default function MiningDashboard() {
       const data = snap.data();
       if (!data) return;
 
-      const baseBalance =
-        typeof data.pallBalance === "number" ? data.pallBalance : 0;
+      const baseBalance = typeof data.pallBalance === "number" ? data.pallBalance : 0;
+      const lastStart = data.lastStart?.toDate?.() || null;
+      const miningActive = data.miningActive ?? false;
 
-      setBalance(baseBalance);
+      if (miningActive && lastStart) {
+        const interval = setInterval(() => {
+          const elapsed = Date.now() - lastStart.getTime();
+          const progress = Math.min(elapsed / ONE_DAY_MS, 1);
+          setBalance(baseBalance + 0.5 * progress);
+        }, 1000);
+
+        return () => clearInterval(interval);
+      } else {
+        setBalance(baseBalance);
+      }
     });
 
     return () => unsub();
