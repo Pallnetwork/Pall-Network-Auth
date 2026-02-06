@@ -46,12 +46,17 @@ export default function StartMiningPopup({
     try {
       const walletRef = doc(db, "wallets", uid);
 
+      // Only reset multiplier if it is currently >0.5
+      const currentSnap = await walletRef.get();
+      const currentData = currentSnap.data();
+      const newMultiplier = currentData?.miningMultiplier === 1 ? 0.5 : currentData?.miningMultiplier ?? 0.5;
+
       await updateDoc(walletRef, {
         miningActive: false,
         lastStart: null,
         pallBalance: increment(m),
         totalEarnings: increment(m),
-        miningMultiplier: 0.5,
+        miningMultiplier: newMultiplier,
         lastMinedAt: serverTimestamp(),
       });
 
