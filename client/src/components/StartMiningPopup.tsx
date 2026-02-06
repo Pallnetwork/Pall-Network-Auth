@@ -22,7 +22,7 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
   const [uiBalance, setUiBalance] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ======================
+  // ===========================================
   // Sync Mining state from Firestore
   // ======================
   useEffect(() => {
@@ -223,12 +223,29 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
                 />
               </svg>
             )}
-            <div className="absolute inset-4 bg-white dark:bg-gray-900 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
-              <p className="text-2xl font-mono font-bold text-blue-600">
-                {formatTime(timeRemaining)}</p>
-              <p className="text-sm mt-1"> {uiBalance.toFixed(8)} PALL</p>
-              <p className="text-xs mt-1">{multiplier === 1 ? "2× Mining" : "Normal Mining"}</p>
-            </div>
+          </div>
+          <div className="absolute inset-4 bg-white dark:bg-gray-900 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800 text-center px-2">
+            {/* Timer */}
+            <p className="text-2xl font-mono font-bold text-blue-600 drop-shadow-md">
+              {formatTime(timeRemaining)}
+            </p>
+
+            {/* Balance */}
+            <p className="text-lg font-semibold text-green-600 mt-1 drop-shadow-sm">
+              {uiBalance.toFixed(8)} PALL
+            </p>
+
+            {/* Multiplier */}
+            <p className={`text-sm font-bold mt-1 ${
+               multiplier === 1 ? "text-red-500" : "text-gray-600"
+            } drop-shadow-sm`}>
+              {multiplier === 1 ? "2× Mining 🔥" : "Normal Mining"}
+            </p>
+
+            {/* Optional: tiny glow effect */}
+            {multiplier === 1 && (
+              <span className="absolute w-40 h-40 rounded-full bg-red-500 opacity-20 animate-ping -z-10"></span>
+            )}
           </div>
 
           <Button disabled={miningActive || waitingAd} onClick={handleNormalMining} className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg">
@@ -236,8 +253,13 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
           </Button>
 
           <Button disabled={miningActive || waitingAd} onClick={handleAdMining} className="w-full py-4 text-lg font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow-lg">
-            {waitingAd ? "📺 Showing Ad..." : "2× Mining 🔥"}
+            {waitingAd ? "📺 Showing Ad..." : "2× Mining🔥Watch▶️"}
           </Button>
+
+          <p className="text-sm text-muted-foreground font-medium">
+            Claim for normal reward
+            <span className="font-bold text-blue-600"> | 2× Claim:</span> watch ad to double
+          </p>
 
           <Button variant="outline" className="w-full py-2 mt-2" onClick={onClose}>
             Cancel
