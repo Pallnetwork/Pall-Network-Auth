@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
+import { getDoc } from "firebase/firestore";
 import {
   doc,
   updateDoc,
@@ -46,11 +47,15 @@ export default function StartMiningPopup({
     try {
       const walletRef = doc(db, "wallets", uid);
 
-      // Only reset multiplier if it is currently >0.5
-      const currentSnap = await walletRef.get();
+      // Proper Firestore v9 getDoc
+      const currentSnap = await getDoc(walletRef);
       const currentData = currentSnap.data();
-      const newMultiplier = currentData?.miningMultiplier === 1 ? 0.5 : currentData?.miningMultiplier ?? 0.5;
 
+      // Decide new multiplier
+      const newMultiplier =
+        currentData?.miningMultiplier === 1 ? 0.5 : currentData?.miningMultiplier ?? 0.5;
+
+      // Update Firestore
       await updateDoc(walletRef, {
         miningActive: false,
         lastStart: null,
@@ -60,8 +65,9 @@ export default function StartMiningPopup({
         lastMinedAt: serverTimestamp(),
       });
 
+      // Update local UI state AFTER Firestore update
       setMiningActive(false);
-      setMultiplier(0.5);
+      setMultiplier(newMultiplier);
       setTimeRemaining(0);
       setBalance((prev) => prev + m);
 
