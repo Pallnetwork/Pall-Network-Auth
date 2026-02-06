@@ -117,10 +117,7 @@ export default function MiningDashboard() {
         console.log("📦 Firestore claimedCount:", claimed);
 
       if (lastReset && lastReset.getTime() < today.getTime()) {
-        await updateDoc(ref, {
-          claimedCount: 0,
-          lastResetDate: serverTimestamp(),
-        });
+        // only reset UI, no Firestore write
         setClaimedCount(0);
       } else {
         setClaimedCount(claimed);
@@ -189,8 +186,8 @@ export default function MiningDashboard() {
       adPurposeRef.current = "daily";
       window.AndroidBridge.setAdPurpose?.("daily");
       window.AndroidBridge.startDailyRewardedAd();
+    } else {
       console.log("❌ AndroidBridge not available");
-    }
   };
 
   if (!uid) {
