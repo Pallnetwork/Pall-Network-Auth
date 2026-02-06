@@ -36,14 +36,17 @@ export default function MiningDashboard() {
   // ======================
   useEffect(() => {
     window.onAdCompleted = () => {
+      console.log("🔥 onAdCompleted called from Android");
       window.dispatchEvent(new Event("rewardAdCompleted"));
     };
 
     window.onRewardAdCompleted = () => {
+      console.log("🔥 onRewardAdCompleted called from Android");
       window.dispatchEvent(new Event("rewardAdCompleted"));
     };
 
     window.onAdFailed = () => {
+      console.log("❌ Ad failed");
       waitingForAdRef.current = false;
       setDailyWaiting(false);
       toast({
@@ -111,6 +114,8 @@ export default function MiningDashboard() {
       const claimed =
         typeof data.claimedCount === "number" ? data.claimedCount : 0;
 
+        console.log("📦 Firestore claimedCount:", claimed);
+
       if (lastReset && lastReset.getTime() < today.getTime()) {
         await updateDoc(ref, {
           claimedCount: 0,
@@ -132,13 +137,20 @@ export default function MiningDashboard() {
     if (!uid) return;
 
     const handler = async () => {
+      console.log("🎯 rewardAdCompleted event received");
+
       const purpose = adPurposeRef.current;
+      console.log("📌 Ad purpose:", purpose);
+
       adPurposeRef.current = null;
       waitingForAdRef.current = false;
       setDailyWaiting(false);
 
       if (purpose === "daily") {
+        console.log("💰 Claiming daily reward...");
+
         const res = await claimDailyReward(uid);
+        console.log("📊 Reward response:", res);
 
         if (res.status === "success") {
           setClaimedCount((prev) => Math.min(prev + 1, 10));
@@ -165,13 +177,19 @@ export default function MiningDashboard() {
   // DAILY REWARD BUTTON
   // ======================
   const handleDailyReward = () => {
+    console.log("🟢 Daily reward button clicked");
+    console.log("claimedCount:", claimedCount);
+    console.log("dailyWaiting:", dailyWaiting);
+
     if (dailyWaiting || claimedCount >= 10) return;
 
     if (window.AndroidBridge?.startDailyRewardedAd) {
+      console.log("📺 Starting rewarded ad...");
       setDailyWaiting(true);
       adPurposeRef.current = "daily";
       window.AndroidBridge.setAdPurpose?.("daily");
       window.AndroidBridge.startDailyRewardedAd();
+      console.log("❌ AndroidBridge not available");
     }
   };
 
