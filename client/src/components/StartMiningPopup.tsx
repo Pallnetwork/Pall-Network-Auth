@@ -285,15 +285,15 @@ export default function StartMiningPopup({
                 {formatTime(timeRemaining)}
               </p>
 
-              <p className="text-base font-semibold text-green-600 mt-1">
+              <p className="text-base font-semibold text-green-700 mt-1">
                 {balance.toFixed(6)} PALL
               </p>
 
               <p
                 className={`text-xs font-bold mt-1 ${
                   multiplier === 1
-                    ? "text-red-500"
-                    : "text-gray-500"
+                    ? "text-orange-750"
+                    : "text-gray-750"
                 }`}
               >
                 {multiplier === 1 ? "2× Mining" : "Normal Mining"}
@@ -318,6 +318,11 @@ export default function StartMiningPopup({
               ? "📺 Showing Ad..."
               : "2× Mining 🔥 Watch Ad"}
           </Button>
+
+          <p className="text-sm text-muted-foreground font-medium">
+            Claim for normal reward
+            <span className="font-bold text-blue-600"> | 2× Claim:</span> watch ad to double
+          </p>
 
           <Button
             variant="outline"
