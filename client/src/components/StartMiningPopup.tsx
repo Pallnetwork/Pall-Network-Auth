@@ -1,3 +1,4 @@
+// StartMiningPopup.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -145,7 +146,7 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
       setTimeRemaining(ONE_DAY_MS);
 
       toast({ title: "Mining Started", description: "Normal 24h mining started!" });
-      onClose();
+      
     } catch (err: any) {
       console.error(err);
       toast({ title: "Error", description: "Failed to start mining", variant: "destructive" });
@@ -194,7 +195,7 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
       setWaitingAd(false);
 
       toast({ title: "2× Mining Started", description: "24h mining activated after ad!" });
-      onClose();
+      
     } catch (err: any) {
       setWaitingAd(false);
       console.error(err);
@@ -223,7 +224,8 @@ export default function StartMiningPopup({ uid, onClose }: StartMiningPopupProps
               </svg>
             )}
             <div className="absolute inset-4 bg-white dark:bg-gray-900 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
-              <p className="text-2xl font-mono font-bold text-blue-600">{formatTime(timeRemaining)}</p>
+              <p className="text-2xl font-mono font-bold text-blue-600">
+                {formatTime(timeRemaining)}</p>
               <p className="text-sm mt-1">Balance: {uiBalance.toFixed(8)} PALL</p>
               <p className="text-xs mt-1">{multiplier === 1 ? "2× Mining" : "Normal Mining"}</p>
             </div>

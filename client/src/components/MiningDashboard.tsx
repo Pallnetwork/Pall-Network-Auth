@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import StartMiningPopup from "@/components/StartMiningPopup";
 import { claimDailyReward } from "@/lib/dailyReward";
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 declare global {
   interface Window {
     AndroidBridge?: {
@@ -79,17 +81,23 @@ export default function MiningDashboard() {
       const data = snap.data();
       if (!data) return;
 
-      const baseBalance = typeof data.pallBalance === "number" ? data.pallBalance : 0;
+      const baseBalance =
+        typeof data.pallBalance === "number" ? data.pallBalance : 0;
+
       const lastStart = data.lastStart?.toDate?.() || null;
       const miningActive = data.miningActive ?? false;
-
+      const multiplier =
+        typeof data.miningMultiplier === "number"
+          ? data.miningMultiplier
+          : 0.5;
+          
       if (miningActive && lastStart) {
         const interval = setInterval(() => {
           const elapsed = Date.now() - lastStart.getTime();
           const progress = Math.min(elapsed / ONE_DAY_MS, 1);
-          setBalance(baseBalance + 0.5 * progress);
+          setBalance(baseBalance + multiplier * progress);
         }, 1000);
-
+        
         return () => clearInterval(interval);
       } else {
         setBalance(baseBalance);
