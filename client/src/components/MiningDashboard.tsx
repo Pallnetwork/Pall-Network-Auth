@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +8,7 @@ import StartMiningPopup from "@/components/StartMiningPopup";
 import { claimDailyReward } from "@/lib/dailyReward";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_SECONDS = 24 * 60 * 60;
 
 declare global {
   interface Window {
@@ -17,12 +18,17 @@ declare global {
     };
     onRewardAdCompleted?: () => void;
     onAdFailed?: () => void;
+    onAdCompleted?: () => void;
   }
 }
 
 export default function MiningDashboard() {
   const [uid, setUid] = useState<string | null>(auth.currentUser?.uid || null);
   const [balance, setBalance] = useState(0);
+
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [miningActive, setMiningActive] = useState(false);
+  const [multiplier, setMultiplier] = useState(0.5);
 
   const [claimedCount, setClaimedCount] = useState(0);
   const [dailyWaiting, setDailyWaiting] = useState(false);
@@ -70,7 +76,7 @@ export default function MiningDashboard() {
   }, []);
 
   // ======================
-  // // WALLET SNAPSHOT + incremental balance for 24h mining
+  // WALLET SNAPSHOT + TIMER
   // ======================
   useEffect(() => {
     if (!uid) return;
@@ -84,22 +90,36 @@ export default function MiningDashboard() {
       const baseBalance =
         typeof data.pallBalance === "number" ? data.pallBalance : 0;
 
+      const isActive = data.miningActive ?? false;
       const lastStart = data.lastStart?.toDate?.() || null;
-      const miningActive = data.miningActive ?? false;
-      const multiplier =
+      const m =
         typeof data.miningMultiplier === "number"
           ? data.miningMultiplier
           : 0.5;
-          
-      if (miningActive && lastStart) {
+
+      setMiningActive(isActive);
+      setMultiplier(m);
+
+      if (isActive && lastStart) {
         const interval = setInterval(() => {
           const elapsed = Date.now() - lastStart.getTime();
-          const progress = Math.min(elapsed / ONE_DAY_MS, 1);
-          setBalance(baseBalance + multiplier * progress);
+          const remaining = Math.max(ONE_DAY_MS - elapsed, 0);
+
+          setTimeRemaining(Math.floor(remaining / 1000));
+
+          const progress =
+            (Math.min(elapsed, ONE_DAY_MS) / ONE_DAY_MS) * m;
+
+          setBalance(baseBalance + progress);
+
+          if (remaining <= 0) {
+            clearInterval(interval);
+          }
         }, 1000);
-        
+
         return () => clearInterval(interval);
       } else {
+        setTimeRemaining(0);
         setBalance(baseBalance);
       }
     });
@@ -133,10 +153,7 @@ export default function MiningDashboard() {
       const claimed =
         typeof data.claimedCount === "number" ? data.claimedCount : 0;
 
-        console.log("📦 Firestore claimedCount:", claimed);
-
       if (lastReset && lastReset.getTime() < today.getTime()) {
-        // only reset UI, no Firestore write
         setClaimedCount(0);
       } else {
         setClaimedCount(claimed);
@@ -147,26 +164,20 @@ export default function MiningDashboard() {
   }, [uid]);
 
   // ======================
-  // CENTRAL REWARD HANDLER (OLD WORKING LOGIC)
+  // CENTRAL REWARD HANDLER
   // ======================
   useEffect(() => {
     if (!uid) return;
 
     const handler = async () => {
-      console.log("🎯 rewardAdCompleted event received");
-
       const purpose = adPurposeRef.current;
-      console.log("📌 Ad purpose:", purpose);
 
       adPurposeRef.current = null;
       waitingForAdRef.current = false;
       setDailyWaiting(false);
 
       if (purpose === "daily") {
-        console.log("💰 Claiming daily reward...");
-
         const res = await claimDailyReward(uid);
-        console.log("📊 Reward response:", res);
 
         if (res.status === "success") {
           toast({
@@ -192,22 +203,25 @@ export default function MiningDashboard() {
   // DAILY REWARD BUTTON
   // ======================
   const handleDailyReward = () => {
-    console.log("🟢 Daily reward button clicked");
-    console.log("claimedCount:", claimedCount);
-    console.log("dailyWaiting:", dailyWaiting);
-
     if (dailyWaiting || claimedCount >= 10) return;
 
     if (window.AndroidBridge?.startDailyRewardedAd) {
-      console.log("📺 Starting rewarded ad...");
       setDailyWaiting(true);
       adPurposeRef.current = "daily";
       window.AndroidBridge.setAdPurpose?.("daily");
       window.AndroidBridge.startDailyRewardedAd();
-    } else {
-      console.log("❌ AndroidBridge not available");
     }
   };
+
+  function formatTime(seconds: number) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+
+    return `${h.toString().padStart(2, "0")}:${m
+      .toString()
+      .padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
 
   if (!uid) {
     return (
@@ -230,6 +244,58 @@ export default function MiningDashboard() {
             <p className="text-3xl font-bold text-blue-600">
               {balance.toFixed(8)} PALL
             </p>
+          </div>
+
+          {/* MINING CIRCLE */}
+          <div className="relative w-48 h-48 mx-auto">
+            <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"></div>
+
+            {miningActive && timeRemaining > 0 && (
+              <svg
+                className="absolute inset-0 w-full h-full transform -rotate-90"
+                viewBox="0 0 100 100"
+              >
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  className="text-blue-500"
+                  strokeDasharray="264"
+                  strokeDashoffset={
+                    264 -
+                    ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264
+                  }
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+
+            <div className="absolute inset-4 bg-white dark:bg-gray-900 rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
+              {miningActive ? (
+                <>
+                  <div className="text-3xl mb-2">⛏️</div>
+                  <p className="text-base font-bold text-green-600">
+                    Mining Active
+                  </p>
+                  <p className="text-base font-bold text-muted-foreground">
+                    {multiplier === 1 ? "2× Mining" : "Normal Mining"}
+                  </p>
+                  <p className="text-base font-mono font-bold text-blue-600 mt-1">
+                    {formatTime(timeRemaining)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="text-4xl mb-2">🎓</div>
+                  <p className="text-sm font-semibold text-gray-600">
+                    Ready to Mine
+                  </p>
+                </>
+              )}
+            </div>
           </div>
 
           {/* START MINING BUTTON */}
@@ -268,14 +334,6 @@ export default function MiningDashboard() {
                 ? `Watch Ad & Get 0.1 Pall 🎁 (${claimedCount}/10)`
                 : "Daily Reward Completed ✨"}
             </Button>
-
-            {claimedCount < 10 && (
-              <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.8s]">
-                <span className="text-orange-500 font-extrabold text-3xl leading-none">
-                  🎉
-                </span>
-              </div>
-            )}
           </Card>
         </CardContent>
       </Card>
