@@ -188,6 +188,7 @@ export default function MiningDashboard() {
       window.AndroidBridge.startDailyRewardedAd();
     } else {
       console.log("❌ AndroidBridge not available");
+    }
   };
 
   if (!uid) {
