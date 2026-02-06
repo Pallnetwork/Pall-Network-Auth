@@ -18,63 +18,50 @@ declare global {
   }
 }
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
 export default function MiningDashboard() {
   const [uid, setUid] = useState<string | null>(auth.currentUser?.uid || null);
   const [balance, setBalance] = useState(0);
+
   const [claimedCount, setClaimedCount] = useState(0);
   const [dailyWaiting, setDailyWaiting] = useState(false);
   const [showMiningPopup, setShowMiningPopup] = useState(false);
 
+  const waitingForAdRef = useRef(false);
+  const adPurposeRef = useRef<"mining" | "daily" | null>(null);
+
   const { toast } = useToast();
-  const rewardEventEmitter = useRef(new EventTarget()).current;
 
- // ======================
- // GLOBAL CALLBACKS
- // ======================
- window.onRewardAdCompleted = () => {
-   window.dispatchEvent(new Event("rewardAdCompleted"));
- };
+  // ======================
+  // GLOBAL CALLBACKS
+  // ======================
+  useEffect(() => {
+    window.onRewardAdCompleted = () => {
+      window.dispatchEvent(new Event("rewardAdCompleted"));
+    };
 
- window.onAdFailed = () => {
-   waitingForAdRef.current = false
-   setWaitingForAd(false);
-   setDailyWaiting(false);
-   toast({
-     title: "Ad Failed",
-     description: "Rewarded ad could not load",
-     variant: "destructive" ,
-   });
- }
-
- useEffect(() => {
-  window.onAdCompleted = async () => {
-    if (!waitingForAdRef.current) return;
-
-     // ❌ IMPORTANT: yahan mining start nahi hogi
-     waitingForAdRef.current = false;
-     setWaitingForAd(false);
-
-     // sirf signal dispatch hoga
-     window.dispatchEvent(new Event("rewardAdCompleted"));
-   };
-
-   return () => {
-     window.onAdCompleted = undefined;
-   };
- }, [toast]);
+    window.onAdFailed = () => {
+      waitingForAdRef.current = false;
+      setDailyWaiting(false);
+      toast({
+        title: "Ad Failed",
+        description: "Rewarded ad could not load",
+        variant: "destructive",
+      });
+    };
+  }, [toast]);
 
   // ======================
   // AUTH STATE
   // ======================
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((user) => setUid(user ? user.uid : null));
+    const unsub = auth.onAuthStateChanged((user) =>
+      setUid(user ? user.uid : null)
+    );
     return () => unsub();
   }, []);
 
   // ======================
-  // WALLET SNAPSHOT + incremental balance for 24h mining
+  // WALLET SNAPSHOT
   // ======================
   useEffect(() => {
     if (!uid) return;
@@ -85,21 +72,10 @@ export default function MiningDashboard() {
       const data = snap.data();
       if (!data) return;
 
-      const baseBalance = typeof data.pallBalance === "number" ? data.pallBalance : 0;
-      const lastStart = data.lastStart?.toDate?.() || null;
-      const miningActive = data.miningActive ?? false;
+      const baseBalance =
+        typeof data.pallBalance === "number" ? data.pallBalance : 0;
 
-      if (miningActive && lastStart) {
-        const interval = setInterval(() => {
-          const elapsed = Date.now() - lastStart.getTime();
-          const progress = Math.min(elapsed / ONE_DAY_MS, 1);
-          setBalance(baseBalance + 0.5 * progress);
-        }, 1000);
-
-        return () => clearInterval(interval);
-      } else {
-        setBalance(baseBalance);
-      }
+      setBalance(baseBalance);
     });
 
     return () => unsub();
@@ -128,7 +104,8 @@ export default function MiningDashboard() {
 
       const data = snap.data();
       const lastReset = data.lastResetDate?.toDate?.() || new Date(0);
-      const claimed = typeof data.claimedCount === "number" ? data.claimedCount : 0;
+      const claimed =
+        typeof data.claimedCount === "number" ? data.claimedCount : 0;
 
       if (lastReset < today) {
         await updateDoc(ref, {
@@ -137,7 +114,7 @@ export default function MiningDashboard() {
         });
         setClaimedCount(0);
       } else {
-        setClaimedCount(Math.min(claimed, 10));
+        setClaimedCount(claimed);
       }
     });
 
@@ -145,102 +122,53 @@ export default function MiningDashboard() {
   }, [uid]);
 
   // ======================
-  // ANDROID BRIDGE CALLBACKS
+  // CENTRAL REWARD HANDLER (OLD WORKING LOGIC)
   // ======================
   useEffect(() => {
-    window.onRewardAdCompleted = () => {
-      rewardEventEmitter.dispatchEvent(new Event("claimDailyReward"));
-    };
-
-    window.onAdFailed = () => {
-      setDailyWaiting(false);
-      toast({
-        title: "Ad Failed",
-        description: "Rewarded ad could not load",
-        variant: "destructive",
-      });
-    };
-  }, [toast, rewardEventEmitter]);
-
-  // ======================
-  // DAILY REWARD HANDLER (ANDROID ONLY)
-  // ======================
-  const handleDailyReward = async () => {
-    if (dailyWaiting || claimedCount >= 10) return;
     if (!uid) return;
 
-    // lock button immediately
-    setDailyWaiting(true);
+    const handler = async () => {
+      const purpose = adPurposeRef.current;
+      adPurposeRef.current = null;
+      waitingForAdRef.current = false;
+      setDailyWaiting(false);
 
-    try {
-      if (!window.AndroidBridge?.startDailyRewardedAd) {
-        throw new Error("AndroidBridge not available");
-      }
+      if (purpose === "daily") {
+        const res = await claimDailyReward(uid);
 
-      // Set purpose for ad
-      window.AndroidBridge.setAdPurpose?.("daily");
-
-      // Event listener for ad completion
-      const onAdComplete = async () => {
-        // remove listener immediately to prevent double firing
-        window.removeEventListener("rewardAdCompleted", onAdComplete);
-
-        try {
-          // Claim reward on Firestore after ad completes
-          const res = await claimDailyReward(uid);
-          if (res.status === "success") {
-            setClaimedCount(prev => Math.min(prev + 1, 10));
-            toast({
-              title: "🎉 Reward Received",
-              description: "+0.1 Pall Received Successfully",
-            });
-          } else {
-            toast({
-              title: "Reward Failed",
-              description: res.message || "Something went wrong",
-              variant: "destructive",
-            });
-          }
-        } catch (err: any) {
-          console.error("Reward claim error:", err);
+        if (res.status === "success") {
+          setClaimedCount((prev) => Math.min(prev + 1, 10));
           toast({
-            title: "Error",
-            description: "Failed to claim reward",
+            title: "🎉 Reward Received",
+            description: "+0.1 Pall added successfully",
+          });
+        } else {
+          toast({
+            title: "Daily Reward",
+            description: res.message || "Reward already claimed",
             variant: "destructive",
           });
-        } finally {
-          setDailyWaiting(false);
         }
-      };
+      }
+    };
 
-      // Attach listener
-      window.addEventListener("rewardAdCompleted", onAdComplete);
+    window.addEventListener("rewardAdCompleted", handler);
+    return () =>
+      window.removeEventListener("rewardAdCompleted", handler);
+  }, [uid, toast]);
 
-      // Start the rewarded ad
+  // ======================
+  // DAILY REWARD BUTTON
+  // ======================
+  const handleDailyReward = () => {
+    if (dailyWaiting || claimedCount >= 10) return;
+
+    if (window.AndroidBridge?.startDailyRewardedAd) {
+      setDailyWaiting(true);
+      adPurposeRef.current = "daily";
+      window.AndroidBridge.setAdPurpose?.("daily");
       window.AndroidBridge.startDailyRewardedAd();
-
-      // Safety fallback: unlock button after 15s in case ad hangs
-      setTimeout(() => {
-        setDailyWaiting(false);
-        window.removeEventListener("rewardAdCompleted", onAdComplete);
-      }, 15000);
-
-    } catch (err: any) {
-      console.error("Daily reward failed:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Unexpected error",
-        variant: "destructive",
-      });
-      setDailyWaiting(false);
     }
-  };
-
-  const formatTime = (s: number) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
   if (!uid) {
@@ -266,7 +194,7 @@ export default function MiningDashboard() {
             </p>
           </div>
 
-          {/* START MINING BUTTON (POPUP ONLY) */}
+          {/* START MINING BUTTON */}
           <Button
             onClick={() => setShowMiningPopup(true)}
             className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
@@ -280,7 +208,9 @@ export default function MiningDashboard() {
               Get Daily Reward
             </h3>
             <p className="text-center text-sm mb-4">
-              <span className="font-bold text-blue-500">{claimedCount} 🔶 10</span>
+              <span className="font-bold text-blue-500">
+                {claimedCount} 🔶 10
+              </span>
             </p>
 
             <Button
