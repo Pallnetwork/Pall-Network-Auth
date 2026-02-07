@@ -113,8 +113,14 @@ export default function Signup() {
         title: "Success",
         description: "Account created successfully",
       });
+      
+      // ✅ Wait for Firebase auth state before navigating
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          navigate("/app/dashboard");
+        }
+      });
 
-      navigate("/app/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
