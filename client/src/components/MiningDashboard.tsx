@@ -328,14 +328,24 @@ export default function MiningDashboard() {
   const startMiningBackend = async () => {
     if (!uid) return;
     try {
+      // 1️⃣ Backend call for mining
       const result = await mineForUser();
       if (result.status === "error") {
         toast({ title: "Mining Error", description: result.message || "Could not start mining", variant: "destructive" });
         return;
       }
+
+      // 2️⃣ Update wallet document in Firebase to start mining
+      const walletRef = doc(db, "wallets", uid);
+      await updateDoc(walletRef, {
+        miningActive: true,
+        lastStart: serverTimestamp(), // start time
+      });
+
+      // 3️⃣ Notify user
       toast({ title: "Mining Started", description: "24h mining activated" });
-    } catch {
-      toast({ title: "Mining Error", description: "Unexpected error occurred", variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: "Mining Error", description: e.message || "Unexpected error occurred", variant: "destructive" });
     }
   };
 
