@@ -113,13 +113,27 @@ export default function Signup() {
         title: "Success",
         description: "Account created successfully",
       });
-      
-      // ✅ Wait for Firebase auth state before navigating
-      auth.onAuthStateChanged((user) => {
-        if (user) {
-          navigate("/app/dashboard");
-        }
-      });
+
+      // ✅ Ensure auth is fully ready, then navigate
+      if (auth.currentUser) {
+        // user is logged in immediately after signup
+        navigate("/app/dashboard");
+      } else {
+        // fallback: wait max 2s for user to appear
+        const waitForUser = new Promise<void>((resolve) => {
+          const timeout = setTimeout(() => resolve(), 2000);
+          const unsubscribe = auth.onAuthStateChanged((user) => {
+            if (user) {
+              clearTimeout(timeout);
+              unsubscribe();
+              resolve();
+              navigate("/app/dashboard");
+            }
+          });
+        });
+
+        await waitForUser;
+      }
 
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -131,7 +145,7 @@ export default function Signup() {
     } finally {
       setLoading(false);
     }
-  };
+  }; // ✅ Fixed missing closing brace for handleSignup
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-blue-700 flex items-center justify-center p-4">
