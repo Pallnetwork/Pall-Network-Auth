@@ -185,22 +185,9 @@ export default function Dashboard() {
       // Mark auth as initialized after first check
       setAuthInitialized(true);
 
-      // If no firebase user -> wait longer for WebView/Android environment
       if (!firebaseUser) {
-        console.log('⚠️ No Firebase user found, checking again in 3000ms before redirecting...');
-        
-        // Increased timeout for WebView environment - Android apps need more time
-        redirectTimeout = setTimeout(() => {
-          const currentUser = auth.currentUser;
-          if (!currentUser) {
-            console.log('❌ Confirmed: No Firebase user after extended timeout, redirecting to signin');
-            localStorage.removeItem("userId");
-            clearAuthTimestamp();
-            navigate("/app/signin");
-          } else {
-            console.log('✅ False alarm: Firebase user found on double-check:', currentUser.uid);
-          }
-        }, 3000); // Increased from 500ms to 3000ms for WebView stability
+        setIsLoading(false);
+        navigate("/app/signin");
         return;
       }
 
