@@ -61,17 +61,17 @@ export default function Signup() {
       );
       const uid = userCred.user.uid;
 
+      // Optional referral check, does not block signup
       let referredByUID: string | null = null;
-
       if (form.referralCode.trim() !== "") {
-        const usersRef = collection(db, "users");
-        const q = query(
-          usersRef,
-          where("referralCode", "==", form.referralCode)
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          referredByUID = snap.docs[0].id;
+        try {
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("referralCode", "==", form.referralCode));
+          const snap = await getDocs(q);
+          if (!snap.empty) referredByUID = snap.docs[0].id;
+        } catch {
+          // ignore referral errors
+          referredByUID = null;
         }
       }
 
@@ -88,52 +88,34 @@ export default function Signup() {
       });
 
       // ✅ Fixed Wallet document for mining
-      const walletRef = doc(db, "wallets", uid);
-      await setDoc(walletRef, {
+      await setDoc(doc(db, "wallets", uid), {
         userId: uid,
         pallBalance: 0,
         miningActive: false,
-
-        // ❗ NEVER NULL — new users
         lastStart: serverTimestamp(),
         lastMinedAt: serverTimestamp(),
-        
         adWatched: false,
         totalEarnings: 0,
         createdAt: serverTimestamp(),
       });
 
       // ✅ Create Daily Reward doc
-      const dailyRef = doc(db, "dailyRewards", uid);
-      await setDoc(dailyRef, {
-        claimedCount: 0,
-      });
+      await setDoc(doc(db, "dailyRewards", uid), { claimedCount: 0 });
 
-      toast({
-        title: "Success",
-        description: "Account created successfully",
-      });
+      toast({ title: "Success", description: "Account created successfully" });
 
-      // ✅ Ensure auth is fully ready, then navigate
-      if (auth.currentUser) {
-        // user is logged in immediately after signup
-        navigate("/app/dashboard");
-      } else {
-        // fallback: wait max 2s for user to appear
-        const waitForUser = new Promise<void>((resolve) => {
-          const timeout = setTimeout(() => resolve(), 2000);
-          const unsubscribe = auth.onAuthStateChanged((user) => {
-            if (user) {
-              clearTimeout(timeout);
-              unsubscribe();
-              resolve();
-              navigate("/app/dashboard");
-            }
-          });
+      // ✅ Wait for Firebase auth state before navigating
+      await new Promise<void>((resolve) => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+          if (user) {
+            unsubscribe();
+            resolve();
+          }
         });
+      });
 
-        await waitForUser;
-      }
+      // ✅ Navigate after auth is confirmed
+      navigate("/app/dashboard");
 
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -145,7 +127,7 @@ export default function Signup() {
     } finally {
       setLoading(false);
     }
-  }; // ✅ Fixed missing closing brace for handleSignup
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-blue-700 flex items-center justify-center p-4">
