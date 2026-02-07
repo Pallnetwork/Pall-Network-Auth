@@ -61,17 +61,17 @@ export default function Signup() {
       );
       const uid = userCred.user.uid;
 
-      // Optional referral check, does not block signup
       let referredByUID: string | null = null;
+
       if (form.referralCode.trim() !== "") {
-        try {
-          const usersRef = collection(db, "users");
-          const q = query(usersRef, where("referralCode", "==", form.referralCode));
-          const snap = await getDocs(q);
-          if (!snap.empty) referredByUID = snap.docs[0].id;
-        } catch {
-          // ignore referral errors
-          referredByUID = null;
+        const usersRef = collection(db, "users");
+        const q = query(
+          usersRef,
+          where("referralCode", "==", form.referralCode)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          referredByUID = snap.docs[0].id;
         }
       }
 
@@ -88,35 +88,33 @@ export default function Signup() {
       });
 
       // ✅ Fixed Wallet document for mining
-      await setDoc(doc(db, "wallets", uid), {
+      const walletRef = doc(db, "wallets", uid);
+      await setDoc(walletRef, {
         userId: uid,
         pallBalance: 0,
         miningActive: false,
+
+        // ❗ NEVER NULL — new users
         lastStart: serverTimestamp(),
         lastMinedAt: serverTimestamp(),
+        
         adWatched: false,
         totalEarnings: 0,
         createdAt: serverTimestamp(),
       });
 
       // ✅ Create Daily Reward doc
-      await setDoc(doc(db, "dailyRewards", uid), { claimedCount: 0 });
-
-      toast({ title: "Success", description: "Account created successfully" });
-
-      // ✅ Wait for Firebase auth state before navigating
-      await new Promise<void>((resolve) => {
-        const unsubscribe = auth.onAuthStateChanged((user) => {
-          if (user) {
-            unsubscribe();
-            resolve();
-          }
-        });
+      const dailyRef = doc(db, "dailyRewards", uid);
+      await setDoc(dailyRef, {
+        claimedCount: 0,
       });
 
-      // ✅ Navigate after auth is confirmed
-      navigate("/app/dashboard");
+      toast({
+        title: "Success",
+        description: "Account created successfully",
+      });
 
+      navigate("/app/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
