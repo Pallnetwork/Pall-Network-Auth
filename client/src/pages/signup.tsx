@@ -54,6 +54,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
+      // ✅ Create user in Firebase Auth
       const userCred = await createUserWithEmailAndPassword(
         auth,
         form.email,
@@ -61,14 +62,11 @@ export default function Signup() {
       );
       const uid = userCred.user.uid;
 
+      // ✅ Referral check (same as before)
       let referredByUID: string | null = null;
-
       if (form.referralCode.trim() !== "") {
         const usersRef = collection(db, "users");
-        const q = query(
-          usersRef,
-          where("referralCode", "==", form.referralCode)
-        );
+        const q = query(usersRef, where("referralCode", "==", form.referralCode));
         const snap = await getDocs(q);
         if (!snap.empty) {
           referredByUID = snap.docs[0].id;
@@ -87,34 +85,58 @@ export default function Signup() {
         referralCode: `${form.username}-${uid.slice(0, 5)}`,
       });
 
-      // ✅ Fixed Wallet document for mining
-      const walletRef = doc(db, "wallets", uid);
-      await setDoc(walletRef, {
-        userId: uid,
-        pallBalance: 0,
-        miningActive: false,
-
-        // ❗ NEVER NULL — new users
-        lastStart: serverTimestamp(),
-        lastMinedAt: serverTimestamp(),
-        
-        adWatched: false,
-        totalEarnings: 0,
-        createdAt: serverTimestamp(),
-      });
-
-      // ✅ Create Daily Reward doc
-      const dailyRef = doc(db, "dailyRewards", uid);
-      await setDoc(dailyRef, {
-        claimedCount: 0,
-      });
-
+      // ✅ Success toast
       toast({
         title: "Success",
         description: "Account created successfully",
       });
 
+      // 🔹 Navigate immediately (Step 3)
       navigate("/app/dashboard");
+
+      // 🔹 Create wallet in background
+      const walletRef = doc(db, "wallets", uid);
+      setTimeout(async () => {
+        try {
+          await setDoc(
+            walletRef,
+            {
+              userId: uid,
+              pallBalance: 0,
+              miningActive: false,
+              lastStart: serverTimestamp(),
+              lastMinedAt: serverTimestamp(),
+              adWatched: false,
+              totalEarnings: 0,
+              createdAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        } catch (e: any) {
+          console.error("Wallet creation failed:", e);
+          toast({
+            title: "Error",
+            description: "Failed to initialize wallet",
+            variant: "destructive",
+          });
+        }
+      }, 0);
+
+      // 🔹 Create daily rewards doc in background
+      const dailyRef = doc(db, "dailyRewards", uid);
+      setTimeout(async () => {
+        try {
+          await setDoc(dailyRef, { claimedCount: 0 }, { merge: true });
+        } catch (e: any) {
+          console.error("Daily reward creation failed:", e);
+          toast({
+            title: "Error",
+            description: "Failed to initialize daily rewards",
+            variant: "destructive",
+          });
+        }
+      }, 0);
+
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
