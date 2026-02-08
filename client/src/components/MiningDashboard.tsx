@@ -30,6 +30,8 @@ export default function MiningDashboard() {
   const [canStartMining, setCanStartMining] = useState(true);
   const [claimedCount, setClaimedCount] = useState(0);
   const [dailyWaiting, setDailyWaiting] = useState(false);
+  const [showMiningPopup, setShowMiningPopup] = useState(false);
+  const [miningCountdown, setMiningCountdown] = useState(30);
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"mining" | "daily" | null>(null);
@@ -176,6 +178,25 @@ export default function MiningDashboard() {
   }, [mining, lastStart]);
 
   // ======================
+  // START MINING POPUP TIMER
+  // ======================
+  useEffect(() => {
+    if (!showMiningPopup) return;
+
+    if (miningCountdown <= 0) {
+      setShowMiningPopup(false);
+      startMiningBackend(); // actual mining start
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setMiningCountdown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [showMiningPopup, miningCountdown]);
+
+  // ======================
   // REWARDED AD HANDLER
   // ======================
   useEffect(() => {
@@ -245,6 +266,7 @@ export default function MiningDashboard() {
   if (!uid) return <div className="text-center mt-20 text-lg text-red-500">User not authenticated</div>;
 
   return (
+  <>
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="pb-4"></CardHeader>
       <CardContent className="text-center space-y-6 px-6 pb-8">
@@ -273,7 +295,9 @@ export default function MiningDashboard() {
                 <div className="text-3xl mb-2">⛏️</div>
                 <p className="text-base font-bold text-green-600">Mining Active</p>
                 <p className="text-base font-bold text-muted-foreground">Standard Rate</p>
-                <p className="text-base font-mono font-bold text-blue-600 mt-1">{formatTime(timeRemaining)}</p>
+                <p className="text-base font-mono font-bold text-blue-600 mt-1">
+                  {formatTime(timeRemaining)}
+                </p>
               </>
             ) : (
               <>
@@ -287,15 +311,16 @@ export default function MiningDashboard() {
 
         <Button
           disabled={mining || !canStartMining}
-          onClick={startMiningBackend}
+          onClick={() => {
+            setShowMiningPopup(true);
+            setMiningCountdown(30);
+          }}
           className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
         >
           {mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
         </Button>
 
-        {/* ======================
-            DAILY REWARD BUTTON JSX (UNCHANGED)
-        ====================== */}
+        {/* DAILY REWARD */}
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md mt-4">
           <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
           <p className="text-center text-sm text-gray-600 mb-2">
@@ -329,5 +354,28 @@ export default function MiningDashboard() {
         </Card>
       </CardContent>
     </Card>
-  );
-}
+
+    {/* MINING POPUP */}
+    {showMiningPopup && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+        <div className="bg-[#0f172a] rounded-2xl p-8 w-[90%] max-w-sm text-center shadow-2xl">
+          <h2 className="text-white text-xl font-semibold mb-4">
+            Starting Mining…
+          </h2>
+
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+
+          <p className="text-3xl font-bold text-blue-400">
+            {miningCountdown}s
+          </p>
+
+          <p className="text-sm text-gray-400 mt-2">
+            Preparing your mining session
+          </p>
+        </div>
+      </div>
+    )}
+  </>
+);
