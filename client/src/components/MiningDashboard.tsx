@@ -128,13 +128,6 @@ export default function MiningDashboard() {
 
       const data = snap.data();
 
-      // 🔹 Balance sync
-      if (typeof data.pallBalance === "number") {
-        setBalance(data.pallBalance);
-        if (!mining) setUiBalance(data.pallBalance);
-      }
-
-      // 🔹 Mining inactive
       if (!data.miningActive || !data.lastStart) {
         setMining(false);
         setCanStartMining(true);
@@ -143,57 +136,18 @@ export default function MiningDashboard() {
         return;
       }
 
-      // 🔹 SAFE lastStart conversion (Timestamp | number)
+      // lastStart safe conversion
       let startMs: number;
-
-      if (typeof data.lastStart === "number") {
-        startMs = data.lastStart;
-      } else if (data.lastStart.toMillis) {
-        startMs = data.lastStart.toMillis();
-      } else {
-        // fallback safety
-        setMining(false);
-        setCanStartMining(true);
-        setTimeRemaining(0);
-        setLastStart(null);
-        return;
-      }
+      if (typeof data.lastStart === "number") startMs = data.lastStart;
+      else if (data.lastStart.toMillis) startMs = data.lastStart.toMillis();
+      else return;
 
       const elapsedSeconds = Math.floor((Date.now() - startMs) / 1000);
-
-      // 🔹 UI mining preview
-      const minedAmount = elapsedSeconds * baseMiningRate;
-      setUiBalance((data.pallBalance || 0) + minedAmount);
-
-      // 🔥 Mining complete → auto claim
-      if (elapsedSeconds >= MAX_SECONDS) {
-        stopMiningBackend()
-        .then((res) => {
-          toast({
-            title: "⛏ Mining Completed",
-            description: `You earned ${res.earned.toFixed(6)} PALL`,
-          });
-        })
-        .catch((e) => {
-          toast({
-            title: "Mining Save Failed",
-            description: e.message,
-            variant: "destructive",
-          });
-        });
-
-        setMining(false);
-        setCanStartMining(true);
-        setTimeRemaining(0);
-        setLastStart(null);
-        return;
-      }
-
-      // ⏳ Mining still running
+      setUiBalance((data.pallBalance || 0) + elapsedSeconds * 0.00001157);
       setMining(true);
       setCanStartMining(false);
       setLastStart(new Date(startMs));
-      setTimeRemaining(MAX_SECONDS - elapsedSeconds);
+      setTimeRemaining(24 * 60 * 60 - elapsedSeconds);
     });
 
     return () => unsub();
@@ -328,21 +282,12 @@ export default function MiningDashboard() {
   const startMiningBackend = async () => {
     if (!uid) return;
     try {
-      // 1️⃣ Backend call for mining
-      const result = await mineForUser();
-      if (result.status === "error") {
-        toast({ title: "Mining Error", description: result.message || "Could not start mining", variant: "destructive" });
-        return;
-      }
-
-      // 2️⃣ Update wallet document in Firebase to start mining
       const walletRef = doc(db, "wallets", uid);
       await updateDoc(walletRef, {
         miningActive: true,
-        lastStart: serverTimestamp(), // start time
+        lastStart: serverTimestamp(),
       });
 
-      // 3️⃣ Notify user
       toast({ title: "Mining Started", description: "24h mining activated" });
     } catch (e: any) {
       toast({ title: "Mining Error", description: e.message || "Unexpected error occurred", variant: "destructive" });
@@ -416,12 +361,14 @@ export default function MiningDashboard() {
         </div>
 
         <Button
-          disabled={mining || waitingForAd || !canStartMining}
-          onClick={handleStartMining}
+          disabled={mining || !canStartMining}
+          onClick={startMiningBackend}
           className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
         >
-          {waitingForAd ? "📺 Showing Ad..." : mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
-        </Button>
+          {mining
+            ? `Mining ⛏ (${formatTime(timeRemaining)})`
+            : "Start Mining ⛏"}
+        </Button> 
 
         {/* ======================
          DAILY REWARD BUTTON JSX
