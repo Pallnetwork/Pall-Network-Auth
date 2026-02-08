@@ -17,9 +17,32 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-// 👉 logo import
 import logo from "@/assets/logo.png";
+
+// 🔹 Helper: Retry Firestore writes
+const writeWithRetry = async (
+  ref: any,
+  data: any,
+  options: any = {},
+  retries = 5,
+  delay = 1000
+) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await setDoc(ref, data, options);
+      return;
+    } catch (err: any) {
+      if (err.code === "resource-exhausted") {
+        console.warn(`Quota exceeded, retrying in ${delay}ms...`);
+        await new Promise((res) => setTimeout(res, delay));
+        delay *= 2; // exponential backoff
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw new Error("Failed to write after multiple retries");
+};
 
 export default function Signup() {
   const [form, setForm] = useState({
@@ -62,19 +85,21 @@ export default function Signup() {
       );
       const uid = userCred.user.uid;
 
-      // ✅ Referral check (same as before)
+      // ✅ Referral check
       let referredByUID: string | null = null;
       if (form.referralCode.trim() !== "") {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("referralCode", "==", form.referralCode));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          referredByUID = snap.docs[0].id;
+        try {
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("referralCode", "==", form.referralCode));
+          const snap = await getDocs(q);
+          if (!snap.empty) referredByUID = snap.docs[0].id;
+        } catch (err: any) {
+          console.warn("Referral check failed:", err.message);
         }
       }
 
       // ✅ Save user document
-      await setDoc(doc(db, "users", uid), {
+      await writeWithRetry(doc(db, "users", uid), {
         id: uid,
         name: form.fullName,
         username: form.username,
@@ -85,20 +110,14 @@ export default function Signup() {
         referralCode: `${form.username}-${uid.slice(0, 5)}`,
       });
 
-      // ✅ Success toast
-      toast({
-        title: "Success",
-        description: "Account created successfully",
-      });
-
-      // 🔹 Navigate immediately (Step 3)
+      toast({ title: "Success", description: "Account created successfully" });
       navigate("/app/dashboard");
 
-      // 🔹 Create wallet in background
-      const walletRef = doc(db, "wallets", uid);
-      setTimeout(async () => {
+      // 🔹 Wallet creation in background
+      (async () => {
         try {
-          await setDoc(
+          const walletRef = doc(db, "wallets", uid);
+          await writeWithRetry(
             walletRef,
             {
               userId: uid,
@@ -113,32 +132,22 @@ export default function Signup() {
             { merge: true }
           );
         } catch (e: any) {
-          console.error("Wallet creation failed:", e);
-          toast({
-            title: "Error",
-            description: "Failed to initialize wallet",
-            variant: "destructive",
-          });
+          console.error("Wallet creation failed:", e.message);
         }
-      }, 0);
+      })();
 
-      // 🔹 Create daily rewards doc in background
-      const dailyRef = doc(db, "dailyRewards", uid);
-      setTimeout(async () => {
+      // 🔹 Daily rewards creation in background
+      (async () => {
         try {
-          await setDoc(dailyRef, { claimedCount: 0 }, { merge: true });
+          const dailyRef = doc(db, "dailyRewards", uid);
+          await writeWithRetry(dailyRef, { claimedCount: 0 }, { merge: true });
         } catch (e: any) {
-          console.error("Daily reward creation failed:", e);
-          toast({
-            title: "Error",
-            description: "Failed to initialize daily rewards",
-            variant: "destructive",
-          });
+          console.error("Daily reward creation failed:", e.message);
         }
-      }, 0);
+      })();
 
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.error("Signup error:", error.message);
       toast({
         title: "Error",
         description: error.message || "Failed to create account",
@@ -160,9 +169,7 @@ export default function Signup() {
           />
           <div>
             <h2 className="text-2xl font-bold">Create Account</h2>
-            <p className="text-sm text-white/70">
-              Join Pall Network & start mining
-            </p>
+            <p className="text-sm text-white/70">Join Pall Network & start mining</p>
           </div>
         </CardHeader>
 
