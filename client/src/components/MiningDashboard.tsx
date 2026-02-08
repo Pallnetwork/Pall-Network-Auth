@@ -1,13 +1,12 @@
 // client/src/components/MiningDashboard.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
 import { claimDailyReward } from "@/lib/dailyReward";
-import { setDoc } from "firebase/firestore";
 
 declare global {
   interface Window {
@@ -22,43 +21,18 @@ declare global {
   }
 }
 
-async function stopMiningBackend() {
-  const user = auth.currentUser;
-  if (!user) return;
-
-  const token = await user.getIdToken(true);
-
-  const res = await fetch("https://pall-network-auth.onrender.com/api/stop", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) throw new Error(data.error || "Stop mining failed");
-
-  return data;
-}
-
 export default function MiningDashboard() {
   const [uid, setUid] = useState<string | null>(auth.currentUser?.uid || null);
-  const [balance, setBalance] = useState(0);
   const [uiBalance, setUiBalance] = useState(0);
   const [mining, setMining] = useState(false);
   const [lastStart, setLastStart] = useState<Date | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [canStartMining, setCanStartMining] = useState(true);
-  const [waitingForAd, setWaitingForAd] = useState(false);
-
-  const waitingForAdRef = useRef(false);
-  const adPurposeRef = useRef<"mining" | "daily" | null>(null);
-
   const [claimedCount, setClaimedCount] = useState(0);
   const [dailyWaiting, setDailyWaiting] = useState(false);
 
+  const waitingForAdRef = useRef(false);
+  const adPurposeRef = useRef<"mining" | "daily" | null>(null);
   const { toast } = useToast();
 
   const baseMiningRate = 0.00001157;
@@ -73,27 +47,20 @@ export default function MiningDashboard() {
 
   window.onAdFailed = () => {
     waitingForAdRef.current = false;
-    setWaitingForAd(false);
     setDailyWaiting(false);
     toast({
-     title: "Ad Failed",
-     description: "Rewarded ad could not load",
-     variant: "destructive" ,
+      title: "Ad Failed",
+      description: "Rewarded ad could not load",
+      variant: "destructive",
     });
   };
 
   useEffect(() => {
     window.onAdCompleted = async () => {
       if (!waitingForAdRef.current) return;
-
-      // ❌ IMPORTANT: yahan mining start nahi hogi
       waitingForAdRef.current = false;
-      setWaitingForAd(false);
-
-      // sirf signal dispatch hoga
       window.dispatchEvent(new Event("rewardAdCompleted"));
     };
-
     return () => {
       window.onAdCompleted = undefined;
     };
@@ -116,9 +83,8 @@ export default function MiningDashboard() {
     if (!uid) return;
 
     const ref = doc(db, "wallets", uid);
-
     const unsub = onSnapshot(ref, (snap) => {
-      if (!snap.exists()) {
+      if (!snap.exists() || !snap.data().miningActive || !snap.data().lastStart) {
         setMining(false);
         setCanStartMining(true);
         setTimeRemaining(0);
@@ -127,27 +93,17 @@ export default function MiningDashboard() {
       }
 
       const data = snap.data();
-
-      if (!data.miningActive || !data.lastStart) {
-        setMining(false);
-        setCanStartMining(true);
-        setTimeRemaining(0);
-        setLastStart(null);
-        return;
-      }
-
-      // lastStart safe conversion
       let startMs: number;
       if (typeof data.lastStart === "number") startMs = data.lastStart;
       else if (data.lastStart.toMillis) startMs = data.lastStart.toMillis();
       else return;
 
       const elapsedSeconds = Math.floor((Date.now() - startMs) / 1000);
-      setUiBalance((data.pallBalance || 0) + elapsedSeconds * 0.00001157);
+      setUiBalance((data.pallBalance || 0) + elapsedSeconds * baseMiningRate);
       setMining(true);
       setCanStartMining(false);
       setLastStart(new Date(startMs));
-      setTimeRemaining(24 * 60 * 60 - elapsedSeconds);
+      setTimeRemaining(MAX_SECONDS - elapsedSeconds);
     });
 
     return () => unsub();
@@ -158,37 +114,26 @@ export default function MiningDashboard() {
   // ======================
   useEffect(() => {
     if (!uid) return;
-
     const ref = doc(db, "dailyRewards", uid);
 
     const unsub = onSnapshot(ref, async (snap) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-     // 🕛 today midnight
-     const today = new Date();
-     today.setHours(0, 0, 0, 0);
-
-     // 👤 first time user
-     if (!snap.exists()) {
-       await setDoc(ref, {
-         claimedCount: 0,
-         lastResetDate: serverTimestamp(),
-         createdAt: serverTimestamp(),
-       });
-       setClaimedCount(0);
-       return;
+      if (!snap.exists()) {
+        await setDoc(ref, {
+          claimedCount: 0,
+          lastResetDate: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        });
+        setClaimedCount(0);
+        return;
       }
 
       const data = snap.data();
+      const lastReset = data.lastResetDate?.toDate?.() || new Date(0);
+      const claimed = typeof data.claimedCount === "number" ? data.claimedCount : 0;
 
-      const lastReset =
-        data.lastResetDate?.toDate?.() || new Date(0);
-
-        const claimed =
-          typeof data.claimedCount === "number"
-          ? data.claimedCount
-          : 0;
-
-      // 🔄 new day → reset
       if (lastReset < today) {
         await updateDoc(ref, {
           claimedCount: 0,
@@ -240,7 +185,6 @@ export default function MiningDashboard() {
       const purpose = adPurposeRef.current;
       adPurposeRef.current = null;
       waitingForAdRef.current = false;
-      setWaitingForAd(false);
       setDailyWaiting(false);
 
       if (purpose === "mining") {
@@ -254,8 +198,6 @@ export default function MiningDashboard() {
 
       if (purpose === "daily") {
         const res = await claimDailyReward(uid);
-
-        setDailyWaiting(false);
         if (res.status === "success") {
           setUiBalance((p) => p + 0.1);
           toast({ title: "🎉 Reward Received", description: "+0.1 Pall added successfully" });
@@ -272,22 +214,11 @@ export default function MiningDashboard() {
   // ======================
   // HANDLERS
   // ======================
-  const handleStartMining = () => {
-    if (!canStartMining || mining) return;
-
-    // 🔥 Direct mining start — NO rewarded ad
-    startMiningBackend();
-  };
-
   const startMiningBackend = async () => {
     if (!uid) return;
     try {
       const walletRef = doc(db, "wallets", uid);
-      await updateDoc(walletRef, {
-        miningActive: true,
-        lastStart: serverTimestamp(),
-      });
-
+      await updateDoc(walletRef, { miningActive: true, lastStart: serverTimestamp() });
       toast({ title: "Mining Started", description: "24h mining activated" });
     } catch (e: any) {
       toast({ title: "Mining Error", description: e.message || "Unexpected error occurred", variant: "destructive" });
@@ -296,7 +227,6 @@ export default function MiningDashboard() {
 
   const handleDailyReward = () => {
     if (dailyWaiting || claimedCount >= 10) return;
-
     if (window.AndroidBridge?.startDailyRewardedAd) {
       setDailyWaiting(true);
       adPurposeRef.current = "daily";
@@ -316,8 +246,7 @@ export default function MiningDashboard() {
 
   return (
     <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
-      <CardHeader className="pb-4">
-      </CardHeader>
+      <CardHeader className="pb-4"></CardHeader>
       <CardContent className="text-center space-y-6 px-6 pb-8">
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
           <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
@@ -329,12 +258,8 @@ export default function MiningDashboard() {
           {mining && timeRemaining > 0 && (
             <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <circle
-                cx="50"
-                cy="50"
-                r="42"
-                stroke="currentColor"
-                strokeWidth="8"
-                fill="none"
+                cx="50" cy="50" r="42"
+                stroke="currentColor" strokeWidth="8" fill="none"
                 className="text-blue-500"
                 strokeDasharray="264"
                 strokeDashoffset={264 - ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264}
@@ -365,51 +290,44 @@ export default function MiningDashboard() {
           onClick={startMiningBackend}
           className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
         >
-          {mining
-            ? `Mining ⛏ (${formatTime(timeRemaining)})`
-            : "Start Mining ⛏"}
-        </Button> 
-
-        {/* ======================
-         DAILY REWARD BUTTON JSX
-         ====================== */}
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md mt-4">
-        <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
-        {/* 👇 YAHAN YE TEXT ADD KARO */}
-        <p className="text-center text-sm text-gray-600 mb-2">
-          Watch a video ad to get{" "}
-          <span className="font-bold text-blue-600">0.1 Pall</span>
-        </p>
-
-        <p className="text-center text-sm mb-4">
-          <span className="font-bold text-blue-500">{claimedCount} 🔶 10</span>
-        </p>
-
-        <Button
-        disabled={dailyWaiting || claimedCount >= 10}
-        onClick={handleDailyReward}
-        className={`w-full py-3 rounded-xl font-bold shadow transition
-          ${
-            claimedCount >= 10
-            ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
-            : "bg-blue-500 hover:bg-blue-600 text-white"
-          }
-        `}
-        >
-          {dailyWaiting
-          ? "📺 Showing Ad..."
-          : claimedCount < 10
-          ? `Watch Ad & Get 0.1 Pall 🎁 (${claimedCount}/10)`
-          : "Daily Reward Completed ✨"}
+          {mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
         </Button>
 
-        {claimedCount < 10 && (
-          <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.8s]">
-            <span className="text-orange-500 font-extrabold text-3xl leading-none">🎉</span>
-          </div>
-        )}
-     </Card>
-    </CardContent>
-  </Card>
+        {/* ======================
+            DAILY REWARD BUTTON JSX (UNCHANGED)
+        ====================== */}
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md mt-4">
+          <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
+          <p className="text-center text-sm text-gray-600 mb-2">
+            Watch a video ad to get <span className="font-bold text-blue-600">0.1 Pall</span>
+          </p>
+          <p className="text-center text-sm mb-4">
+            <span className="font-bold text-blue-500">{claimedCount} 🔶 10</span>
+          </p>
+
+          <Button
+            disabled={dailyWaiting || claimedCount >= 10}
+            onClick={handleDailyReward}
+            className={`w-full py-3 rounded-xl font-bold shadow transition ${
+              claimedCount >= 10
+                ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
+                : "bg-blue-500 hover:bg-blue-600 text-white"
+            }`}
+          >
+            {dailyWaiting
+              ? "📺 Showing Ad..."
+              : claimedCount < 10
+              ? `Watch Ad & Get 0.1 Pall 🎁 (${claimedCount}/10)`
+              : "Daily Reward Completed ✨"}
+          </Button>
+
+          {claimedCount < 10 && (
+            <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.8s]">
+              <span className="text-orange-500 font-extrabold text-3xl leading-none">🎉</span>
+            </div>
+          )}
+        </Card>
+      </CardContent>
+    </Card>
   );
 }
