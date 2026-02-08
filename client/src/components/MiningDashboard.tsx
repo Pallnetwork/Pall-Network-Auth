@@ -377,5 +377,5 @@ export default function MiningDashboard() {
         </div>
       </div>
     )}
-  </>
-);
+  </>);
+}
