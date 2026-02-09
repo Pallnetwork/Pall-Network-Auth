@@ -183,14 +183,40 @@ export default function MiningDashboard() {
   }, [mining, lastStart]);
 
   // ======================
+  // FIRESTORE BALANCE UPDATE DURING MINING
+  // ======================
+  useEffect(() => {
+    if (!mining || !lastStart || !uid) return;
+
+    const interval = setInterval(async () => {
+      const walletRef = doc(db, "wallets", uid);
+      try {
+        await updateDoc(walletRef, {
+          pallBalance: uiBalance,
+          lastMinedAt: serverTimestamp(),
+        });
+        console.log("✅ Firestore mining balance updated");
+      } catch (e) {
+        console.error("Firestore mining update failed:", e);
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [mining, lastStart, uid, uiBalance]);
+
+  // ======================
   // START MINING POPUP TIMER
   // ======================
   useEffect(() => {
     if (!showMiningPopup) return;
 
+    // ✅ Start mining at 20s mark
+    if (miningCountdown === 20) {
+      startMiningBackend(); // 20s pe Firestore mining start
+    }
+
     if (miningCountdown <= 0) {
       setShowMiningPopup(false);
-      startMiningAfterPopup(); // ✅ correct call after 30s popup
 
       return;
     }
@@ -376,7 +402,7 @@ export default function MiningDashboard() {
 
     {/* MINING POPUP */}
     {showMiningPopup && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-green/70">
         <div className="bg-[#0f172a] rounded-2xl p-8 w-[90%] max-w-sm text-center shadow-2xl">
           <h2 className="text-white text-xl font-semibold mb-4">
             Starting Mining…
