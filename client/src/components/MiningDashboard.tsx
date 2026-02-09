@@ -426,16 +426,16 @@ export default function MiningDashboard() {
     {/* MINING POPUP */}
     {showMiningPopup && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-900/70">
-        <div className="bg-gradient-to-br from-blue-500 to-green-700 rounded-2xl p-8 w-[90%] max-w-sm text-center shadow-2xl">
+        <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-8 w-[90%] max-w-sm text-center shadow-2xl">
           <h2 className="text-white text-xl font-semibold mb-4">
             Starting Mining…
           </h2>
 
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 border-4 border-white-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-20 h-20 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
 
-          <p className="text-3xl font-bold text-white-400">
+          <p className="text-3xl font-bold text-white">
             {miningCountdown}s
           </p>
 
