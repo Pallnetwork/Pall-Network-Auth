@@ -90,7 +90,7 @@ export default function MiningDashboard() {
     const unsub = onSnapshot(ref, (snap) => {
       console.log("Wallet Snapshot:", snap.exists(), snap.data());
 
-      if (!snap.exists() || !snap.data().miningActive || !snap.data().lastStart) {
+      if (!snap.exists()) {
         setMining(false);
         setCanStartMining(true);
         setTimeRemaining(0);
@@ -99,6 +99,15 @@ export default function MiningDashboard() {
       }
 
       const data = snap.data();
+
+      if (!data.miningActive || !data.lastStart) {
+        setMining(false);
+        setCanStartMining(true);
+        setTimeRemaining(0);
+        setLastStart(null);
+        return;
+      }
+
       let startMs: number;
       if (typeof data.lastStart === "number") startMs = data.lastStart;
       else if (data.lastStart.toMillis) startMs = data.lastStart.toMillis();
@@ -232,15 +241,11 @@ export default function MiningDashboard() {
   useEffect(() => {
     if (!showMiningPopup) return;
 
-    if (miningCountdown <= 0) {
-      setShowMiningPopup(false);
-      return;
-    }
-
-    // ✅ Start mining at 20s mark once
-    if (miningCountdown <= 20 && !miningStartedFromPopup) {
+    if (miningCountdown <= 0 && !miningStartedFromPopup) {
       startMiningBackend();
       setMiningStartedFromPopup(true);
+      setShowMiningPopup(false);
+      return;
     }
 
     const timer = setTimeout(() => {
@@ -304,12 +309,6 @@ export default function MiningDashboard() {
       console.error("startMiningBackend Error:", e);
       toast({ title: "Mining Error", description: e.message || "Unexpected error occurred", variant: "destructive" });
     }
-  };
-
-  const startMiningAfterPopup = async () => {
-    if (!uid) return;
-
-    await startMiningBackend(); // Firestore
   };
 
   const handleDailyReward = () => {
