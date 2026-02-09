@@ -439,7 +439,7 @@ export default function MiningDashboard() {
             {miningCountdown}s
           </p>
 
-          <p className="text-sm text-orange-400 mt-2">
+          <p className="text-sm text-white mt-2">
             Preparing your mining session
           </p>
         </div>
