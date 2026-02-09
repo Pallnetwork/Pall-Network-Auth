@@ -185,7 +185,8 @@ export default function MiningDashboard() {
 
     if (miningCountdown <= 0) {
       setShowMiningPopup(false);
-      startMiningBackend(); // actual mining start
+      startMiningAfterPopup(); // ✅ correct call after 30s popup
+
       return;
     }
 
@@ -246,10 +247,17 @@ export default function MiningDashboard() {
     }
   };
 
+  const startMiningAfterPopup = async () => {
+    if (!uid) return;
+
+    await startMiningBackend(); // Firestore
+  };
+
   const handleDailyReward = () => {
     if (dailyWaiting || claimedCount >= 10) return;
     if (window.AndroidBridge?.startDailyRewardedAd) {
       setDailyWaiting(true);
+      waitingForAdRef.current = true;
       adPurposeRef.current = "daily";
       window.AndroidBridge.setAdPurpose?.("daily");
       window.AndroidBridge.startDailyRewardedAd();
