@@ -194,7 +194,7 @@ export default function MiningDashboard() {
         (Date.now() - lastStart.getTime()) / 1000
       );
 
-      if (elapsedSeconds < 24 * 60 * 60) return;
+      if (elapsedSeconds < MAX_SECONDS) return;
 
       const walletRef = doc(db, "wallets", uid);
 
@@ -204,15 +204,11 @@ export default function MiningDashboard() {
 
         const data = snap.data();
 
-        // 🛑 SAFETY CHECK (double reward se bachao)
         if (!data.miningActive) return;
 
-        const currentBalance = data.pallBalance || 0;
-        const currentTotal = data.totalEarnings || 0;
-
         await updateDoc(walletRef, {
-          pallBalance: currentBalance + 1,
-          totalEarnings: currentTotal + 1,
+          pallBalance: (data.pallBalance || 0) + 1,
+          totalEarnings: (data.totalEarnings || 0) + 1,
           miningActive: false,
           lastStart: null,
           lastMinedAt: serverTimestamp(),
@@ -220,9 +216,6 @@ export default function MiningDashboard() {
 
         console.log("✅ FINAL: 24h mining completed, 1 PALL added");
 
-        setMining(false);
-        setCanStartMining(true);
-        setLastStart(null);
       } catch (err) {
         console.error("❌ 24h mining final update failed:", err);
       }
@@ -432,21 +425,21 @@ export default function MiningDashboard() {
 
     {/* MINING POPUP */}
     {showMiningPopup && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-green-900/70">
-        <div className="bg-gradient-to-br from-green-500 to-green-700 rounded-2xl p-8 w-[90%] max-w-sm text-center shadow-2xl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-900/70">
+        <div className="bg-gradient-to-br from-blue-500 to-green-700 rounded-2xl p-8 w-[90%] max-w-sm text-center shadow-2xl">
           <h2 className="text-white text-xl font-semibold mb-4">
             Starting Mining…
           </h2>
 
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-20 h-20 border-4 border-white-500 border-t-transparent rounded-full animate-spin"></div>
           </div>
 
-          <p className="text-3xl font-bold text-blue-400">
+          <p className="text-3xl font-bold text-white-400">
             {miningCountdown}s
           </p>
 
-          <p className="text-sm text-gray-400 mt-2">
+          <p className="text-sm text-orange-400 mt-2">
             Preparing your mining session
           </p>
         </div>
