@@ -73,6 +73,7 @@ export default function MiningDashboard() {
   // ======================
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
+      console.log("Auth State Changed → User:", user);
       setUid(user ? user.uid : null);
     });
     return () => unsubscribe();
@@ -86,6 +87,8 @@ export default function MiningDashboard() {
 
     const ref = doc(db, "wallets", uid);
     const unsub = onSnapshot(ref, (snap) => {
+      console.log("Wallet Snapshot:", snap.exists(), snap.data());
+
       if (!snap.exists() || !snap.data().miningActive || !snap.data().lastStart) {
         setMining(false);
         setCanStartMining(true);
@@ -119,6 +122,8 @@ export default function MiningDashboard() {
     const ref = doc(db, "dailyRewards", uid);
 
     const unsub = onSnapshot(ref, async (snap) => {
+      console.log("DailyReward Snapshot:", snap.exists(), snap.data());
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -205,12 +210,15 @@ export default function MiningDashboard() {
 
     const handler = async () => {
       const purpose = adPurposeRef.current;
+      console.log("Reward Ad Completed → Purpose:", purpose);
+
       adPurposeRef.current = null;
       waitingForAdRef.current = false;
       setDailyWaiting(false);
 
       if (purpose === "mining") {
         const result = await mineForUser();
+        console.log("mineForUser result:", result);
         if (result.status === "error") {
           toast({ title: "Mining Error", description: result.message || "Could not start mining", variant: "destructive" });
           return;
@@ -220,6 +228,7 @@ export default function MiningDashboard() {
 
       if (purpose === "daily") {
         const res = await claimDailyReward(uid);
+        console.log("claimDailyReward result:", res);
         if (res.status === "success") {
           setUiBalance((p) => p + 0.1);
           toast({ title: "🎉 Reward Received", description: "+0.1 Pall added successfully" });
@@ -241,8 +250,10 @@ export default function MiningDashboard() {
     try {
       const walletRef = doc(db, "wallets", uid);
       await updateDoc(walletRef, { miningActive: true, lastStart: serverTimestamp() });
+      console.log("startMiningBackend: Success");
       toast({ title: "Mining Started", description: "24h mining activated" });
     } catch (e: any) {
+      console.error("startMiningBackend Error:", e);
       toast({ title: "Mining Error", description: e.message || "Unexpected error occurred", variant: "destructive" });
     }
   };
