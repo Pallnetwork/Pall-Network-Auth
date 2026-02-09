@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { mineForUser } from "@/lib/mine";
 import { claimDailyReward } from "@/lib/dailyReward";
+import { getDoc } from "firebase/firestore";
 
 declare global {
   interface Window {
@@ -161,15 +162,15 @@ export default function MiningDashboard() {
   useEffect(() => {
     if (!mining || !lastStart) return;
 
-    const uiInterval = setInterval(() => setUiBalance((prev) => prev + baseMiningRate), 1000);
+    const uiInterval = setInterval(() => {
+      setUiBalance((prev) => prev + baseMiningRate);
+    },1000);
+    
     const countdown = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(uiInterval);
           clearInterval(countdown);
-          setMining(false);
-          setCanStartMining(true);
-          setLastStart(null);
           return 0;
         }
         return prev - 1;
@@ -183,42 +184,70 @@ export default function MiningDashboard() {
   }, [mining, lastStart]);
 
   // ======================
-  // FIRESTORE BALANCE UPDATE DURING MINING
+  // FINAL SAFE 24H MINING COMPLETION
   // ======================
   useEffect(() => {
     if (!mining || !lastStart || !uid) return;
 
     const interval = setInterval(async () => {
+      const elapsedSeconds = Math.floor(
+        (Date.now() - lastStart.getTime()) / 1000
+      );
+
+      if (elapsedSeconds < 24 * 60 * 60) return;
+
       const walletRef = doc(db, "wallets", uid);
+
       try {
+        const snap = await getDoc(walletRef);
+        if (!snap.exists()) return;
+
+        const data = snap.data();
+
+        // 🛑 SAFETY CHECK (double reward se bachao)
+        if (!data.miningActive) return;
+
+        const currentBalance = data.pallBalance || 0;
+        const currentTotal = data.totalEarnings || 0;
+
         await updateDoc(walletRef, {
-          pallBalance: uiBalance,
+          pallBalance: currentBalance + 1,
+          totalEarnings: currentTotal + 1,
+          miningActive: false,
+          lastStart: null,
           lastMinedAt: serverTimestamp(),
         });
-        console.log("✅ Firestore mining balance updated");
-      } catch (e) {
-        console.error("Firestore mining update failed:", e);
+
+        console.log("✅ FINAL: 24h mining completed, 1 PALL added");
+
+        setMining(false);
+        setCanStartMining(true);
+        setLastStart(null);
+      } catch (err) {
+        console.error("❌ 24h mining final update failed:", err);
       }
-    }, 15000);
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [mining, lastStart, uid, uiBalance]);
+  }, [mining, lastStart, uid]);
 
   // ======================
   // START MINING POPUP TIMER
   // ======================
+  const [miningStartedFromPopup, setMiningStartedFromPopup] = useState(false);
+
   useEffect(() => {
     if (!showMiningPopup) return;
 
-    // ✅ Start mining at 20s mark
-    if (miningCountdown === 20) {
-      startMiningBackend(); // 20s pe Firestore mining start
-    }
-
     if (miningCountdown <= 0) {
       setShowMiningPopup(false);
-
       return;
+    }
+
+    // ✅ Start mining at 20s mark once
+    if (miningCountdown <= 20 && !miningStartedFromPopup) {
+      startMiningBackend();
+      setMiningStartedFromPopup(true);
     }
 
     const timer = setTimeout(() => {
@@ -226,7 +255,7 @@ export default function MiningDashboard() {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [showMiningPopup, miningCountdown]);
+  }, [showMiningPopup, miningCountdown, miningStartedFromPopup]);
 
   // ======================
   // REWARDED AD HANDLER
@@ -357,6 +386,7 @@ export default function MiningDashboard() {
         <Button
           disabled={mining || !canStartMining}
           onClick={() => {
+            setMiningStartedFromPopup(false);
             setShowMiningPopup(true);
             setMiningCountdown(30);
           }}
@@ -402,8 +432,8 @@ export default function MiningDashboard() {
 
     {/* MINING POPUP */}
     {showMiningPopup && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-green/70">
-        <div className="bg-[#0f172a] rounded-2xl p-8 w-[90%] max-w-sm text-center shadow-2xl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-green-900/70">
+        <div className="bg-gradient-to-br from-green-500 to-green-700 rounded-2xl p-8 w-[90%] max-w-sm text-center shadow-2xl">
           <h2 className="text-white text-xl font-semibold mb-4">
             Starting Mining…
           </h2>
