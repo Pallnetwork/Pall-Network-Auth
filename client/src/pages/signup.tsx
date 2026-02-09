@@ -54,22 +54,20 @@ export default function Signup() {
     setLoading(true);
 
     try {
+      // 1️⃣ Create Firebase Auth User
       const userCred = await createUserWithEmailAndPassword(
         auth,
         form.email,
         form.password
       );
-      console.log("✅ User created:", userCred.user.uid);
       const uid = userCred.user.uid;
+      console.log("✅ User created:", uid);
 
+      // 2️⃣ Referral lookup
       let referredByUID: string | null = null;
-
       if (form.referralCode.trim() !== "") {
         const usersRef = collection(db, "users");
-        const q = query(
-          usersRef,
-          where("referralCode", "==", form.referralCode)
-        );
+        const q = query(usersRef, where("referralCode", "==", form.referralCode));
         const snap = await getDocs(q);
         console.log("✅ Referral check snapshot:", snap.docs.length);
         if (!snap.empty) {
@@ -77,7 +75,7 @@ export default function Signup() {
         }
       }
 
-      // ✅ Save user document
+      // 3️⃣ Create Users collection doc
       await setDoc(doc(db, "users", uid), {
         id: uid,
         name: form.fullName,
@@ -90,35 +88,30 @@ export default function Signup() {
       });
       console.log("✅ Users doc created");
 
-      // ✅ Fixed Wallet document for mining
-      const walletRef = doc(db, "wallets", uid);
-      await setDoc(walletRef, {
+      // 4️⃣ Create Wallet doc with safe 0 balances for Spark Plan
+      await setDoc(doc(db, "wallets", uid), {
         userId: uid,
         pallBalance: 0,
         miningActive: false,
-
-        // ❗ NEVER NULL — new users
         lastStart: serverTimestamp(),
         lastMinedAt: serverTimestamp(),
-        
         adWatched: false,
         totalEarnings: 0,
         createdAt: serverTimestamp(),
       });
       console.log("✅ Wallet doc created");
 
-      // ✅ Create Daily Reward doc
-      const dailyRef = doc(db, "dailyRewards", uid);
-      await setDoc(dailyRef, {
+      // 5️⃣ Create DailyRewards doc (0/10)
+      await setDoc(doc(db, "dailyRewards", uid), {
         claimedCount: 0,
       });
       console.log("✅ DailyRewards doc created");
 
+      // ✅ Success toast + navigate
       toast({
         title: "Success",
         description: "Account created successfully",
       });
-
       console.log("✅ Signup complete, navigating to dashboard");
       navigate("/app/dashboard");
     } catch (error: any) {
