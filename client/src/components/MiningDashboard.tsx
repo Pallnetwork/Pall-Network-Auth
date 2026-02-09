@@ -234,25 +234,29 @@ export default function MiningDashboard() {
   }, [mining, lastStart, uid]);
 
   // ======================
-  // START MINING POPUP TIMER
+  // START MINING POPUP TIMER FIXED
   // ======================
   const [miningStartedFromPopup, setMiningStartedFromPopup] = useState(false);
 
   useEffect(() => {
     if (!showMiningPopup) return;
 
-    if (miningCountdown <= 0 && !miningStartedFromPopup) {
-      startMiningBackend();
-      setMiningStartedFromPopup(true);
-      setShowMiningPopup(false);
-      return;
-    }
+    const timer = setTimeout(async () => {
+      if (!miningStartedFromPopup) {
+        setMiningStartedFromPopup(true);
+        setShowMiningPopup(false);
+        await startMiningBackend();
+      }
+    }, miningCountdown * 1000);
 
-    const timer = setTimeout(() => {
-      setMiningCountdown((prev) => prev - 1);
+    const countdownInterval = setInterval(() => {
+      setMiningCountdown(prev => prev > 0 ? prev - 1 : 0);
     }, 1000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(countdownInterval);
+    };
   }, [showMiningPopup, miningCountdown, miningStartedFromPopup]);
 
   // ======================
@@ -261,38 +265,31 @@ export default function MiningDashboard() {
   useEffect(() => {
     if (!uid) return;
 
-    const handler = async () => {
-      const purpose = adPurposeRef.current;
-      console.log("Reward Ad Completed → Purpose:", purpose);
+    const rewardHandler = async () => {
+      if (adPurposeRef.current !== "daily") return;
 
       adPurposeRef.current = null;
       waitingForAdRef.current = false;
       setDailyWaiting(false);
 
-      if (purpose === "mining") {
-        const result = await mineForUser();
-        console.log("mineForUser result:", result);
-        if (result.status === "error") {
-          toast({ title: "Mining Error", description: result.message || "Could not start mining", variant: "destructive" });
-          return;
-        }
-        toast({ title: "Mining Started", description: "24h mining activated successfully" });
-      }
-
-      if (purpose === "daily") {
-        const res = await claimDailyReward(uid);
-        console.log("claimDailyReward result:", res);
-        if (res.status === "success") {
-          setUiBalance((p) => p + 0.1);
-          toast({ title: "🎉 Reward Received", description: "+0.1 Pall added successfully" });
-        } else {
-          toast({ title: "Daily Reward", description: res.message || "Reward already claimed", variant: "destructive" });
-        }
+      const res = await claimDailyReward(uid);
+      if (res.status === "success") {
+        setUiBalance(prev => prev + 0.1);  // Add 0.1 Pall
+        toast({
+          title: "🎉 Reward Received",
+          description: "+0.1 Pall added successfully",
+        });
+      } else {
+        toast({
+          title: "Daily Reward",
+          description: res.message || "Reward already claimed",
+          variant: "destructive",
+        });
       }
     };
 
-    window.addEventListener("rewardAdCompleted", handler);
-    return () => window.removeEventListener("rewardAdCompleted", handler);
+    window.addEventListener("rewardAdCompleted", rewardHandler);
+    return () => window.removeEventListener("rewardAdCompleted", rewardHandler);
   }, [uid, toast]);
 
   // ======================
