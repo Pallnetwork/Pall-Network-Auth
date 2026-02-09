@@ -59,6 +59,7 @@ export default function Signup() {
         form.email,
         form.password
       );
+      console.log("✅ User created:", userCred.user.uid);
       const uid = userCred.user.uid;
 
       let referredByUID: string | null = null;
@@ -70,6 +71,7 @@ export default function Signup() {
           where("referralCode", "==", form.referralCode)
         );
         const snap = await getDocs(q);
+        console.log("✅ Referral check snapshot:", snap.docs.length);
         if (!snap.empty) {
           referredByUID = snap.docs[0].id;
         }
@@ -86,6 +88,7 @@ export default function Signup() {
         createdAt: new Date(),
         referralCode: `${form.username}-${uid.slice(0, 5)}`,
       });
+      console.log("✅ Users doc created");
 
       // ✅ Fixed Wallet document for mining
       const walletRef = doc(db, "wallets", uid);
@@ -102,18 +105,21 @@ export default function Signup() {
         totalEarnings: 0,
         createdAt: serverTimestamp(),
       });
+      console.log("✅ Wallet doc created");
 
       // ✅ Create Daily Reward doc
       const dailyRef = doc(db, "dailyRewards", uid);
       await setDoc(dailyRef, {
         claimedCount: 0,
       });
+      console.log("✅ DailyRewards doc created");
 
       toast({
         title: "Success",
         description: "Account created successfully",
       });
 
+      console.log("✅ Signup complete, navigating to dashboard");
       navigate("/app/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
