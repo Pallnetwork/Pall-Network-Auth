@@ -356,10 +356,10 @@ export default function MiningDashboard() {
             </p>
 
             <Button
-              disabled={dailyWaiting || claimedCount >= 10 || !adReady}
+              disabled={dailyWaiting || claimedCount >= 10}
               onClick={handleDailyReward}
               className={`w-full py-3 rounded-xl font-bold shadow transition ${
-                dailyWaiting || claimedCount >= 10 || !adReady
+                !adReady
                   ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
                   : "bg-blue-500 hover:bg-blue-600 text-white"
               }`}
