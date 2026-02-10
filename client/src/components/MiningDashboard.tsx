@@ -31,7 +31,7 @@ export default function MiningDashboard() {
   const [dailyWaiting, setDailyWaiting] = useState(false);
   const [showMiningPopup, setShowMiningPopup] = useState(false);
   const [miningCountdown, setMiningCountdown] = useState(30);
-  const [adReady, setAdReady] = useState(false);
+  const [adReady, setAdReady] = useState(true);
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"daily" | null>(null);
@@ -338,7 +338,7 @@ export default function MiningDashboard() {
             Watch a video ad to get <span className="font-bold text-blue-600">0.1 Pall</span>
           </p>
           <p className="text-center text-sm mb-4">
-            <span className="font-bold text-blue-500">{claimedCount} / 10</span>
+            <span className="font-bold text-blue-500">{claimedCount} 🔶 10</span>
           </p>
 
           <Button
@@ -351,10 +351,10 @@ export default function MiningDashboard() {
             }`}
           >
             {dailyWaiting
-              ? "📺 Showing Ad..."
-              : claimedCount < 10
-              ? `Watch Ad & Get 0.1 Pall 🎁 (${claimedCount}/10)`
-              : "Daily Reward Completed ✨"}
+            ? "📺 Showing Ad..."
+            : claimedCount < 10
+            ? `Watch Ad & Get 0.1 Pall 🎁 (${claimedCount}/10)`
+            : "Daily Reward Completed ✨"}
           </Button>
 
           {claimedCount < 10 && (
