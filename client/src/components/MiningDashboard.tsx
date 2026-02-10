@@ -33,6 +33,10 @@ export default function MiningDashboard() {
   const [miningCountdown, setMiningCountdown] = useState(30);
   const [adReady, setAdReady] = useState(false);
 
+  useEffect(() => {
+    console.log("Daily adReady =", adReady);
+  }, [adReady]);
+
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"daily" | null>(null);
   const { toast } = useToast();
@@ -47,7 +51,7 @@ export default function MiningDashboard() {
 
   window.onAdFailed = () => {
     if (!waitingForAdRef.current) return;
-    
+
     waitingForAdRef.current = false;
     setDailyWaiting(false);
     setAdReady(false);
@@ -81,7 +85,10 @@ export default function MiningDashboard() {
   //================
   useEffect(() => {
     window.onDailyAdReady = () => setAdReady(true);
-    return () => { window.onDailyAdReady = undefined; };
+
+    return () => {
+      window.onDailyAdReady = undefined;
+    };
   }, []);
 
   // ======================
@@ -261,16 +268,6 @@ export default function MiningDashboard() {
 
   const handleDailyReward = async () => {
     if (dailyWaiting || claimedCount >= 10 || !uid) return;
-
-    if (!adReady && window.AndroidBridge?.startDailyRewardedAd) {
-      toast({
-        title: "Ad not ready",
-        description: "Please wait a few seconds and try again",
-        variant: "destructive",
-      });
-
-      return;
-    }
 
     setDailyWaiting(true);
     waitingForAdRef.current = true;
