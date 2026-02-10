@@ -46,9 +46,12 @@ export default function MiningDashboard() {
   window.onRewardAdCompleted = () => window.dispatchEvent(new Event("rewardAdCompleted"));
 
   window.onAdFailed = () => {
+    if (!waitingForAdRef.current) return;
+    
     waitingForAdRef.current = false;
     setDailyWaiting(false);
     setAdReady(false);
+
     toast({
       title: "Ad Failed",
       description: "Rewarded ad could not load",
