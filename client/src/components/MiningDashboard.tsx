@@ -71,23 +71,30 @@ export default function MiningDashboard() {
   // MINING SNAPSHOT
   // ======================
   useEffect(() => {
-    if (!uid) return;
-    const ref = doc(db, "wallets", uid);
-    const unsub = onSnapshot(ref, snap => {
-      if (!snap.exists()) return resetMiningUI();
+    const loadMining = async () => {
+      if (!uid) return;
+      const ref = doc(db, "wallets", uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+
       const data = snap.data();
-      if (!data.miningActive || !data.lastStart) return resetMiningUI();
+      if (!data.miningActive || !data.lastStart) return;
 
-      let startMs: number = typeof data.lastStart === "number" ? data.lastStart : data.lastStart.toMillis();
-      const elapsed = Math.floor((Date.now() - startMs)/1000);
+      let startMs =
+        typeof data.lastStart === "number"
+          ? data.lastStart
+          : data.lastStart.toMillis();
 
-      setUiBalance((data.pallBalance || 0) + elapsed * baseMiningRate);
-      setMining(true);
-      setCanStartMining(false);
-      setLastStart(new Date(startMs));
-      setTimeRemaining(MAX_SECONDS - elapsed);
-    });
-    return () => unsub();
+          const elapsed = Math.floor((Date.now() - startMs) / 1000);
+
+          setUiBalance((data.pallBalance || 0) + elapsed * baseMiningRate);
+          setMining(true);
+          setCanStartMining(false);
+          setLastStart(new Date(startMs));
+          setTimeRemaining(MAX_SECONDS - elapsed);
+    };
+
+    loadMining();
   }, [uid]);
 
   const resetMiningUI = () => { setMining(false); setCanStartMining(true); setTimeRemaining(0); setLastStart(null); };
@@ -96,28 +103,29 @@ export default function MiningDashboard() {
   // DAILY REWARD SNAPSHOT & UTC+5 RESET
   // ======================
   useEffect(() => {
-    if (!uid) return;
-    const ref = doc(db, "dailyRewards", uid);
+    const loadDaily = async () => {
+      if (!uid) return;
+      const ref = doc(db, "dailyRewards", uid);
+      const snap = await getDoc(ref);
 
-    const unsub = onSnapshot(ref, async snap => {
       if (!snap.exists()) {
-        await setDoc(ref, { claimedCount: 0, lastResetDate: serverTimestamp(), createdAt: serverTimestamp() });
+        await setDoc(ref, {
+          claimedCount: 0,
+          lastResetDate: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        });
         setClaimedCount(0);
         return;
       }
+
       const data = snap.data();
-      const claimed = typeof data.claimedCount === "number" ? data.claimedCount : 0;
-      const lastReset = data.lastResetDate?.toDate?.() || new Date(0);
+      const claimed =
+        typeof data.claimedCount === "number" ? data.claimedCount : 0;
 
-      const nowUTC5 = new Date(Date.now() + 5*60*60*1000);
-      const lastResetUTC5 = new Date(lastReset.getTime() + 5*60*60*1000);
+      setClaimedCount(claimed);
+    };
 
-      if (lastResetUTC5.getDate() !== nowUTC5.getDate()) {
-        await updateDoc(ref, { claimedCount: 0, lastResetDate: serverTimestamp() });
-        setClaimedCount(0);
-      } else { setClaimedCount(claimed); }
-    });
-    return () => unsub();
+    loadDaily();
   }, [uid]);
 
   // ======================
