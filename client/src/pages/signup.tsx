@@ -1,4 +1,3 @@
-// client/src/pages/signup.tsx
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { auth, db } from "@/lib/firebase";
@@ -17,8 +16,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-// 👉 logo import
 import logo from "@/assets/logo.png";
 
 export default function Signup() {
@@ -54,66 +51,83 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // 1️⃣ Create Firebase Auth User
+      // 1️⃣ Create auth user
       const userCred = await createUserWithEmailAndPassword(
         auth,
         form.email,
         form.password
       );
       const uid = userCred.user.uid;
-      console.log("✅ User created:", uid);
+      console.log("✅ Auth user created:", uid);
 
       // 2️⃣ Referral lookup
       let referredByUID: string | null = null;
+
       if (form.referralCode.trim() !== "") {
         const usersRef = collection(db, "users");
-        const q = query(usersRef, where("referralCode", "==", form.referralCode));
+        const q = query(
+          usersRef,
+          where("referralCode", "==", form.referralCode.trim())
+        );
         const snap = await getDocs(q);
-        console.log("✅ Referral check snapshot:", snap.docs.length);
         if (!snap.empty) {
           referredByUID = snap.docs[0].id;
         }
       }
 
-      // 3️⃣ Create Users collection doc
-      await setDoc(doc(db, "users", uid), {
-        id: uid,
-        name: form.fullName,
-        username: form.username,
-        email: form.email,
-        package: "free",
-        referredBy: referredByUID,
-        createdAt: new Date(),
-        referralCode: `${form.username}-${uid.slice(0, 5)}`,
-      });
-      console.log("✅ Users doc created");
+      // 3️⃣ Prepare documents
+      const userDoc = doc(db, "users", uid);
+      const walletDoc = doc(db, "wallets", uid);
+      const dailyDoc = doc(db, "dailyRewards", uid);
+      const referralDoc = doc(db, "referrals", uid);
 
-      // 4️⃣ Create Wallet doc with safe 0 balances for Spark Plan
-      await setDoc(doc(db, "wallets", uid), {
-        userId: uid,
-        pallBalance: 0,
-        miningActive: false,
-        lastStart: serverTimestamp(),
-        lastMinedAt: serverTimestamp(),
-        adWatched: false,
-        totalEarnings: 0,
-        createdAt: serverTimestamp(),
-      });
-      console.log("✅ Wallet doc created");
+      // 4️⃣ Create all docs together (Spark safe)
+      await Promise.all([
+        setDoc(userDoc, {
+          id: uid,
+          name: form.fullName,
+          username: form.username,
+          email: form.email,
+          package: "free",
+          referredBy: referredByUID,
+          createdAt: serverTimestamp(),
+          referralCode: `${form.username}-${uid.slice(0, 5)}`,
+        }),
 
-      // 5️⃣ Create DailyRewards doc (0/10)
-      await setDoc(doc(db, "dailyRewards", uid), {
-        claimedCount: 0,
-      });
-      console.log("✅ DailyRewards doc created");
+        setDoc(walletDoc, {
+          userId: uid,
+          pallBalance: 0,
+          miningActive: false,
+          lastStart: serverTimestamp(),
+          lastMinedAt: serverTimestamp(),
+          totalEarnings: 0,
+          createdAt: serverTimestamp(),
+        }),
 
-      // ✅ Success toast + navigate
+        setDoc(dailyDoc, {
+          claimedCount: 0,
+          lastResetDate: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        }),
+
+        setDoc(referralDoc, {
+          referredBy: referredByUID,
+          createdAt: serverTimestamp(),
+        }),
+      ]);
+
+      console.log("✅ All Firestore docs created");
+
       toast({
         title: "Success",
         description: "Account created successfully",
       });
-      console.log("✅ Signup complete, navigating to dashboard");
-      navigate("/app/dashboard");
+
+      // 5️⃣ Wait for auth state, then redirect
+      setTimeout(() => {
+        navigate("/app/dashboard");
+      }, 400);
+
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
@@ -152,7 +166,7 @@ export default function Signup() {
                 value={form.fullName}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
@@ -163,7 +177,7 @@ export default function Signup() {
                 value={form.username}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
@@ -175,7 +189,7 @@ export default function Signup() {
                 value={form.email}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
@@ -187,7 +201,7 @@ export default function Signup() {
                 value={form.password}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
@@ -199,7 +213,7 @@ export default function Signup() {
                 value={form.confirmPassword}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
@@ -209,7 +223,7 @@ export default function Signup() {
                 name="referralCode"
                 value={form.referralCode}
                 onChange={handleChange}
-                className="bg-white/20 border-white/30 text-white placeholder:text-white/60"
+                className="bg-white/20 border-white/30 text-white"
               />
             </div>
 
