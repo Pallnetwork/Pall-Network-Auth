@@ -218,6 +218,40 @@ export default function MiningDashboard() {
     }
   };
 
+  // ======================
+  // DAILY REWARDED AD LISTENER
+  // ======================
+  useEffect(() => {
+    if (!uid) return;
+
+    const rewardHandler = async () => {
+      if (adPurposeRef.current !== "daily") return;
+
+      adPurposeRef.current = null;
+      waitingForAdRef.current = false;
+      setDailyWaiting(false);
+
+      const res = await claimDailyReward(uid);
+      if (res.status === "success") {
+        setUiBalance(prev => prev + 0.1);
+        setClaimedCount(prev => prev + 1);
+        toast({
+          title: "🎉 Reward Received",
+          description: "+0.1 Pall added successfully",
+        });
+      } else {
+        toast({
+          title: "Daily Reward",
+          description: res.message || "Reward already claimed",
+          variant: "destructive",
+        });
+      }
+    };
+
+    window.addEventListener("rewardAdCompleted", rewardHandler);
+    return () => window.removeEventListener("rewardAdCompleted", rewardHandler);
+  }, [uid, toast]);
+
   const formatTime = (s:number) => {
     const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
     return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}:${sec.toString().padStart(2,"0")}`;
