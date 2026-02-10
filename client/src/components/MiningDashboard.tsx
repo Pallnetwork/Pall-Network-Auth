@@ -270,33 +270,83 @@ export default function MiningDashboard() {
 
   if(!uid) return <div className="text-center mt-20 text-lg text-red-500">User not authenticated</div>;
 
-  return (
-    <>
-      {/* Balance Card */}
-      <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
-        <CardHeader className="pb-4"/>
-        <CardContent className="text-center space-y-6 px-6 pb-8">
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
-            <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
-            <p className="text-3xl font-bold text-blue-600">{uiBalance.toFixed(8)} PALL</p>
+ return (
+  <>
+    {/* Balance Card */}
+    <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
+      <CardHeader className="pb-4" />
+      <CardContent className="text-center space-y-6 px-6 pb-8">
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
+          <p className="text-3xl font-bold text-blue-600">{uiBalance.toFixed(8)} PALL</p>
+        </div>
+
+        {/* Mining Circle */}
+        <div className="relative w-48 h-48 mx-auto">
+          <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700" />
+          {mining && timeRemaining > 0 && (
+            <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle
+                cx="50"
+                cy="50"
+                r="42"
+                stroke="currentColor"
+                strokeWidth="8"
+                fill="none"
+                className="text-blue-500"
+                strokeDasharray="264"
+                strokeDashoffset={264 - ((MAX_SECONDS - timeRemaining) / MAX_SECONDS) * 264}
+                strokeLinecap="round"
+              />
+            </svg>
+          )}
+          <div className="absolute inset-4 bg-white dark:bg-card rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
+            {mining ? (
+              <>
+                <div className="text-3xl mb-2">⛏️</div>
+                <p className="text-base font-bold text-green-600">Mining Active</p>
+                <p className="text-base font-bold text-muted-foreground">Standard Rate</p>
+                <p className="text-base font-mono font-bold text-blue-600 mt-1">{formatTime(timeRemaining)}</p>
+              </>
+            ) : (
+              <>
+                <div className="text-4xl mb-2">🎓</div>
+                <p className="text-sm font-semibold text-gray-600">Ready to Mine</p>
+                <p className="text-xs text-muted-foreground">Standard Mining</p>
+              </>
+            )}
           </div>
-          {/* Mining Circle */}
-          <div className="relative w-48 h-48 mx-auto">
-            <div className="absolute inset-0 rounded-full border-8 border-gray-200 dark:border-gray-700"/>
-            {mining && timeRemaining>0 && <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="8" fill="none" className="text-blue-500" strokeDasharray="264" strokeDashoffset={264-((MAX_SECONDS-timeRemaining)/MAX_SECONDS)*264} strokeLinecap="round"/>
-            </svg>}
-            <div className="absolute inset-4 bg-white dark:bg-card rounded-full flex flex-col items-center justify-center shadow-xl border-4 border-blue-100 dark:border-blue-800">
-              {mining ? <><div className="text-3xl mb-2">⛏️</div><p className="text-base font-bold text-green-600">Mining Active</p><p className="text-base font-bold text-muted-foreground">Standard Rate</p><p className="text-base font-mono font-bold text-blue-600 mt-1">{formatTime(timeRemaining)}</p></> : <><div className="text-4xl mb-2">🎓</div><p className="text-sm font-semibold text-gray-600">Ready to Mine</p><p className="text-xs text-muted-foreground">Standard Mining</p></>}
-            </div>
-          </div>
+        </div>
+
+        {/* Start Mining Button */}
+        <Button
+          disabled={mining || !canStartMining}
+          onClick={() => {
+            setShowMiningPopup(true);
+            setMiningCountdown(30);
+            setMiningStartedFromPopup(false);
+          }}
+          className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg"
+        >
+          {mining ? `Mining ⛏ (${formatTime(timeRemaining)})` : "Start Mining ⛏"}
+        </Button>
+
+        {/* Daily Reward Card */}
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md mt-4">
+          <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
+          <p className="text-center text-sm text-gray-600 mb-2">
+            Watch a video ad to get <span className="font-bold text-blue-600">0.1 Pall</span>
+          </p>
+          <p className="text-center text-sm mb-4">
+            <span className="font-bold text-blue-500">{claimedCount} / 10</span>
+          </p>
 
           <Button
-            disabled={dailyWaiting || claimedCount >= 10 || !adReady} // ✅ adReady check added
+            disabled={dailyWaiting || claimedCount >= 10 || !adReady}
             onClick={handleDailyReward}
             className={`w-full py-3 rounded-xl font-bold shadow transition ${
               dailyWaiting || claimedCount >= 10 || !adReady
-                ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60" // disabled styling
+                ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
                 : "bg-blue-500 hover:bg-blue-600 text-white"
             }`}
           >
@@ -306,16 +356,28 @@ export default function MiningDashboard() {
               ? `Watch Ad & Get 0.1 Pall 🎁 (${claimedCount}/10)`
               : "Daily Reward Completed ✨"}
           </Button>
+
           {claimedCount < 10 && (
             <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.8s]">
               <span className="text-orange-500 font-extrabold text-3xl leading-none">🎉</span>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </Card>
+      </CardContent>
+    </Card>
 
-      {/* Mining Popup */}
-      {showMiningPopup && <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-900/70"><div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-8 w-[90%] max-w-sm text-center shadow-2xl"><h2 className="text-white text-xl font-semibold mb-4">Starting Mining…</h2><div className="flex justify-center mb-6"><div className="w-20 h-20 border-4 border-white border-t-transparent rounded-full animate-spin"></div></div><p className="text-3xl font-bold text-white">{miningCountdown}s</p><p className="text-sm text-white mt-2">Preparing your mining session</p></div></div>}
-    </>
-  );
+    {/* Mining Popup */}
+    {showMiningPopup && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-900/70">
+        <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-8 w-[90%] max-w-sm text-center shadow-2xl">
+          <h2 className="text-white text-xl font-semibold mb-4">Starting Mining…</h2>
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <p className="text-3xl font-bold text-white">{miningCountdown}s</p>
+          <p className="text-sm text-white mt-2">Preparing your mining session</p>
+        </div>
+      </div>
+    )}
+  </>);
 }
