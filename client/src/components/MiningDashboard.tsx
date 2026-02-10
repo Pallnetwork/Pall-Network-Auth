@@ -10,13 +10,13 @@ import { claimDailyReward } from "@/lib/dailyReward";
 declare global {
   interface Window {
     AndroidBridge?: {
-      startMiningRewardedAd: () => void;
       startDailyRewardedAd?: () => void;
       setAdPurpose?: (purpose: string) => void;
     };
     onAdCompleted?: () => void;
     onAdFailed?: () => void;
     onRewardAdCompleted?: () => void;
+    onDailyAdReady?: () => void;
   }
 }
 
@@ -31,7 +31,7 @@ export default function MiningDashboard() {
   const [dailyWaiting, setDailyWaiting] = useState(false);
   const [showMiningPopup, setShowMiningPopup] = useState(false);
   const [miningCountdown, setMiningCountdown] = useState(30);
-  const [adReady, setAdReady] = useState(true);
+  const [adReady, setAdReady] = useState(false);
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"daily" | null>(null);
@@ -72,9 +72,13 @@ export default function MiningDashboard() {
   // DAILY AD HANDLER
   //===================
   useEffect(() => {
-    const handler = () => setAdReady(true);
-    window.addEventListener("onDailyAdReady", handler);
-    return () => window.removeEventListener("onDailyAdReady", handler);
+    window.onDailyAdReady = () => {
+      setAdReady(true);
+    };
+
+    return () => {
+      window.onDailyAdReady = undefined;
+    };
   }, []);
 
   // ======================
