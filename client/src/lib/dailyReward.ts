@@ -9,7 +9,7 @@ import { doc, getDoc, updateDoc, serverTimestamp, setDoc, increment } from "fire
  * - Safely increments user's pallBalance.
  */
 export async function claimDailyReward(uid: string) {
-  if (!uid) return { status: "error", message: "Invalid user" };
+  if (!uid) throw new Error("User not authenticated");
 
   const ref = doc(db, "dailyRewards", uid);
   const snap = await getDoc(ref);
