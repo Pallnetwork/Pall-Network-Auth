@@ -31,7 +31,6 @@ export default function MiningDashboard() {
   const [dailyWaiting, setDailyWaiting] = useState(false);
   const [showMiningPopup, setShowMiningPopup] = useState(false);
   const [miningCountdown, setMiningCountdown] = useState(30);
-  const [adReady, setAdReady] = useState(!window.AndroidBridge);
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"daily" | null>(null);
@@ -359,7 +358,7 @@ export default function MiningDashboard() {
               disabled={dailyWaiting || claimedCount >= 10}
               onClick={handleDailyReward}
               className={`w-full py-3 rounded-xl font-bold shadow transition ${
-                !adReady
+                claimedCount >= 10
                   ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60"
                   : "bg-blue-500 hover:bg-blue-600 text-white"
               }`}
