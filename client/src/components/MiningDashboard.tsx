@@ -31,6 +31,7 @@ export default function MiningDashboard() {
   const [dailyWaiting, setDailyWaiting] = useState(false);
   const [showMiningPopup, setShowMiningPopup] = useState(false);
   const [miningCountdown, setMiningCountdown] = useState(30);
+  const [adReady, setAdReady] = useState(false);
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"daily" | null>(null);
@@ -47,7 +48,12 @@ export default function MiningDashboard() {
   window.onAdFailed = () => {
     waitingForAdRef.current = false;
     setDailyWaiting(false);
-    toast({ title: "Ad Failed", description: "Rewarded ad could not load", variant: "destructive" });
+    setAdReady(false);
+    toast({
+      title: "Ad Failed",
+      description: "Rewarded ad could not load",
+      variant: "destructive"
+    });
   };
 
   useEffect(() => {
@@ -252,6 +258,16 @@ export default function MiningDashboard() {
 
   const handleDailyReward = async () => {
     if (dailyWaiting || claimedCount >= 10 || !uid) return;
+
+    if (!adReady && window.AndroidBridge?.startDailyRewardedAd) {
+      toast({
+        title: "Ad not ready",
+        description: "Please wait a few seconds and try again",
+        variant: "destructive",
+      });
+
+      return;
+    }
 
     setDailyWaiting(true);
     waitingForAdRef.current = true;
