@@ -31,6 +31,7 @@ export default function MiningDashboard() {
   const [dailyWaiting, setDailyWaiting] = useState(false);
   const [showMiningPopup, setShowMiningPopup] = useState(false);
   const [miningCountdown, setMiningCountdown] = useState(30);
+  const [adReady, setAdReady] = useState(false);
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"daily" | null>(null);
@@ -65,6 +66,15 @@ export default function MiningDashboard() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => setUid(user ? user.uid : null));
     return () => unsubscribe();
+  }, []);
+
+  //===============
+  // DAILY AD HANDLER
+  //===================
+  useEffect(() => {
+    const handler = () => setAdReady(true);
+    window.addEventListener("onDailyAdReady", handler);
+    return () => window.removeEventListener("onDailyAdReady", handler);
   }, []);
 
   // ======================
@@ -235,6 +245,7 @@ export default function MiningDashboard() {
       if (res.status === "success") {
         setUiBalance(prev => prev + 0.1);
         setClaimedCount(prev => prev + 1);
+        setAdReady(false);
         toast({
           title: "🎉 Reward Received",
           description: "+0.1 Pall added successfully",
@@ -280,15 +291,26 @@ export default function MiningDashboard() {
             </div>
           </div>
 
-          <Button disabled={mining || !canStartMining} onClick={()=>{setShowMiningPopup(true); setMiningCountdown(30); setMiningStartedFromPopup(false);}} className="w-full py-4 text-lg font-bold rounded-xl text-white bg-green-500 hover:bg-green-600 shadow-lg">{mining?`Mining ⛏ (${formatTime(timeRemaining)})`:"Start Mining ⛏"}</Button>
-
-          {/* Daily Reward Card */}
-          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 shadow-md mt-4">
-            <h3 className="text-lg font-bold mb-2 text-center text-blue-600">Get Daily Reward</h3>
-            <p className="text-center text-sm text-gray-600 mb-2">Watch a video ad to get <span className="font-bold text-blue-600">0.1 Pall</span></p>
-            <p className="text-center text-sm mb-4"><span className="font-bold text-blue-500">{claimedCount} 🔶 10</span></p>
-            <Button disabled={dailyWaiting || claimedCount>=10} onClick={handleDailyReward} className={`w-full py-3 rounded-xl font-bold shadow transition ${claimedCount>=10?"bg-gray-400 text-gray-700 cursor-not-allowed opacity-60":"bg-blue-500 hover:bg-blue-600 text-white"}`}>{dailyWaiting?"📺 Showing Ad...":claimedCount<10?`Watch Ad & Get 0.1 Pall 🎁 (${claimedCount}/10)`:"Daily Reward Completed ✨"}</Button>
-          </Card>
+          <Button
+            disabled={dailyWaiting || claimedCount >= 10 || !adReady} // ✅ adReady check added
+            onClick={handleDailyReward}
+            className={`w-full py-3 rounded-xl font-bold shadow transition ${
+              dailyWaiting || claimedCount >= 10 || !adReady
+                ? "bg-gray-400 text-gray-700 cursor-not-allowed opacity-60" // disabled styling
+                : "bg-blue-500 hover:bg-blue-600 text-white"
+            }`}
+          >
+            {dailyWaiting
+              ? "📺 Showing Ad..."
+              : claimedCount < 10
+              ? `Watch Ad & Get 0.1 Pall 🎁 (${claimedCount}/10)`
+              : "Daily Reward Completed ✨"}
+          </Button>
+          {claimedCount < 10 && (
+            <div className="mt-2 flex justify-center animate-bounce [animation-duration:0.8s]">
+              <span className="text-orange-500 font-extrabold text-3xl leading-none">🎉</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
