@@ -31,7 +31,7 @@ export default function MiningDashboard() {
   const [dailyWaiting, setDailyWaiting] = useState(false);
   const [showMiningPopup, setShowMiningPopup] = useState(false);
   const [miningCountdown, setMiningCountdown] = useState(30);
-  const [adReady, setAdReady] = useState(false);
+  const [adReady, setAdReady] = useState(true);
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"daily" | null>(null);
