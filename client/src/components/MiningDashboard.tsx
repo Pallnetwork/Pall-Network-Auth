@@ -1,4 +1,3 @@
-// client/src/components/MiningDashboard.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -21,7 +20,7 @@ declare global {
 }
 
 export default function MiningDashboard() {
-  const [uid, setUid] = useState<string | null>(auth.currentUser?.uid || null);
+  const [uid, setUid] = useState<string | null>(null);
   const [uiBalance, setUiBalance] = useState(0);
   const [mining, setMining] = useState(false);
   const [lastStart, setLastStart] = useState<Date | null>(null);
@@ -32,10 +31,7 @@ export default function MiningDashboard() {
   const [showMiningPopup, setShowMiningPopup] = useState(false);
   const [miningCountdown, setMiningCountdown] = useState(30);
   const [adReady, setAdReady] = useState(false);
-
-  useEffect(() => {
-    console.log("Daily adReady =", adReady);
-  }, [adReady]);
+  const [showDailyPopup, setShowDailyPopup] = useState(false);
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"daily" | null>(null);
@@ -48,19 +44,12 @@ export default function MiningDashboard() {
   // GLOBAL CALLBACKS
   // ======================
   window.onRewardAdCompleted = () => window.dispatchEvent(new Event("rewardAdCompleted"));
-
   window.onAdFailed = () => {
     if (!waitingForAdRef.current) return;
-
     waitingForAdRef.current = false;
     setDailyWaiting(false);
     setAdReady(false);
-
-    toast({
-      title: "Ad Failed",
-      description: "Rewarded ad could not load",
-      variant: "destructive"
-    });
+    toast({ title: "Ad Failed", description: "Rewarded ad could not load", variant: "destructive" });
   };
 
   useEffect(() => {
@@ -85,10 +74,7 @@ export default function MiningDashboard() {
   //================
   useEffect(() => {
     window.onDailyAdReady = () => setAdReady(true);
-
-    return () => {
-      window.onDailyAdReady = undefined;
-    };
+    return () => { window.onDailyAdReady = undefined; };
   }, []);
 
   // ======================
@@ -233,9 +219,6 @@ export default function MiningDashboard() {
     return () => { clearTimeout(timer); clearInterval(countdown); };
   }, [showMiningPopup, miningCountdown, miningStartedFromPopup]);
 
-  // ======================
-  // HANDLERS
-  // ======================
   const startMiningBackend = async () => {
     if (!uid) return;
     try {
@@ -250,8 +233,12 @@ export default function MiningDashboard() {
     } catch(e:any){ toast({ title:"Error", description:e.message||"Unexpected error", variant:"destructive" }); }
   };
 
+  // ======================
+  // DAILY REWARD COMPLETE
+  // ======================
   const completeDailyReward = async () => {
-    if (!uid || claimedCount >= 10) return;
+    if (!uid) return;
+    if (claimedCount >= 10) return;
     const res = await claimDailyReward(uid);
     if (res.status === "success") {
       setUiBalance(prev => prev + 0.1);
@@ -266,19 +253,15 @@ export default function MiningDashboard() {
     adPurposeRef.current = null;
   };
 
+  // ======================
+  // POLICY-COMPLIANT DAILY REWARD POPUP HANDLER
+  // ======================
   const handleDailyReward = async () => {
-    if (dailyWaiting || claimedCount >= 10 || !uid) return;
+    if (!uid) return;
+    if (dailyWaiting || claimedCount >= 10) return;
 
-    setDailyWaiting(true);
-    waitingForAdRef.current = true;
-    adPurposeRef.current = "daily";
-
-    if (window.AndroidBridge?.startDailyRewardedAd) {
-      window.AndroidBridge.setAdPurpose?.("daily");
-      window.AndroidBridge.startDailyRewardedAd();
-    } else {
-      await completeDailyReward();
-    }
+    // Show popup first
+    setShowDailyPopup(true);
   };
 
   // ======================
@@ -305,10 +288,11 @@ export default function MiningDashboard() {
 
   return (
     <>
-      {/* Balance Card */}
+      {/* Balance & Mining Card */}
       <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
         <CardHeader className="pb-4" />
         <CardContent className="text-center space-y-6 px-6 pb-8">
+          {/* Balance Display */}
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
             <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
             <p className="text-3xl font-bold text-blue-600">{uiBalance.toFixed(8)} PALL</p>
@@ -405,6 +389,57 @@ export default function MiningDashboard() {
             </div>
             <p className="text-3xl font-bold text-white">{miningCountdown}s</p>
             <p className="text-sm text-white mt-2">Preparing your mining session</p>
+          </div>
+        </div>
+      )}
+
+      {/* ======================
+           DAILY REWARD POPUP
+      ======================= */}
+      {showDailyPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 w-[90%] max-w-sm text-center shadow-2xl relative">
+            
+            {/* CUT / CLOSE BUTTON */}
+            <button
+              onClick={() => setShowDailyPopup(false)}
+              className="absolute top-3 right-3 text-white text-xl font-bold"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-white text-xl font-semibold mb-4">Watch Ad to Claim 0.1 Pall</h2>
+            <p className="text-sm text-white mb-6">
+              You will earn <span className="font-bold">0.1 Pall</span> after watching the full video ad.
+            </p>
+
+            <div className="flex justify-center gap-4">
+              <Button
+                onClick={() => {
+                  setShowDailyPopup(false);
+                  setDailyWaiting(true);
+                  waitingForAdRef.current = true;
+                  adPurposeRef.current = "daily";
+
+                  if (window.AndroidBridge?.startDailyRewardedAd) {
+                    window.AndroidBridge.setAdPurpose?.("daily");
+                    window.AndroidBridge.startDailyRewardedAd();
+                  } else {
+                    completeDailyReward();
+                  }
+                }}
+                className="bg-blue-500 hover:bg-blue-600 text-white w-28 py-2 rounded-xl font-bold"
+              >
+                Watch Ad
+              </Button>
+
+              <Button
+                onClick={() => setShowDailyPopup(false)}
+                className="bg-gray-400 hover:bg-gray-500 text-white w-28 py-2 rounded-xl font-bold"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </div>
       )}
