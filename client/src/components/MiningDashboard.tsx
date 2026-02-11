@@ -97,7 +97,7 @@ export default function MiningDashboard() {
       setMining(true);
       setCanStartMining(false);
       setLastStart(new Date(startMs));
-      setTimeRemaining(MAX_SECONDS - elapsed);
+      setTimeRemaining(Math.max(0, MAX_SECONDS - elapsed));
     };
 
     loadMining();
@@ -197,6 +197,8 @@ export default function MiningDashboard() {
         lastStart: null,
         lastMinedAt: serverTimestamp(),
       });
+      // 🔥 FORCE UI RESET
+      resetMiningUI();
     }, 5000);
     return () => clearInterval(interval);
   }, [mining, lastStart, uid]);
@@ -228,6 +230,14 @@ export default function MiningDashboard() {
       if (data.miningActive) return toast({ title: "Mining Active", description: "You already started mining in last 24h" });
 
       await updateDoc(ref, { miningActive:true, lastStart:serverTimestamp(), lastMinedAt:data.lastMinedAt||serverTimestamp() });
+
+      // 🔥 FORCE UI START (instant)
+      setMining(true);
+
+      const now = new Date();
+      setLastStart(now);
+      setTimeRemaining(MAX_SECONDS);
+      setUiBalance(prev => prev); // trigger re-render
       setCanStartMining(false);
       toast({ title:"Mining Started", description:"24h mining activated" });
     } catch(e:any){ toast({ title:"Error", description:e.message||"Unexpected error", variant:"destructive" }); }
