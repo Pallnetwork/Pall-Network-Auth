@@ -106,18 +106,25 @@ export default function MiningDashboard() {
   const resetMiningUI = () => { setMining(false); setCanStartMining(true); setTimeRemaining(0); setLastStart(null); };
 
   // ======================
-  // DAILY REWARD SNAPSHOT & UTC+5 RESET
+  // DAILY REWARD (DATE-BASED | UTC+5 | SPARK SAFE)
   // ======================
   useEffect(() => {
     const loadDaily = async () => {
       if (!uid) return;
+
       const ref = doc(db, "dailyRewards", uid);
       const snap = await getDoc(ref);
 
+      // UTC+5 today date (YYYY-MM-DD)
+      const todayUTC5 = new Date(
+        Date.now() + 5 * 60 * 60 * 1000
+      ).toISOString().slice(0, 10);
+
+      // NEW USER
       if (!snap.exists()) {
         await setDoc(ref, {
           claimedCount: 0,
-          lastResetDate: serverTimestamp(),
+          lastClaimDate: todayUTC5,
           createdAt: serverTimestamp(),
         });
         setClaimedCount(0);
@@ -125,12 +132,27 @@ export default function MiningDashboard() {
       }
 
       const data = snap.data();
-      const claimed = typeof data.claimedCount === "number" ? data.claimedCount : 0;
-      setClaimedCount(claimed);
+      const storedDate = data.lastClaimDate;
+      const storedCount =
+        typeof data.claimedCount === "number" ? data.claimedCount : 0;
+
+      // SAME DAY (UTC+5)
+      if (storedDate === todayUTC5) {
+        setClaimedCount(storedCount);
+        return;
+      }
+
+      // NEW DAY (UTC+5) → RESET
+      await updateDoc(ref, {
+        claimedCount: 0,
+        lastClaimDate: todayUTC5,
+      });
+      setClaimedCount(0);
     };
 
     loadDaily();
   }, [uid]);
+  
 
   // ======================
   // UTC+5 Daily Reset
@@ -244,25 +266,46 @@ export default function MiningDashboard() {
   };
 
   // ======================
-  // DAILY REWARD COMPLETE
-  // ======================
+  // DAILY REWARD COMPLETE (FINAL | UTC+5 | SPARK SAFE)
+  // =====================
   const completeDailyReward = async () => {
     if (!uid) return;
     if (claimedCount >= 10) return;
-    const res = await claimDailyReward(uid);
-    if (res.status === "success") {
+
+    try {
+      // UTC+5 today date (YYYY-MM-DD)
+      const todayUTC5 = new Date(
+        Date.now() + 5 * 60 * 60 * 1000
+      ).toISOString().slice(0, 10);
+
+      // Firestore update (1 write per ad)
+      await updateDoc(doc(db, "dailyRewards", uid), {
+        claimedCount: claimedCount + 1,
+        lastClaimDate: todayUTC5,
+      });
+
+      // UI updates
       setUiBalance(prev => prev + 0.1);
       setClaimedCount(prev => prev + 1);
       setAdReady(false);
-      toast({ title: "🎉 Reward Received", description: "+0.1 Pall added" });
-    } else {
-      toast({ title:"Daily Reward", description:res.message || "Already claimed", variant:"destructive" });
+
+      toast({
+        title: "🎉 Reward Received",
+        description: "+0.1 Pall added",
+      });
+    } catch (e: any) {
+      toast({
+        title: "Daily Reward",
+        description: e.message || "Something went wrong",
+        variant: "destructive",
+      });
     }
+    // cleanup (important)
     setDailyWaiting(false);
     waitingForAdRef.current = false;
     adPurposeRef.current = null;
   };
-
+  
   // ======================
   // POLICY-COMPLIANT DAILY REWARD POPUP HANDLER
   // ======================
