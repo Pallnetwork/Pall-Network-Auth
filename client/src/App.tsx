@@ -20,6 +20,7 @@ import NotFound from "@/pages/not-found";
 
 
 function Router() {
+  console.log(import.meta.env.VITE_API_URL);
   return (
     <Switch>
       {/* AUTH */}

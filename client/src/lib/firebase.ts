@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAxLwNUXdbnk0l2rzBMh4DLwE5tteztvUg",
-  authDomain: "pall-network-494ae.firebaseapp.com",
-  projectId: "pall-network-494ae",
-  storageBucket: "pall-network-494ae.firebasestorage.app",
-  messagingSenderId: "785443894438",
-  appId: "1:785443894438:web:828a9e4b1ff114eff4b067"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
