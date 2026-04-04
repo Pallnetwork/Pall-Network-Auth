@@ -5,7 +5,7 @@
   "buildNumber": "1",
   "description": "Educational cloud mining simulation platform",
   "author": "Pall Network Team",
-  "website": "https://pallnetworkcommerce.com",
+  "website": "https://.com",
   "ios": {
     "deploymentTarget": "12.0",
     "bundleIdentifier": "com.pallnetwork.mining",

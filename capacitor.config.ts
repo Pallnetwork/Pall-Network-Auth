@@ -1,12 +1,17 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
+// Env variable fallback
+const isDev = process.env.NODE_ENV === 'development';
+
 const config: CapacitorConfig = {
-  appId: 'com.pallnetwork.mining',
+  appId: 'com.pall.network', // optional: production id
   appName: 'Pall Network',
   webDir: 'dist',
   bundledWebRuntime: false,
   server: {
-    url: 'https://pallnetworkcommerce.com',
+    url: isDev
+      ? 'https://pall-network-auth-dev.onrender.com'
+      : 'https://pall-network-auth.onrender.com',
     cleartext: true
   },
   plugins: {
@@ -21,7 +26,9 @@ const config: CapacitorConfig = {
       backgroundColor: '#2563EB'
     },
     App: {
-      launchUrl: 'https://pallnetworkcommerce.com'
+      launchUrl: isDev
+        ? 'https://pall-network-auth-dev.onrender.com'
+        : 'https://pall-network-auth.onrender.com'
     }
   },
   android: {

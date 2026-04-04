@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "56754671423",
+    "project_id": "pall-network-dev",
+    "storage_bucket": "pall-network-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:56754671423:android:8813b6ed7c21dd1bf58d8a",
+        "android_client_info": {
+          "package_name": "com.pall.network.dev"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "56754671423-ddl8cih79ivmbqvhrii2h4nc97n1amo1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJfRguUifCVCNa37GQXKOfb5BTZ4_0At0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "56754671423-ddl8cih79ivmbqvhrii2h4nc97n1amo1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

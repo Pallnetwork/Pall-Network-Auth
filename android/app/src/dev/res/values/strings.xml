@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pall Network Dev</string>
+    <string name="title_activity_main">Pall Network Dev</string>
+    <string name="package_name">com.pallnetwork.mining.dev</string>
+    <string name="custom_url_scheme">com.pallnetwork.mining.dev</string>
+</resources>
