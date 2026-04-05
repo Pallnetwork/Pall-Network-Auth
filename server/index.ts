@@ -6,24 +6,16 @@ import { setupVite, serveStatic, log } from "./vite";
 import mineRouter from "./routes/mine";
 import stopRoutes from "./routes/stop";
 
-// ----- FIREBASE ADMIN SETUP -----
-import admin from "firebase-admin";
+// Firebase + MongoDB
+import admin, { connectMongo } from "./firebase";
 
-// Use env variable for Render, fallback to local JSON for dev
-const serviceAccount = process.env.VITE_FIREBASE_SERVICE_ACCOUNT
-  ? JSON.parse(process.env.VITE_FIREBASE_SERVICE_ACCOUNT)
-  : require("./serviceAccountKey.json"); // local fallback
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+// ✅ Connect to MongoDB before server start
+connectMongo().catch((err) => {
+  console.error("MongoDB failed to connect. Exiting...");
+  process.exit(1);
 });
 
-console.log("Firebase Admin Initialized");
-// ----- END FIREBASE SETUP -----
-
 const app = express();
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());

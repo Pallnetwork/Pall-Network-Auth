@@ -3,12 +3,13 @@ import admin from "firebase-admin";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { MongoClient } from "mongodb";
 
 // 🔹 ES module __dirname fix
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Determine service account
+// ✅ Firebase service account
 let serviceAccount: admin.ServiceAccount;
 
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -16,34 +17,62 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
 } else {
   const localPath = path.resolve(__dirname, "serviceAccountKey.json");
   if (!fs.existsSync(localPath)) {
-    throw new Error(
-      `Local Firebase serviceAccountKey.json not found at ${localPath}`
-    );
+    throw new Error(`serviceAccountKey.json not found at ${localPath}`);
   }
   serviceAccount = JSON.parse(fs.readFileSync(localPath, "utf-8"));
 }
 
-// ✅ Initialize Firebase Admin
+// ✅ Initialize Firebase
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
   });
 }
 
-// ✅ Export Auth & Firestore
 export const auth = admin.auth();
 export const db = admin.firestore();
 
 /* ===============================
-   ⛏️ SESSION 3 — SECURE MINING
+   🔥 SECURE MongoDB Setup
 =============================== */
 
-const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+// ✅ Get from ENV (IMPORTANT)
+const mongoUri = process.env.MONGO_URI;
 
-/**
- * 🔹 Secure mining token increment
- * @param uid - Firebase UID
- */
+if (!mongoUri) {
+  throw new Error("❌ MONGO_URI missing in .env");
+}
+
+// Decide DB
+const dbName =
+  process.env.NODE_ENV === "production"
+    ? "pall_network_prod"
+    : "pall_network_dev";
+
+// Create client
+export const mongoClient = new MongoClient(mongoUri);
+
+// Connect
+export async function connectMongo() {
+  try {
+    await mongoClient.connect();
+    console.log(`✅ Connected to MongoDB (${dbName})`);
+  } catch (err) {
+    console.error("❌ MongoDB connection error:", err);
+    throw err;
+  }
+}
+
+// Export DB
+export const mongoDB = mongoClient.db(dbName);
+
+/* ===============================
+   ⛏️ Mining Logic
+=============================== */
+
+const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 export async function mineTokenSecure(uid: string) {
   const ref = db.collection("wallets").doc(uid);
   const snap = await ref.get();
