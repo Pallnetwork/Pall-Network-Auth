@@ -4,10 +4,10 @@ dist
 .env
 serviceAccountKey.json
 .firebase/
-.env
 .env.local
 .env.production
 server/public
+server/serviceAccountKey.json
 Thumbs.db
 vite.config.ts.*
 *.tar.gz
