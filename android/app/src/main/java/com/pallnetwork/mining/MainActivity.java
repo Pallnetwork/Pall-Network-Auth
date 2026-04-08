@@ -41,6 +41,11 @@ public class MainActivity extends BridgeActivity {
                     public void onAdLoaded(InterstitialAd ad) {
                         mInterstitialAd = ad;
                         Log.d("ADMOB", "Interstitial loaded");
+
+                        // ✅ SHOW AD
+                        if (mInterstitialAd != null) {
+                            mInterstitialAd.show(MainActivity.this);
+                        }
                     }
                 });
     }
@@ -53,6 +58,13 @@ public class MainActivity extends BridgeActivity {
                     public void onAdLoaded(RewardedAd ad) {
                         mRewardedAd = ad;
                         Log.d("ADMOB", "Rewarded loaded");
+
+                        // ✅ SHOW AD
+                        if (mRewardedAd != null) {
+                            mRewardedAd.show(MainActivity.this, rewardItem -> {
+                                Log.d("ADMOB", "Reward earned");
+                            });
+                        }
                     }
                 });
     }
