@@ -14,9 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import logo from "@/assets/logo.png";
 
-// ✅ Phase 3: Referral functions import
-import { handleReferralOnInstall, applyReferralBonus } from "@/lib/referral";
-
 export default function Signup() {
   const [form, setForm] = useState({
     fullName: "",
