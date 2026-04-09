@@ -13,10 +13,11 @@ import MiningDashboard from "@/components/MiningDashboard";
 import UpgradePage from "@/components/UpgradePage";
 import PoliciesPage from "@/components/PoliciesPage";
 import Splash from "@/pages/Splash";
-import { collection, getDocs, query, where } from "firebase/firestore";
 import { saveUserProfile } from "@/lib/profile";
 import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
+import { getReferralData, getReferralUsers, generateReferralMessage } from "@/lib/referral";
+import { generateShareLink, copyShareLink } from "@/lib/referral";
 
 interface User {
   id: string;
@@ -100,6 +101,25 @@ export default function Dashboard() {
 
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        dob: profile.dob || "",
+        gender: profile.gender || "",
+        phone: profile.phone || "",
+        address: profile.address || "",
+        photoURL: profile.photoURL || ""
+      });
+
+      if (profile.photoURL) {
+        setPhotoPreview(profile.photoURL);
+      }
+    }
+  }, [profile]);
+
   const [referrals, setReferrals] = useState<User[]>([]);
   const [f2Total, setF2Total] = useState(0);
   const [referralData, setReferralData] = useState<{
@@ -126,7 +146,6 @@ export default function Dashboard() {
   });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
-  const [shareLink, setShareLink] = useState("");
   const [path, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -140,32 +159,25 @@ export default function Dashboard() {
     return 'HOME'; // default for /app/dashboard
   })();
 
-  // Real-time balance sync for mining dashboard
+  // only once balance sync for mining dashboard
   useEffect(() => {
-    let balanceInterval: NodeJS.Timeout;
-
     const syncBalance = async () => {
       const userId = localStorage.getItem("userId");
-      if (userId) {
-        try {
-          const walletSnap = await getDoc(doc(db, "wallets", userId));
-          if (walletSnap.exists()) {
-            const walletData = walletSnap.data();
-            setPallBalance(walletData.pallBalance || 0);
-            setMiningStatus(walletData.miningActive || false);
-          }
-        } catch (error) {
-          console.error("Error syncing balance:", error);
+      if (!userId) return;
+
+      try {
+        const walletSnap = await getDoc(doc(db, "wallets", userId));
+        if (walletSnap.exists()) {
+          const walletData = walletSnap.data();
+          setPallBalance(walletData.pallBalance || 0);
+          setMiningStatus(walletData.miningActive || false);
         }
+      } catch (error) {
+        console.error("Error syncing balance:", error);
       }
     };
 
-    // Sync balance every 5 seconds to reflect mining updates
-    balanceInterval = setInterval(syncBalance, 5000);
-
-    return () => {
-      clearInterval(balanceInterval);
-    };
+    syncBalance(); // ✅ only once on mount
   }, []);
 
   useEffect(() => {
@@ -188,7 +200,7 @@ export default function Dashboard() {
       // If no firebase user -> wait longer for WebView/Android environment
       if (!firebaseUser) {
         console.log('⚠️ No Firebase user found, checking again in 3000ms before redirecting...');
-        
+
         // Increased timeout for WebView environment - Android apps need more time
         redirectTimeout = setTimeout(() => {
           const currentUser = auth.currentUser;
@@ -237,45 +249,18 @@ export default function Dashboard() {
             setProfile(profileDoc.data() as Profile);
           }
 
-          // Fetch referral data
+          // ✅ NEW CLEAN REFERRAL FETCH
           try {
-            const referralSnap = await getDoc(doc(db, "referrals", userId));
+            const refData = await getReferralData(userId);
+            const refUsers = await getReferralUsers(userId);
 
-            // Fetch F1 referral users list
-            try {
-              const usersSnap = await getDoc(doc(db, "users", userId));
-              if (usersSnap.exists()) {
-                const q = query(
-                  collection(db, "users"),
-                  where("referredBy", "==", userId)
-                );
-                const snap = await getDocs(q);
-                const list: User[] = snap.docs.map(d => d.data() as User);
-                setReferrals(list);
-              }
-            } catch (e) {
-              console.error("Error fetching referral users:", e);
+            if (refData) {
+              setReferralData(refData);
             }
 
-            if (referralSnap.exists()) {
-              const refData = referralSnap.data();
-              setReferralData({
-                f1Commission: refData.f1Commission || 0,
-                f2Commission: refData.f2Commission || 0,
-                totalCommission: refData.totalCommission || 0,
-                referredUsers: refData.referredUsers || [],
-              });
-            } else {
-              // ✅ RULE-SAFE: frontend does NOTHING if doc missing
-              setReferralData({
-                f1Commission: 0,
-                f2Commission: 0,
-                totalCommission: 0,
-                referredUsers: [],
-              });
-            }
+            setReferrals(refUsers);
           } catch (error) {
-            console.error("Error fetching referral data:", error);
+            console.error("Referral fetch error:", error);
           }
 
           // Fetch transaction history
@@ -355,7 +340,7 @@ export default function Dashboard() {
     if (authInitialized) {
       // Delay first check by 5 seconds to allow full auth initialization
       setTimeout(checkExpiryAndSignOut, 5000);
-      
+
       // periodic check every 60 seconds
       expiryInterval = setInterval(checkExpiryAndSignOut, 60 * 1000);
     }
@@ -387,36 +372,22 @@ export default function Dashboard() {
     }
   };
 
-  const generateShareLink = () => {
-    return "https://play.google.com/store/apps/details?id=com.pall.network";
-  };
-
-  const copyShareLink = () => {
-    const link = generateShareLink();
-    navigator.clipboard.writeText(link);
-    toast({
-      title: "Link Copied!",
-      description: "Your Play Store link has been copied",
-    });
-  };
-
   const shareViaWhatsApp = () => {
     if (user?.referralCode) {
-      const link = generateShareLink();
-      const message = `Join PALL NETWORK 🚀 Download App: ${link}\nUse my referral code: ${user?.referralCode}`;
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-      window.open(whatsappUrl, '_blank');
+      const message = generateReferralMessage(user.referralCode);
+      const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(url, "_blank");
     }
   };
 
   const shareViaTelegram = () => {
     if (user?.referralCode) {
-      const link = generateShareLink();
-      const message = `Join PALL NETWORK 🚀 Download App: ${link}\nUse my referral code: ${user?.referralCode}`;
-      const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(message)}`;
-      window.open(telegramUrl, '_blank');
+      const message = generateReferralMessage(user.referralCode);
+      const url = `https://t.me/share/url?text=${encodeURIComponent(message)}`;
+      window.open(url, "_blank");
     }
   };
+
 
   const handleSaveProfile = async () => {
    if (!user) return;
@@ -517,7 +488,7 @@ export default function Dashboard() {
 
         <Button
           variant="ghost"
-          size="sm" 
+          size="sm"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="text-white hover:bg-green-700"
           data-testid="button-menu"
@@ -608,7 +579,7 @@ export default function Dashboard() {
               <Button
                 variant="ghost"
                 className="w-full justify-start py-3 text-base font-medium"
-                onClick={() => { 
+                onClick={() => {
                   setSidebarOpen(false);
                   navigate("/app/kyc");
                 }}
@@ -668,7 +639,7 @@ export default function Dashboard() {
                  <Sun className="h-5 w-5 text-yellow-400" />
                 ):(
                  <Moon className="h-5 w-5 text-blue-500" />
-                )} 
+                )}
                </Button>
               </div>
               <div className="text-center">
@@ -688,7 +659,7 @@ export default function Dashboard() {
                   {tradingCards[currentCardIndex].title}
                 </div>
               </div>
-              
+
               {/* ================== 👆 TRADING CARDS SLIDER END 👆 ================== */}
 
               {/* Mining Dashboard - Main Feature */}
@@ -704,7 +675,7 @@ export default function Dashboard() {
                     <p className="text-sm font-medium text-muted-foreground">Total Referrals</p>
                   </CardContent>
                 </Card>
-    
+
                 <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/20 dark:to-gray-700/20">
                   <CardContent className="p-6 text-center">
                     <h3 className={`text-2xl font-bold mb-2 ${miningStatus ? 'text-green-600' : 'text-gray-500'}`}>
@@ -716,72 +687,51 @@ export default function Dashboard() {
               </div>
 
               {/* Referral Code & Invitation Links */}
-              {user.referralCode && (
-                <Card className="rounded-2xl shadow-md border-0">
-                  <CardContent className="p-8">
-                    <h3 className="text-xl font-bold mb-6 text-center text-gray-800 dark:text-gray-200">Share & Earn 🎯</h3>
+              <Card className="rounded-2xl shadow-lg border-0">
+                <CardContent className="p-6 space-y-6">
 
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl mb-6 border border-blue-100 dark:border-blue-800">
-                      <p className="text-sm font-medium text-muted-foreground mb-3 text-center">Your Referral Code:</p>
-                      <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                        <code className="font-mono text-xl font-bold text-blue-600">{user.referralCode}</code>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg font-bold hover:scale-105 transition-all duration-200"
-                          onClick={() => {
-                            navigator.clipboard.writeText(user.referralCode || "");
-                            toast({
-                              title: "Copied!",
-                              description: "Referral code copied to clipboard",
-                            });
-                          }}
-                          data-testid="button-copy-code"
-                        >
-                          📋 Copy Code
-                        </Button>
-                      </div>
-                    </div>
+                  {/* Header */}
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold">🚀 Invite & Earn</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Share your referral link and earn commissions
+                    </p>
+                  </div>
 
-                    <h3 className="text-lg font-bold mb-4 text-center">Share Your Link</h3>
-                    <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 p-6 rounded-xl mb-6 border border-green-100 dark:border-green-800">
-                      <p className="text-sm font-mono break-all mb-4 text-center text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 p-3 rounded-lg">
-                        {generateShareLink()}
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <Button
-                          onClick={copyShareLink}
-                          className="w-full py-3 font-bold rounded-xl hover:scale-105 transition-all duration-200"
-                          data-testid="button-copy-link"
-                        >
-                          📋  Copy Link
-                        </Button>
-                        <Button
-                          onClick={shareViaWhatsApp}
-                          className="w-full py-3 font-bold rounded-xl bg-green-500 hover:bg-green-600 text-white hover:scale-105 transition-all duration-200"
-                          data-testid="button-share-whatsapp"
-                        >
-                          📱 WhatsApp
-                        </Button>
-                        <Button
-                          onClick={shareViaTelegram}
-                          className="w-full py-3 font-bold rounded-xl bg-blue-500 hover:bg-blue-600 text-white hover:scale-105 transition-all duration-200"
-                        >
-                          ✈️ Telegram
-                        </Button>
-                      </div>
-                    </div>
+                  {/* Referral Code */}
+                  <div className="bg-muted p-4 rounded-xl flex justify-between items-center">
+                    <code className="font-mono text-lg">{user.referralCode}</code>
+                    <Button size="sm" onClick={() => {
+                      navigator.clipboard.writeText(user.referralCode || "");
+                      toast({ title: "Copied!" });
+                    }}>
+                      Copy
+                    </Button>
+                  </div>
 
-                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 p-6 rounded-xl text-center">
-                      <p className="text-base font-medium text-gray-700 dark:text-gray-300 leading-relaxed">
-                        💰 Earn commissions from every referral!<br/>
-                        🎯 <span className="font-bold text-green-600">Direct referrals (F1): 5% commission</span><br/>
-                        🔗 <span className="font-bold text-blue-600">Indirect referrals (F2): 2.5% commission</span>
-                      </p>
+                  {/* Referral Link */}
+                  <div className="bg-muted p-4 rounded-xl text-center">
+                    <p className="text-xs break-all mb-3">
+                      {generateShareLink(user.referralCode)}
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button onClick={() => copyShareLink(user.referralCode)}>
+                        Copy Link
+                      </Button>
+                      <Button onClick={shareViaWhatsApp}>
+                        WhatsApp
+                      </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+
+                  {/* Commission Info */}
+                  <div className="text-sm text-center text-muted-foreground">
+                    <p>F1: <span className="text-green-600 font-bold">5%</span></p>
+                    <p>F2: <span className="text-blue-600 font-bold">2.5%</span></p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -801,6 +751,7 @@ export default function Dashboard() {
                       <div><strong>Gender:</strong> {profile.gender}</div>
                       <div><strong>Phone:</strong> {profile.phone}</div>
                       <div><strong>Address:</strong> {profile.address}</div>
+
                     </div>
                   </div>
                 ) : (
@@ -892,6 +843,17 @@ export default function Dashboard() {
                         </select>
                       </div>
 
+                      {/* ✅ Phone */}
+                      <div>
+                        <Label htmlFor="phone">Phone</Label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          value={form.phone}
+                          onChange={handleFormChange}
+                        />
+                      </div>
+
                       <div>
                         <Label htmlFor="address">Address</Label>
                         <Input
@@ -908,14 +870,16 @@ export default function Dashboard() {
                       type="button"
                       onClick={handleSaveProfile}
                       disabled={
+                        profile || // 👈 already saved → disable forever
                         !form.firstName ||
                         !form.lastName ||
                         !form.phone ||
-                        !form.address
+                        !form.address ||
+                        !photoPreview // 👈 image required
                       }
                       className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50"
                     >
-                      Save Profile
+                      {profile ? "Profile Saved" : "Save Profile"}
                     </Button>
 
                   </div>
@@ -943,7 +907,7 @@ export default function Dashboard() {
                       {referrals.map((referral, index) => (
                         <div
                           key={index}
-                          className="flex justify-between items-center p-3 border rounded-lg bg-green-50 dark:bg-green-900/20"
+                          className="flex justify-between items-center sm:p-3 md:p-4 lg:p-5 rounded-xl bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 shadow-sm"
                           data-testid={`f1-referral-${index}`}
                         >
                           <div>
@@ -957,6 +921,39 @@ export default function Dashboard() {
                           </div>
                         </div>
                       ))}
+
+                      {/* F2 Indirect Referrals */}
+                      <div className="mt-6">
+                        <h3 className="text-lg font-semibold mb-4 text-blue-600">
+                          Indirect Referrals (F2) – 2.5% Commission
+                        </h3>
+                        {referrals.length === 0 ? (
+                          <p className="text-muted-foreground mb-4">No indirect referrals yet.</p>
+                        ) : (
+                          <div className="space-y-2 mb-4">
+                            {referrals
+                              .filter(r => r.referredBy && r.referredBy !== user?.id) // Only F2
+                              .map((referral, index) => (
+                                <div
+                                  key={index}
+                                  className="flex justify-between items-center p-4 rounded-xl bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-sm"
+                                  data-testid={`f2-referral-${index}`}
+                                >
+                                  <div>
+                                    <p className="font-medium">@{referral.username}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      Joined {formatDate(referral.createdAt)}
+                                    </p>
+                                  </div>
+                                  <div className="text-blue-600 font-bold">
+                                    2.5% ({(0.025 * (referral.packagePrice || 100)).toFixed(2)} USDT)
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
                     </div>
                   )}
                 </div>
@@ -1022,8 +1019,8 @@ export default function Dashboard() {
                   <div className="text-center">
                     <div className="text-green-600 dark:text-green-400 mb-2">✅ Web3 Wallet Detected</div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {(window as any).ethereum.isMetaMask ? "MetaMask" : 
-                       (window as any).ethereum.isTrust ? "Trust Wallet" : 
+                      {(window as any).ethereum.isMetaMask ? "MetaMask" :
+                       (window as any).ethereum.isTrust ? "Trust Wallet" :
                        (window as any).ethereum.isCoinbaseWallet ? "Coinbase Wallet" : "Web3 Wallet"} is installed
                     </p>
                   </div>
