@@ -1,14 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   doc,
   setDoc,
-  getDocs,
-  query,
-  collection,
-  where,
   serverTimestamp,
 } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import logo from "@/assets/logo.png";
+
+// ✅ Phase 3: Referral functions import
+import { handleReferralOnInstall, applyReferralBonus } from "@/lib/referral";
 
 export default function Signup() {
   const [form, setForm] = useState({
@@ -60,19 +59,10 @@ export default function Signup() {
       const uid = userCred.user.uid;
       console.log("✅ Auth user created:", uid);
 
-      // 2️⃣ Referral lookup
+      // 2️⃣ Referral lookup using referral.ts
       let referredByUID: string | null = null;
-
       if (form.referralCode.trim() !== "") {
-        const usersRef = collection(db, "users");
-        const q = query(
-          usersRef,
-          where("referralCode", "==", form.referralCode.trim())
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          referredByUID = snap.docs[0].id;
-        }
+        referredByUID = await handleReferralOnInstall({ ref: form.referralCode.trim() });
       }
 
       // 3️⃣ Prepare documents
@@ -118,12 +108,17 @@ export default function Signup() {
 
       console.log("✅ All Firestore docs created");
 
+      // 5️⃣ Apply referral bonus if referred
+      if (referredByUID) {
+        await applyReferralBonus(uid, referredByUID);
+      }
+
       toast({
         title: "Success",
         description: "Account created successfully",
       });
 
-      // 5️⃣ Wait for auth state, then redirect
+      // 6️⃣ Redirect to dashboard
       setTimeout(() => {
         navigate("/app/dashboard");
       }, 400);

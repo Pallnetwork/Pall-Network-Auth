@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.pallnetwork.mining">
+    package="com.pall.network">
+
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
@@ -9,14 +11,12 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <!-- ✅ AdMob App ID (Dynamic via build.gradle) -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="${ADMOB_APP_ID}" />
 
-        <!-- Capacitor Main Activity -->
         <activity
-            android:name="com.pallnetwork.mining.MainActivity"
+            android:name="com.pall.network.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
@@ -28,7 +28,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Required for Capacitor -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -40,8 +39,5 @@
         </provider>
 
     </application>
-
-    <!-- Internet permission (important for API + Firebase + Ads) -->
-    <uses-permission android:name="android.permission.INTERNET" />
 
 </manifest>

@@ -387,26 +387,23 @@ export default function Dashboard() {
     }
   };
 
-  const generateShareLink = (referralCode: string) => {
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/signup?ref=${referralCode}`;
+  const generateShareLink = () => {
+    return "https://play.google.com/store/apps/details?id=com.pall.network";
   };
 
   const copyShareLink = () => {
-    if (user?.referralCode) {
-      const link = generateShareLink(user.referralCode);
-      navigator.clipboard.writeText(link);
-      toast({
-        title: "Link Copied!",
-        description: "Your invitation link has been copied to clipboard",
-      });
-    }
+    const link = generateShareLink();
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Link Copied!",
+      description: "Your Play Store link has been copied",
+    });
   };
 
   const shareViaWhatsApp = () => {
     if (user?.referralCode) {
-      const link = generateShareLink(user.referralCode);
-      const message = `Join PALL NETWORK and start mining cryptocurrency! Use my referral link: ${link}`;
+      const link = generateShareLink();
+      const message = `Join PALL NETWORK 🚀 Download App: ${link}\nUse my referral code: ${user?.referralCode}`;
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
     }
@@ -414,8 +411,8 @@ export default function Dashboard() {
 
   const shareViaTelegram = () => {
     if (user?.referralCode) {
-      const link = generateShareLink(user.referralCode);
-      const message = `Join PALL NETWORK and start mining cryptocurrency! Use my referral link: ${link}`;
+      const link = generateShareLink();
+      const message = `Join PALL NETWORK 🚀 Download App: ${link}\nUse my referral code: ${user?.referralCode}`;
       const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(message)}`;
       window.open(telegramUrl, '_blank');
     }
@@ -749,7 +746,7 @@ export default function Dashboard() {
                     <h3 className="text-lg font-bold mb-4 text-center">Share Your Link</h3>
                     <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 p-6 rounded-xl mb-6 border border-green-100 dark:border-green-800">
                       <p className="text-sm font-mono break-all mb-4 text-center text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 p-3 rounded-lg">
-                        {generateShareLink(user.referralCode)}
+                        {generateShareLink()}
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <Button
@@ -798,36 +795,25 @@ export default function Dashboard() {
                 {profile ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <strong>First Name:</strong> {profile.firstName}
-                      </div>
-                      <div>
-                        <strong>Last Name:</strong> {profile.lastName}
-                      </div>
-                      <div>
-                        <strong>Date of Birth:</strong> {profile.dob}
-                      </div>
-                      <div>
-                        <strong>Gender:</strong> {profile.gender}
-                      </div>
-                      <div>
-                        <strong>Phone:</strong> {profile.phone}
-                      </div>
-                      <div>
-                        <strong>Address:</strong> {profile.address}
-                      </div>
+                      <div><strong>First Name:</strong> {profile.firstName}</div>
+                      <div><strong>Last Name:</strong> {profile.lastName}</div>
+                      <div><strong>Date of Birth:</strong> {profile.dob}</div>
+                      <div><strong>Gender:</strong> {profile.gender}</div>
+                      <div><strong>Phone:</strong> {profile.phone}</div>
+                      <div><strong>Address:</strong> {profile.address}</div>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
+
                     {/* Photo Upload */}
                     <div className="mb-6">
                       <Label htmlFor="photo">Profile Photo</Label>
                       <div className="mt-2 flex flex-col items-center">
                         {photoPreview ? (
-                          <img 
-                            src={photoPreview} 
-                            alt="Preview" 
+                          <img
+                            src={photoPreview}
+                            alt="Preview"
                             className="w-24 h-24 rounded-full object-cover mb-3"
                           />
                         ) : (
@@ -835,6 +821,7 @@ export default function Dashboard() {
                             <User className="w-12 h-12 text-gray-400" />
                           </div>
                         )}
+
                         <input
                           type="file"
                           id="photo"
@@ -842,9 +829,9 @@ export default function Dashboard() {
                           accept="image/*"
                           onChange={handlePhotoChange}
                           className="hidden"
-                          data-testid="input-photo"
                         />
-                        <Button 
+
+                        <Button
                           type="button"
                           variant="outline"
                           onClick={() => document.getElementById('photo')?.click()}
@@ -854,6 +841,8 @@ export default function Dashboard() {
                         </Button>
                       </div>
                     </div>
+
+                    {/* Form */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="firstName">First Name</Label>
@@ -862,9 +851,9 @@ export default function Dashboard() {
                           name="firstName"
                           value={form.firstName}
                           onChange={handleFormChange}
-                          data-testid="input-first-name"
                         />
                       </div>
+
                       <div>
                         <Label htmlFor="lastName">Last Name</Label>
                         <Input
@@ -872,9 +861,9 @@ export default function Dashboard() {
                           name="lastName"
                           value={form.lastName}
                           onChange={handleFormChange}
-                          data-testid="input-last-name"
                         />
                       </div>
+
                       <div>
                         <Label htmlFor="dob">Date of Birth</Label>
                         <Input
@@ -883,9 +872,9 @@ export default function Dashboard() {
                           type="date"
                           value={form.dob}
                           onChange={handleFormChange}
-                          data-testid="input-dob"
                         />
                       </div>
+
                       <div>
                         <Label htmlFor="gender">Gender</Label>
                         <select
@@ -894,7 +883,6 @@ export default function Dashboard() {
                           value={form.gender}
                           onChange={handleFormChange}
                           className="w-full p-2 border border-input rounded-md bg-background"
-                          data-testid="select-gender"
                         >
                           <option value="">Select Gender</option>
                           <option value="Male">Male</option>
@@ -903,16 +891,7 @@ export default function Dashboard() {
                           <option value="Prefer not to say">Prefer not to say</option>
                         </select>
                       </div>
-                      <div>
-                        <Label htmlFor="phone">Phone</Label>
-                        <Input
-                          id="phone"
-                          name="phone"
-                          value={form.phone}
-                          onChange={handleFormChange}
-                          data-testid="input-phone"
-                        />
-                      </div>
+
                       <div>
                         <Label htmlFor="address">Address</Label>
                         <Input
@@ -920,17 +899,25 @@ export default function Dashboard() {
                           name="address"
                           value={form.address}
                           onChange={handleFormChange}
-                          data-testid="input-address"
                         />
                       </div>
                     </div>
+
+                    {/* Save Button */}
                     <Button
-                     type="button"
+                      type="button"
                       onClick={handleSaveProfile}
-                      className="w-full bg-green-600 hover:bg-green-700"
+                      disabled={
+                        !form.firstName ||
+                        !form.lastName ||
+                        !form.phone ||
+                        !form.address
+                      }
+                      className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50"
                     >
                       Save Profile
                     </Button>
+
                   </div>
                 )}
               </CardContent>
