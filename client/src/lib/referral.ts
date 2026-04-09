@@ -43,7 +43,7 @@ export async function getReferralData(userId: string) {
 // ✅ Generate share link
 export function generateReferralLink(referralCode: string) {
   const baseLink = "https://play.google.com/store/apps/details?id=com.pall.network";
-  return baseLink;
+  return `${baseLink}&ref=${referralCode}`;
 }
 
 // ✅ Generate full share message

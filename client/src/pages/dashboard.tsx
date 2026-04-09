@@ -16,8 +16,7 @@ import Splash from "@/pages/Splash";
 import { saveUserProfile } from "@/lib/profile";
 import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
-import { getReferralData, getReferralUsers, generateReferralMessage } from "@/lib/referral";
-import { generateShareLink, copyShareLink } from "@/lib/referral";
+import { generateReferralLink, generateReferralMessage } from "@/lib/referral";
 
 interface User {
   id: string;
@@ -712,11 +711,13 @@ export default function Dashboard() {
                   {/* Referral Link */}
                   <div className="bg-muted p-4 rounded-xl text-center">
                     <p className="text-xs break-all mb-3">
-                      {generateShareLink(user.referralCode)}
+                      {generateReferralLink(user.referralCode)}
                     </p>
 
                     <div className="grid grid-cols-2 gap-2">
-                      <Button onClick={() => copyShareLink(user.referralCode)}>
+                      <Button onClick={() => {
+                        navigator.clipboard.writeText(generateReferralLink(user.referralCode));
+                      }}>
                         Copy Link
                       </Button>
                       <Button onClick={shareViaWhatsApp}>
