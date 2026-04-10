@@ -61,7 +61,7 @@ export default function Signup() {
       let referredByUID: string | null = null;
       if (form.referralCode.trim() !== "") {
         referredByUID = await handleReferralOnInstall({
-          ref: form.referralCode.trim().toLowerCase(),
+          ref: form.referralCode,
         });
       }
 
@@ -79,9 +79,7 @@ export default function Signup() {
           createdAt: serverTimestamp(),
 
           // 🔥 FIX: referral code consistent
-          referralCode: `${cleanUsername}-${uid
-            .slice(0, 5)
-            .toLowerCase()}`,
+          referralCode: `${cleanUsername}-${uid.slice(0, 5)}`.toLowerCase()
         }),
 
         setDoc(doc(db, "wallets", uid), {

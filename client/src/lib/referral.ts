@@ -1,7 +1,5 @@
 import { db } from "./firebase";
 import {
-  doc,
-  getDoc,
   collection,
   query,
   where,
@@ -46,14 +44,14 @@ export async function getReferralData(userId: string) {
   }
 }
 
-// 🔥 NEW: Handle referral install (FIXED)
+// 🔥 FIXED: Handle referral lookup (100% working)
 export async function handleReferralOnInstall({
   ref,
 }: {
   ref: string;
 }) {
   try {
-    const cleanRef = ref.trim().toLowerCase(); // ✅ FIX
+    const cleanRef = ref.trim().toLowerCase(); // ✅ SINGLE SOURCE OF TRUTH
 
     console.log("🔍 Searching referral:", cleanRef);
 
@@ -68,9 +66,11 @@ export async function handleReferralOnInstall({
 
     if (!snap.empty) {
       const refUser = snap.docs[0];
-      return refUser.id; // ✅ return UID
+      console.log("✅ Referrer found:", refUser.id);
+      return refUser.id;
     }
 
+    console.log("❌ No referrer found");
     return null;
   } catch (error) {
     console.error("❌ Referral lookup error:", error);
@@ -78,7 +78,7 @@ export async function handleReferralOnInstall({
   }
 }
 
-// 🔥 OPTIONAL: Bonus function (safe)
+// 🔥 OPTIONAL: Bonus function
 export async function applyReferralBonus(
   newUserId: string,
   referrerId: string
@@ -97,7 +97,8 @@ export async function applyReferralBonus(
 export function generateReferralLink(referralCode: string) {
   const baseLink =
     "https://play.google.com/store/apps/details?id=com.pall.network";
-  return `${baseLink}&ref=${referralCode}`;
+
+  return `${baseLink}&ref=${referralCode.toLowerCase()}`;
 }
 
 // ✅ Generate share message
