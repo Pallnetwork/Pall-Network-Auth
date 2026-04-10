@@ -54,32 +54,44 @@ export default function Signup() {
       const uid = userCred.user.uid;
       console.log("✅ Auth user created:", uid);
 
-      // 🔥 FIX: clean username
+      // 🔥 normalize username
       const cleanUsername = form.username.trim().toLowerCase();
 
-      // 🔥 FIX: referral lookup
+      // 🔥 normalize referral input
+      const rawRef = form.referralCode?.trim().toLowerCase();
+
+      // 🔥 referral lookup (SAFE)
       let referredByUID: string | null = null;
-      if (form.referralCode.trim() !== "") {
-        referredByUID = await handleReferralOnInstall({
-          ref: form.referralCode,
-        });
+
+      if (rawRef) {
+        try {
+          referredByUID = await handleReferralOnInstall({
+            ref: rawRef,
+          });
+        } catch (err) {
+          console.warn("Referral lookup failed:", err);
+          referredByUID = null;
+        }
       }
 
       console.log("🎯 referredByUID:", referredByUID);
 
-      // ✅ 2. Create ALL documents together (FIXED)
+      // ✅ 2. Firestore writes
       await Promise.all([
         setDoc(doc(db, "users", uid), {
           id: uid,
-          name: form.fullName,
+          name: form.fullName.trim(),
           username: cleanUsername,
-          email: form.email,
+          email: form.email.trim(),
           package: "free",
-          referredBy: referredByUID,
+
+          // 🔥 IMPORTANT FIX (never undefined)
+          referredBy: referredByUID ?? null,
+
           createdAt: serverTimestamp(),
 
-          // 🔥 FIX: referral code consistent
-          referralCode: `${cleanUsername}-${uid.slice(0, 5)}`.toLowerCase()
+          // stable referral code
+          referralCode: `${cleanUsername}-${uid.slice(0, 5)}`,
         }),
 
         setDoc(doc(db, "wallets", uid), {
@@ -99,7 +111,7 @@ export default function Signup() {
         }),
 
         setDoc(doc(db, "referrals", uid), {
-          referredBy: referredByUID,
+          referredBy: referredByUID ?? null,
           createdAt: serverTimestamp(),
         }),
       ]);
@@ -113,7 +125,7 @@ export default function Signup() {
 
       setTimeout(() => {
         navigate("/app/dashboard");
-      }, 400);
+      }, 500);
 
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -147,6 +159,7 @@ export default function Signup() {
 
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
+
             <div>
               <Label>Full Name</Label>
               <Input
@@ -229,6 +242,7 @@ export default function Signup() {
                 Sign In
               </Link>
             </p>
+
           </form>
         </CardContent>
       </Card>

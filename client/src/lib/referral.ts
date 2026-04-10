@@ -6,9 +6,13 @@ import {
   getDocs,
 } from "firebase/firestore";
 
-// ✅ Get direct referrals (F1 users list)
+/**
+ * ✅ Get direct referrals (F1 users list)
+ */
 export async function getReferralUsers(userId: string) {
   try {
+    if (!userId) return [];
+
     const q = query(
       collection(db, "users"),
       where("referredBy", "==", userId)
@@ -26,7 +30,9 @@ export async function getReferralUsers(userId: string) {
   }
 }
 
-// ✅ Get referral summary
+/**
+ * ✅ Referral summary (F1/F2 placeholder)
+ */
 export async function getReferralData(userId: string) {
   try {
     const users = await getReferralUsers(userId);
@@ -44,16 +50,22 @@ export async function getReferralData(userId: string) {
   }
 }
 
-// 🔥 FIXED: Handle referral lookup (100% working)
+/**
+ * 🔥 FIXED: Referral code lookup (MOST IMPORTANT)
+ * - trim + lowercase safe
+ * - handles undefined/null safely
+ */
 export async function handleReferralOnInstall({
   ref,
 }: {
   ref: string;
 }) {
   try {
-    const cleanRef = ref.trim().toLowerCase(); // ✅ SINGLE SOURCE OF TRUTH
+    if (!ref) return null;
 
-    console.log("🔍 Searching referral:", cleanRef);
+    const cleanRef = ref.trim().toLowerCase();
+
+    console.log("🔍 Searching referral code:", cleanRef);
 
     const q = query(
       collection(db, "users"),
@@ -62,46 +74,62 @@ export async function handleReferralOnInstall({
 
     const snap = await getDocs(q);
 
-    console.log("📦 Found users:", snap.size);
-
-    if (!snap.empty) {
-      const refUser = snap.docs[0];
-      console.log("✅ Referrer found:", refUser.id);
-      return refUser.id;
+    if (snap.empty) {
+      console.log("❌ No referrer found for:", cleanRef);
+      return null;
     }
 
-    console.log("❌ No referrer found");
-    return null;
+    const refUser = snap.docs[0].data();
+    const refUserId = snap.docs[0].id;
+
+    console.log("✅ Referrer found:", refUserId);
+
+    return refUserId;
   } catch (error) {
     console.error("❌ Referral lookup error:", error);
     return null;
   }
 }
 
-// 🔥 OPTIONAL: Bonus function
+/**
+ * 🔥 OPTIONAL: Bonus system placeholder
+ */
 export async function applyReferralBonus(
   newUserId: string,
   referrerId: string
 ) {
   try {
+    if (!newUserId || !referrerId) return;
+
     console.log("🎁 Referral bonus placeholder", {
       newUserId,
       referrerId,
     });
+
+    // Future logic:
+    // - update wallet
+    // - add commission
+    // - write transaction log
   } catch (error) {
     console.error("❌ Referral bonus error:", error);
   }
 }
 
-// ✅ Generate share link
+/**
+ * ✅ Generate referral link
+ */
 export function generateReferralLink(referralCode: string) {
   const baseLink =
     "https://play.google.com/store/apps/details?id=com.pall.network";
 
-  return `${baseLink}&ref=${referralCode.toLowerCase()}`;
+  const code = referralCode?.toLowerCase() || "";
+
+  return `${baseLink}&ref=${code}`;
 }
 
-// ✅ Generate share message
+/**
+ * ✅ Generate WhatsApp / Telegram message
+ */
 export function generateReferralMessage(referralCode: string) {
   const link = generateReferralLink(referralCode);
 
