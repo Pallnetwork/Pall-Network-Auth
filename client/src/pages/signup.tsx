@@ -1,12 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import {
-  doc,
-  setDoc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,43 +44,47 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // 1️⃣ Create auth user
+      // ✅ 1. Create auth user
       const userCred = await createUserWithEmailAndPassword(
         auth,
         form.email,
         form.password
       );
+
       const uid = userCred.user.uid;
       console.log("✅ Auth user created:", uid);
 
-      // ✅ ADDED: Referral lookup FIX
+      // 🔥 FIX: clean username
+      const cleanUsername = form.username.trim().toLowerCase();
+
+      // 🔥 FIX: referral lookup
       let referredByUID: string | null = null;
       if (form.referralCode.trim() !== "") {
         referredByUID = await handleReferralOnInstall({
-          ref: form.referralCode.trim(),
+          ref: form.referralCode.trim().toLowerCase(),
         });
       }
 
-      // 3️⃣ Prepare documents
-      const userDoc = doc(db, "users", uid);
-      const walletDoc = doc(db, "wallets", uid);
-      const dailyDoc = doc(db, "dailyRewards", uid);
-      const referralDoc = doc(db, "referrals", uid);
+      console.log("🎯 referredByUID:", referredByUID);
 
-      // 4️⃣ Create all docs
+      // ✅ 2. Create ALL documents together (FIXED)
       await Promise.all([
-        setDoc(userDoc, {
+        setDoc(doc(db, "users", uid), {
           id: uid,
           name: form.fullName,
-          username: form.username,
+          username: cleanUsername,
           email: form.email,
           package: "free",
-          referredBy: referredByUID, // ✅ IMPORTANT LINK
+          referredBy: referredByUID,
           createdAt: serverTimestamp(),
-          referralCode: `${form.username}-${uid.slice(0, 5)}`,
+
+          // 🔥 FIX: referral code consistent
+          referralCode: `${cleanUsername}-${uid
+            .slice(0, 5)
+            .toLowerCase()}`,
         }),
 
-        setDoc(walletDoc, {
+        setDoc(doc(db, "wallets", uid), {
           userId: uid,
           pallBalance: 0,
           miningActive: false,
@@ -94,22 +94,19 @@ export default function Signup() {
           createdAt: serverTimestamp(),
         }),
 
-        setDoc(dailyDoc, {
+        setDoc(doc(db, "dailyRewards", uid), {
           claimedCount: 0,
           lastResetDate: serverTimestamp(),
           createdAt: serverTimestamp(),
         }),
 
-        setDoc(referralDoc, {
+        setDoc(doc(db, "referrals", uid), {
           referredBy: referredByUID,
           createdAt: serverTimestamp(),
         }),
       ]);
 
       console.log("✅ All Firestore docs created");
-
-      // ❌ REMOVED (was causing error)
-      // await applyReferralBonus(uid, referredByUID);
 
       toast({
         title: "Success",
@@ -122,6 +119,7 @@ export default function Signup() {
 
     } catch (error: any) {
       console.error("Signup error:", error);
+
       toast({
         title: "Error",
         description: error.message || "Failed to create account",

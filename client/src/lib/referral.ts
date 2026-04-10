@@ -1,5 +1,12 @@
 import { db } from "./firebase";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 
 // ✅ Get direct referrals (F1 users list)
 export async function getReferralUsers(userId: string) {
@@ -11,7 +18,7 @@ export async function getReferralUsers(userId: string) {
 
     const snap = await getDocs(q);
 
-    return snap.docs.map(doc => ({
+    return snap.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
@@ -39,38 +46,61 @@ export async function getReferralData(userId: string) {
   }
 }
 
-// ✅ ADDED: Find user by referral code
-export async function handleReferralOnInstall({ ref }: { ref: string }) {
+// 🔥 NEW: Handle referral install (FIXED)
+export async function handleReferralOnInstall({
+  ref,
+}: {
+  ref: string;
+}) {
   try {
+    const cleanRef = ref.trim().toLowerCase(); // ✅ FIX
+
+    console.log("🔍 Searching referral:", cleanRef);
+
     const q = query(
       collection(db, "users"),
-      where("referralCode", "==", ref)
+      where("referralCode", "==", cleanRef)
     );
 
     const snap = await getDocs(q);
 
-    if (snap.empty) {
-      console.warn("❌ Invalid referral code");
-      return null;
+    console.log("📦 Found users:", snap.size);
+
+    if (!snap.empty) {
+      const refUser = snap.docs[0];
+      return refUser.id; // ✅ return UID
     }
 
-    const refUser = snap.docs[0];
-    console.log("✅ Referral matched:", refUser.id);
-
-    return refUser.id; // 👈 UID return hoga
+    return null;
   } catch (error) {
     console.error("❌ Referral lookup error:", error);
     return null;
   }
 }
 
-// 🔧 FIXED: referral link now includes code
-export function generateReferralLink(referralCode: string) {
-  const baseLink = "https://play.google.com/store/apps/details?id=com.pall.network";
-  return `${baseLink}&ref=${referralCode}`; // ✅ ADDED ref param
+// 🔥 OPTIONAL: Bonus function (safe)
+export async function applyReferralBonus(
+  newUserId: string,
+  referrerId: string
+) {
+  try {
+    console.log("🎁 Referral bonus placeholder", {
+      newUserId,
+      referrerId,
+    });
+  } catch (error) {
+    console.error("❌ Referral bonus error:", error);
+  }
 }
 
-// ✅ Generate full share message
+// ✅ Generate share link
+export function generateReferralLink(referralCode: string) {
+  const baseLink =
+    "https://play.google.com/store/apps/details?id=com.pall.network";
+  return `${baseLink}&ref=${referralCode}`;
+}
+
+// ✅ Generate share message
 export function generateReferralMessage(referralCode: string) {
   const link = generateReferralLink(referralCode);
 
