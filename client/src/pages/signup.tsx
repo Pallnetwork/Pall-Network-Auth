@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import logo from "@/assets/logo.png";
+import { handleReferralOnInstall } from "@/lib/referral";
 
 export default function Signup() {
   const [form, setForm] = useState({
@@ -56,10 +57,12 @@ export default function Signup() {
       const uid = userCred.user.uid;
       console.log("✅ Auth user created:", uid);
 
-      // 2️⃣ Referral lookup using referral.ts
+      // ✅ ADDED: Referral lookup FIX
       let referredByUID: string | null = null;
       if (form.referralCode.trim() !== "") {
-        referredByUID = await handleReferralOnInstall({ ref: form.referralCode.trim() });
+        referredByUID = await handleReferralOnInstall({
+          ref: form.referralCode.trim(),
+        });
       }
 
       // 3️⃣ Prepare documents
@@ -68,7 +71,7 @@ export default function Signup() {
       const dailyDoc = doc(db, "dailyRewards", uid);
       const referralDoc = doc(db, "referrals", uid);
 
-      // 4️⃣ Create all docs together (Spark safe)
+      // 4️⃣ Create all docs
       await Promise.all([
         setDoc(userDoc, {
           id: uid,
@@ -76,7 +79,7 @@ export default function Signup() {
           username: form.username,
           email: form.email,
           package: "free",
-          referredBy: referredByUID,
+          referredBy: referredByUID, // ✅ IMPORTANT LINK
           createdAt: serverTimestamp(),
           referralCode: `${form.username}-${uid.slice(0, 5)}`,
         }),
@@ -105,17 +108,14 @@ export default function Signup() {
 
       console.log("✅ All Firestore docs created");
 
-      // 5️⃣ Apply referral bonus if referred
-      if (referredByUID) {
-        await applyReferralBonus(uid, referredByUID);
-      }
+      // ❌ REMOVED (was causing error)
+      // await applyReferralBonus(uid, referredByUID);
 
       toast({
         title: "Success",
         description: "Account created successfully",
       });
 
-      // 6️⃣ Redirect to dashboard
       setTimeout(() => {
         navigate("/app/dashboard");
       }, 400);

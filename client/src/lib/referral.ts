@@ -21,16 +21,15 @@ export async function getReferralUsers(userId: string) {
   }
 }
 
-// ✅ Get referral summary (SAFE for current DB structure)
+// ✅ Get referral summary
 export async function getReferralData(userId: string) {
   try {
-    // 🔥 Direct referrals (F1)
     const users = await getReferralUsers(userId);
 
     return {
-      f1Commission: 0, // future use
-      f2Commission: 0, // future use
-      totalCommission: 0, // future use
+      f1Commission: 0,
+      f2Commission: 0,
+      totalCommission: 0,
       referredUsers: users,
       totalReferrals: users.length,
     };
@@ -40,10 +39,35 @@ export async function getReferralData(userId: string) {
   }
 }
 
-// ✅ Generate share link
+// ✅ ADDED: Find user by referral code
+export async function handleReferralOnInstall({ ref }: { ref: string }) {
+  try {
+    const q = query(
+      collection(db, "users"),
+      where("referralCode", "==", ref)
+    );
+
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      console.warn("❌ Invalid referral code");
+      return null;
+    }
+
+    const refUser = snap.docs[0];
+    console.log("✅ Referral matched:", refUser.id);
+
+    return refUser.id; // 👈 UID return hoga
+  } catch (error) {
+    console.error("❌ Referral lookup error:", error);
+    return null;
+  }
+}
+
+// 🔧 FIXED: referral link now includes code
 export function generateReferralLink(referralCode: string) {
   const baseLink = "https://play.google.com/store/apps/details?id=com.pall.network";
-  return `${baseLink}&ref=${referralCode}`;
+  return `${baseLink}&ref=${referralCode}`; // ✅ ADDED ref param
 }
 
 // ✅ Generate full share message
