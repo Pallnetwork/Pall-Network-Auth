@@ -16,7 +16,12 @@ import Splash from "@/pages/Splash";
 import { saveUserProfile } from "@/lib/profile";
 import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
-import { generateReferralLink, generateReferralMessage } from "@/lib/referral";
+import {
+  generateReferralLink,
+  generateReferralMessage,
+  getReferralUsers,
+  getReferralData
+} from "@/lib/referral";
 
 interface User {
   id: string;
@@ -120,13 +125,9 @@ export default function Dashboard() {
   }, [profile]);
 
   const [referrals, setReferrals] = useState<User[]>([]);
+  const safeReferrals = referrals || [];
   const [f2Total, setF2Total] = useState(0);
-  const [referralData, setReferralData] = useState<{
-    f1Commission: number;
-    f2Commission: number;
-    totalCommission: number;
-    referredUsers: string[];
-  } | null>(null);
+  const [referralData, setReferralData] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [pallBalance, setPallBalance] = useState(0);
   const [usdtBalance, setUsdtBalance] = useState(0);
@@ -248,18 +249,34 @@ export default function Dashboard() {
             setProfile(profileDoc.data() as Profile);
           }
 
-          // ✅ NEW CLEAN REFERRAL FETCH
+          // ✅ PHASE 1 CLEAN REFERRAL SYSTEM
           try {
-            const refData = await getReferralData(userId);
-            const refUsers = await getReferralUsers(userId);
+            const [refData, refUsers] = await Promise.all([
+              getReferralData(userId),
+              getReferralUsers(userId),
+            ]);
 
-            if (refData) {
-              setReferralData(refData);
-            }
+            setReferralData(refData || {
+              f1Commission: 0,
+              f2Commission: 0,
+              totalCommission: 0,
+              referredUsers: [],
+              totalReferrals: 0,
+            });
 
-            setReferrals(refUsers);
+            setReferrals(refUsers || []);
           } catch (error) {
-            console.error("Referral fetch error:", error);
+            console.error("❌ Referral system error:", error);
+
+            setReferralData({
+              f1Commission: 0,
+              f2Commission: 0,
+              totalCommission: 0,
+              referredUsers: [],
+              totalReferrals: 0,
+            });
+
+            setReferrals([]);
           }
 
           // Fetch transaction history
@@ -373,7 +390,7 @@ export default function Dashboard() {
 
   const shareViaWhatsApp = () => {
     if (user?.referralCode) {
-      const message = generateReferralMessage(user.referralCode);
+      const message = generateReferralMessage(user?.referralCode);
       const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
       window.open(url, "_blank");
     }
@@ -381,7 +398,7 @@ export default function Dashboard() {
 
   const shareViaTelegram = () => {
     if (user?.referralCode) {
-      const message = generateReferralMessage(user.referralCode);
+      const message = generateReferralMessage(user?.referralCode);
       const url = `https://t.me/share/url?text=${encodeURIComponent(message)}`;
       window.open(url, "_blank");
     }
@@ -469,8 +486,8 @@ export default function Dashboard() {
   };
 
   // Commission Totals
-  const totalF1 = referralData?.f1Commission || 0;
-  const totalF2 = referralData?.f2Commission || 0;
+  const totalF1 = referralData?.f1Commission ?? 0;
+  const totalF2 = 0; // PHASE 1: F2 disabled
 
   if (isLoading) {
     return <Splash />;
@@ -670,7 +687,7 @@ export default function Dashboard() {
               <div>
                 <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
                   <CardContent className="p-6 text-center">
-                    <h3 className="text-2xl font-bold text-green-600 mb-2">{referrals.length}</h3>
+                    <h3 className="text-2xl font-bold text-green-600 mb-2">{safeReferrals.length}</h3>
                     <p className="text-sm font-medium text-muted-foreground">Total Referrals</p>
                   </CardContent>
                 </Card>
@@ -699,9 +716,9 @@ export default function Dashboard() {
 
                   {/* Referral Code */}
                   <div className="bg-muted p-4 rounded-xl flex justify-between items-center">
-                    <code className="font-mono text-lg">{user.referralCode}</code>
+                    <code className="font-mono text-lg">{user?.referralCode}</code>
                     <Button size="sm" onClick={() => {
-                      navigator.clipboard.writeText(user.referralCode || "");
+                      navigator.clipboard.writeText(user?.referralCode || "");
                       toast({ title: "Copied!" });
                     }}>
                       Copy
@@ -711,12 +728,12 @@ export default function Dashboard() {
                   {/* Referral Link */}
                   <div className="bg-muted p-4 rounded-xl text-center">
                     <p className="text-xs break-all mb-3">
-                      {generateReferralLink(user.referralCode)}
+                      {generateReferralLink(user?.referralCode)}
                     </p>
 
                     <div className="grid grid-cols-2 gap-2">
                       <Button onClick={() => {
-                        navigator.clipboard.writeText(generateReferralLink(user.referralCode));
+                        navigator.clipboard.writeText(generateReferralLink(user?.referralCode));
                       }}>
                         Copy Link
                       </Button>
@@ -901,11 +918,11 @@ export default function Dashboard() {
                   <h3 className="text-lg font-semibold mb-4 text-green-600">
                     Direct Referrals (F1) – 5% Commission
                   </h3>
-                  {referrals.length === 0 ? (
+                  {safeReferrals.length === 0 ? (
                     <p className="text-muted-foreground mb-4">No direct referrals yet.</p>
                   ) : (
                     <div className="space-y-2 mb-4">
-                      {referrals.map((referral, index) => (
+                      {safeReferrals.map((referral, index) => (
                         <div
                           key={index}
                           className="flex justify-between items-center sm:p-3 md:p-4 lg:p-5 rounded-xl bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 shadow-sm"
@@ -928,12 +945,12 @@ export default function Dashboard() {
                         <h3 className="text-lg font-semibold mb-4 text-blue-600">
                           Indirect Referrals (F2) – 2.5% Commission
                         </h3>
-                        {referrals.length === 0 ? (
+                        {safeReferrals.length === 0 ? (
                           <p className="text-muted-foreground mb-4">No indirect referrals yet.</p>
                         ) : (
                           <div className="space-y-2 mb-4">
                             {referrals
-                              .filter(r => r.referredBy && r.referredBy !== user?.id) // Only F2
+                              .filter(r => false)
                               .map((referral, index) => (
                                 <div
                                   key={index}
@@ -981,14 +998,14 @@ export default function Dashboard() {
                   </p>
                 </div>
 
-                {referrals.length === 0 && (
+                {safeReferrals.length === 0 && (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">
                       No referrals yet. Share your referral code to start earning!
                     </p>
                     {user?.referralCode && (
                       <div className="bg-muted p-4 rounded-lg inline-block">
-                        <code className="font-mono">{user.referralCode}</code>
+                        <code className="font-mono">{user?.referralCode}</code>
                       </div>
                     )}
                   </div>
@@ -1010,7 +1027,7 @@ export default function Dashboard() {
               {/* Balance Display */}
               <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
                 <p className="text-lg mb-2">💰 <strong>PALL Balance:</strong> {pallBalance.toFixed(4)} PALL</p>
-                <p className="text-lg mb-2">💵 <strong>USDT Balance:</strong> {(totalF1 + totalF2).toFixed(2)} USDT</p>
+                <p className="text-lg mb-2">💵 <strong>USDT Balance:</strong> {totalF1.toFixed(2)} USDT</p>
                 <p className="text-xs text-gray-600 dark:text-gray-400">Referral Earnings: F1 ({totalF1.toFixed(2)}) + F2 ({totalF2.toFixed(2)})</p>
               </div>
 

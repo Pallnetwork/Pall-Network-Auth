@@ -1,11 +1,18 @@
-import { doc, getDoc, setDoc, getDocs, collection, query, where } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  increment,
+  serverTimestamp,
+  collection
+} from "firebase/firestore";
 import { db } from "./firebase";
 
-// Commission rates - default
+// Commission rates
 let F1_RATE = 0.05;
 let F2_RATE = 0.025;
 
-// Load commission rates from Firebase settings
 const loadCommissionRates = async () => {
   try {
     const settingsDoc = await getDoc(doc(db, "settings", "config"));
@@ -21,88 +28,123 @@ const loadCommissionRates = async () => {
   }
 };
 
-// Run this after user buys a package
-export const distributeReferralCommission = async (buyerId: string, packagePrice: number) => {
+// ===============================
+// 🚀 MAIN FUNCTION
+// ===============================
+export const distributeReferralCommission = async (
+  buyerId: string,
+  packagePrice: number
+) => {
   try {
     await loadCommissionRates();
 
-    // 🔹 1️⃣ Get buyer doc
     const buyerRef = doc(db, "users", buyerId);
     const buyerSnap = await getDoc(buyerRef);
-    if (!buyerSnap.exists()) return console.log("❌ Buyer not found");
+
+    if (!buyerSnap.exists()) return;
 
     const buyerData = buyerSnap.data();
-    const f1Id = buyerData.referredBy; // Direct referrer UID
+    const f1Id = buyerData.referredBy;
 
-    if (!f1Id) return console.log("ℹ No referrer for this buyer");
+    if (!f1Id) return;
 
-    // 🔹 2️⃣ F1 - direct referrer
-    const f1Ref = doc(db, "users", f1Id);
-    const f1Snap = await getDoc(f1Ref);
-    if (!f1Snap.exists()) return console.log("❌ F1 user not found");
-
-    const f1Data = f1Snap.data();
-    const f1WalletRef = doc(db, "wallets", f1Id);
     const f1Commission = packagePrice * F1_RATE;
 
-    // Update F1 wallet
-    const f1WalletSnap = await getDoc(f1WalletRef);
-    const currentF1Balance = f1WalletSnap.exists() ? (f1WalletSnap.data().usdtBalance || 0) : 0;
-    await setDoc(f1WalletRef, { usdtBalance: currentF1Balance + f1Commission }, { merge: true });
+    // ===============================
+    // 🔥 F1 COMMISSION
+    // ===============================
+    const f1WalletRef = doc(db, "wallets", f1Id);
 
-    // Update F1 referral doc
+    await updateDoc(f1WalletRef, {
+      usdtBalance: increment(f1Commission),
+    }).catch(() => {
+      setDoc(f1WalletRef, { usdtBalance: f1Commission }, { merge: true });
+    });
+
     const f1ReferralRef = doc(db, "referrals", f1Id);
-    const f1ReferralSnap = await getDoc(f1ReferralRef);
-    const currentF1Commission = f1ReferralSnap.exists() ? (f1ReferralSnap.data().f1Commission || 0) : 0;
-    const currentTotal = f1ReferralSnap.exists() ? (f1ReferralSnap.data().totalCommission || 0) : 0;
 
-    await setDoc(f1ReferralRef, {
-      f1Commission: currentF1Commission + f1Commission,
-      totalCommission: currentTotal + f1Commission,
-      referredUsers: f1ReferralSnap.exists()
-        ? Array.from(new Set([...f1ReferralSnap.data().referredUsers, buyerId]))
-        : [buyerId],
-    }, { merge: true });
+    await setDoc(
+      f1ReferralRef,
+      {
+        f1Commission: increment(f1Commission),
+        totalCommission: increment(f1Commission),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
-    console.log(`✅ F1 Commission ${f1Commission} USDT added to ${f1Id}`);
+    // ===============================
+    // 🔥 SAFE COMMISSION LOG (SPARK OPTIMIZED)
+    // user-based subcollection
+    // ===============================
+    const logRef = doc(
+      collection(db, "commissionLogs", f1Id, "logs")
+    );
 
-    // 🔹 3️⃣ F2 - referrer of F1
-    const f2Id = f1Data.referredBy;
+    await setDoc(logRef, {
+      buyerId,
+      f1Id,
+      packagePrice,
+      f1Commission,
+      f2Commission: 0,
+      createdAt: serverTimestamp(),
+    });
+
+    // ===============================
+    // 🔥 F2 COMMISSION (SAFE)
+    // ===============================
+    const f1Snap = await getDoc(f1RefSafe(f1Id));
+    const f2Id = f1Snap.exists() ? f1Snap.data()?.referredBy : null;
+
     if (f2Id) {
-      const f2Ref = doc(db, "users", f2Id);
-      const f2Snap = await getDoc(f2Ref);
-      if (!f2Snap.exists()) return console.log("ℹ F2 user not found");
-
-      const f2WalletRef = doc(db, "wallets", f2Id);
       const f2Commission = packagePrice * F2_RATE;
 
-      // Update F2 wallet
-      const f2WalletSnap = await getDoc(f2WalletRef);
-      const currentF2Balance = f2WalletSnap.exists() ? (f2WalletSnap.data().usdtBalance || 0) : 0;
-      await setDoc(f2WalletRef, { usdtBalance: currentF2Balance + f2Commission }, { merge: true });
+      const f2WalletRef = doc(db, "wallets", f2Id);
 
-      // Update F2 referral doc
+      await updateDoc(f2WalletRef, {
+        usdtBalance: increment(f2Commission),
+      }).catch(() => {
+        setDoc(f2WalletRef, { usdtBalance: f2Commission }, { merge: true });
+      });
+
       const f2ReferralRef = doc(db, "referrals", f2Id);
-      const f2ReferralSnap = await getDoc(f2ReferralRef);
-      const currentF2Commission = f2ReferralSnap.exists() ? (f2ReferralSnap.data().f2Commission || 0) : 0;
-      const currentF2Total = f2ReferralSnap.exists() ? (f2ReferralSnap.data().totalCommission || 0) : 0;
 
-      await setDoc(f2ReferralRef, {
-        f2Commission: currentF2Commission + f2Commission,
-        totalCommission: currentF2Total + f2Commission,
-      }, { merge: true });
+      await setDoc(
+        f2ReferralRef,
+        {
+          f2Commission: increment(f2Commission),
+          totalCommission: increment(f2Commission),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
 
-      console.log(`✅ F2 Commission ${f2Commission} USDT added to ${f2Id}`);
+      // ===============================
+      // 🔥 F2 LOG
+      // ===============================
+      const f2LogRef = doc(
+        collection(db, "commissionLogs", f2Id, "logs")
+      );
+
+      await setDoc(f2LogRef, {
+        buyerId,
+        f1Id,
+        f2Id,
+        packagePrice,
+        f1Commission: 0,
+        f2Commission,
+        createdAt: serverTimestamp(),
+      });
     }
 
-    return {
-      success: true,
-      f1Commission,
-      f2Commission: f2Id ? packagePrice * F2_RATE : 0,
-    };
-
+    return { success: true };
   } catch (error: any) {
-    console.error("🔥 Error distributing commission:", error);
-    return { success: false, error: error?.message || "Unknown error" };
+    console.error("Commission error:", error);
+    return { success: false, error: error.message };
   }
 };
+
+// ===============================
+// helper (safe F1 fetch wrapper)
+// ===============================
+const f1RefSafe = (f1Id: string) => doc(db, "users", f1Id);

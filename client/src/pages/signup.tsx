@@ -2,7 +2,12 @@ import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  increment,
+} from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +37,7 @@ export default function Signup() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // ✅ Password check
     if (form.password !== form.confirmPassword) {
       toast({
         title: "Error",
@@ -44,7 +50,9 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // ✅ 1. Create auth user
+      // ================================
+      // 1️⃣ CREATE AUTH USER
+      // ================================
       const userCred = await createUserWithEmailAndPassword(
         auth,
         form.email,
@@ -52,21 +60,19 @@ export default function Signup() {
       );
 
       const uid = userCred.user.uid;
-      console.log("✅ Auth user created:", uid);
 
-      // 🔥 normalize username
       const cleanUsername = form.username.trim().toLowerCase();
+      const cleanReferral = form.referralCode?.trim() || "";
 
-      // 🔥 normalize referral input
-      const rawRef = form.referralCode?.trim().toLowerCase();
-
-      // 🔥 referral lookup (SAFE)
+      // ================================
+      // 2️⃣ FIND REFERRER (SAFE)
+      // ================================
       let referredByUID: string | null = null;
 
-      if (rawRef) {
+      if (cleanReferral) {
         try {
           referredByUID = await handleReferralOnInstall({
-            ref: rawRef,
+            ref: cleanReferral,
           });
         } catch (err) {
           console.warn("Referral lookup failed:", err);
@@ -74,50 +80,67 @@ export default function Signup() {
         }
       }
 
-      console.log("🎯 referredByUID:", referredByUID);
+      console.log("🎯 Referred By UID:", referredByUID);
 
-      // ✅ 2. Firestore writes
-      await Promise.all([
-        setDoc(doc(db, "users", uid), {
-          id: uid,
-          name: form.fullName.trim(),
-          username: cleanUsername,
-          email: form.email.trim(),
-          package: "free",
+      // ================================
+      // 3️⃣ CREATE USER DOCUMENT (SOURCE OF TRUTH)
+      // ================================
+      await setDoc(doc(db, "users", uid), {
+        id: uid,
+        name: form.fullName.trim(),
+        username: cleanUsername,
+        email: form.email.trim(),
 
-          // 🔥 IMPORTANT FIX (never undefined)
-          referredBy: referredByUID ?? null,
+        package: "free",
 
-          createdAt: serverTimestamp(),
+        // 🔥 PHASE 1 FIX
+        referredBy: referredByUID ?? null,
+        referralCount: 0,
 
-          // stable referral code
-          referralCode: `${cleanUsername}-${uid.slice(0, 5)}`,
-        }),
+        createdAt: serverTimestamp(),
 
-        setDoc(doc(db, "wallets", uid), {
-          userId: uid,
-          pallBalance: 0,
-          miningActive: false,
-          lastStart: serverTimestamp(),
-          lastMinedAt: serverTimestamp(),
-          totalEarnings: 0,
-          createdAt: serverTimestamp(),
-        }),
+        // stable referral code
+        referralCode: `${cleanUsername}-${uid.slice(0, 5)}`,
+      });
 
-        setDoc(doc(db, "dailyRewards", uid), {
-          claimedCount: 0,
-          lastResetDate: serverTimestamp(),
-          createdAt: serverTimestamp(),
-        }),
+      // ================================
+      // 4️⃣ WALLET DOC
+      // ================================
+      await setDoc(doc(db, "wallets", uid), {
+        userId: uid,
+        pallBalance: 0,
+        miningActive: false,
+        lastStart: serverTimestamp(),
+        lastMinedAt: serverTimestamp(),
+        totalEarnings: 0,
+        createdAt: serverTimestamp(),
+      });
 
-        setDoc(doc(db, "referrals", uid), {
-          referredBy: referredByUID ?? null,
-          createdAt: serverTimestamp(),
-        }),
-      ]);
+      // ================================
+      // 5️⃣ DAILY REWARDS DOC
+      // ================================
+      await setDoc(doc(db, "dailyRewards", uid), {
+        claimedCount: 0,
+        lastResetDate: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      });
 
-      console.log("✅ All Firestore docs created");
+      // ================================
+      // 6️⃣ UPDATE REFERRER COUNT (IMPORTANT FIX)
+      // ================================
+      if (referredByUID) {
+        await setDoc(
+          doc(db, "users", referredByUID),
+          {
+            referralCount: increment(1),
+          },
+          { merge: true }
+        );
+      }
 
+      // ================================
+      // SUCCESS
+      // ================================
       toast({
         title: "Success",
         description: "Account created successfully",
@@ -126,7 +149,6 @@ export default function Signup() {
       setTimeout(() => {
         navigate("/app/dashboard");
       }, 500);
-
     } catch (error: any) {
       console.error("Signup error:", error);
 
