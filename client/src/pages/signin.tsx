@@ -13,6 +13,7 @@ import { AlertCircle } from "lucide-react";
 import logo from "@/assets/logo.png"; // ✅ REAL LOGO IMPORT
 
 export default function SignIn() {
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -133,13 +134,21 @@ export default function SignIn() {
                 <Label className="text-white/80">Password</Label>
                 <Input
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={form.password}
                   onChange={handleChange}
                   required
-                  className="bg-white/20 border-white/20 text-white placeholder:text-white/60"
+                  className="bg-white/20 border-white/20 text-white placeholder:text-white/60 pr-10"
                 />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-white/70"
+                >
+                  {showPassword ? "🙈" : "👁️"}
+                </button>
               </div>
 
               {error && (
