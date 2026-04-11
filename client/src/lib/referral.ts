@@ -16,12 +16,16 @@ export async function getReferralUsers(userId: string) {
   try {
     if (!userId) return [];
 
+    console.log("🔥 AUTH USER ID:", userId); // ✅ ADD THIS
+
     const q = query(
       collection(db, "users"),
       where("referredBy", "==", userId)
     );
 
     const snap = await getDocs(q);
+
+    console.log("🔥 REFERRAL SNAP:", snap.docs.map(d => d.data())); // ✅ ADD THIS
 
     return snap.docs.map((d) => {
       const data = d.data();
