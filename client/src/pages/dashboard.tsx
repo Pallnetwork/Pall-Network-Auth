@@ -404,48 +404,40 @@ export default function Dashboard() {
     }
   };
 
-
   const handleSaveProfile = async () => {
-   if (!user) return;
+    if (!user) return;
 
-   if (profile) {
-     toast({
-      title: "Profile Locked",
-      description: "Profile already submitted",
-      variant: "destructive",
-     });
-     return;
-    }
+    try {
+      const result = await saveUserProfile(
+        user.id,
+        form,
+        photoFile
+      );
 
-    const success = await saveUserProfile(
-     user.id,
-     {
-      firstName: form.firstName,
-      lastName: form.lastName,
-      dob: form.dob,
-      gender: form.gender,
-      phone: form.phone,
-      address: form.address,
-     },
-     photoFile
-    );
+      if (result?.success) {
+        toast({
+          title: "Success",
+          description: "Profile saved successfully",
+        });
 
-    if (success) {
+        // 🔥 Refresh real Firestore data (NO fake state)
+        const snap = await getDoc(doc(db, "profiles", user.id));
+
+        if (snap.exists()) {
+          setProfile(snap.data() as Profile);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Profile save failed",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
       toast({
-       title: "Success",
-       description: "Profile saved successfully",
-      });
-
-      setProfile({
-        ...form,
-        userId: user.id,
-        createdAt: new Date(),
-      });
-    } else {
-      toast({
-       title: "Error",
-       description: "Profile save failed",
-       variant: "destructive",
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
       });
     }
   };
