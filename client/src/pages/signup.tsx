@@ -17,6 +17,9 @@ import logo from "@/assets/logo.png";
 import { handleReferralOnInstall } from "@/lib/referral";
 
 export default function Signup() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [form, setForm] = useState({
     fullName: "",
     username: "",
@@ -216,28 +219,42 @@ export default function Signup() {
               />
             </div>
 
-            <div>
-              <Label>Password</Label>
+            <div className="relative">
               <Input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 value={form.password}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white"
+                className="bg-white/20 border-white/30 text-white pr-10"
               />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-white/70"
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
             </div>
 
-            <div>
-              <Label>Confirm Password</Label>
+            <div className="relative">
               <Input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 name="confirmPassword"
                 value={form.confirmPassword}
                 onChange={handleChange}
                 required
-                className="bg-white/20 border-white/30 text-white"
+                className="bg-white/20 border-white/30 text-white pr-10"
               />
+
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-2.5 text-white/70"
+              >
+                {showConfirmPassword ? "🙈" : "👁️"}
+              </button>
             </div>
 
             <div>
