@@ -687,7 +687,9 @@ export default function Dashboard() {
               <div>
                 <Card className="rounded-2xl shadow-md border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
                   <CardContent className="p-6 text-center">
-                    <h3 className="text-2xl font-bold text-green-600 mb-2">{safeReferrals.length}</h3>
+                    <h3 className="text-2xl font-bold text-green-600 mb-2">
+                      {referralData?.totalReferrals ?? 0}
+                    </h3>
                     <p className="text-sm font-medium text-muted-foreground">Total Referrals</p>
                   </CardContent>
                 </Card>
