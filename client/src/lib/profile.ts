@@ -1,51 +1,31 @@
-import { db, storage } from "./firebase";
+import { db } from "./firebase";
 import {
   doc,
   setDoc,
   serverTimestamp,
   getDoc,
 } from "firebase/firestore";
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "firebase/storage";
 
 /**
- * 🔥 FULL PROFILE ENGINE (KYC READY)
- * - Upload image to Firebase Storage
- * - Save profile to Firestore
- * - Return final saved data
+ * 🔥 CLEAN PROFILE ENGINE (NO IMAGE)
+ * - Only text data
+ * - No Firebase Storage
+ * - No CORS issues
  */
 export async function saveUserProfile(
   uid: string,
-  data: any,
-  photoFile?: File | null
+  data: any
 ) {
   try {
     if (!uid) {
       console.error("❌ UID missing");
-      return false;
+      return { success: false };
     }
 
-    let photoURL = "";
+    console.log("🔥 Saving profile (TEXT ONLY):", data);
 
     // ===============================
-    // 1️⃣ IMAGE UPLOAD (IF EXISTS)
-    // ===============================
-    if (photoFile) {
-      const imageRef = ref(
-        storage,
-        `profiles/${uid}/profile.jpg`
-      );
-
-      await uploadBytes(imageRef, photoFile);
-
-      photoURL = await getDownloadURL(imageRef);
-    }
-
-    // ===============================
-    // 2️⃣ FINAL PROFILE OBJECT
+    // ✅ FINAL PROFILE OBJECT (NO PHOTO)
     // ===============================
     const profileData = {
       firstName: data.firstName || "",
@@ -54,19 +34,20 @@ export async function saveUserProfile(
       gender: data.gender || "",
       phone: data.phone || "",
       address: data.address || "",
-      photoURL: photoURL || data.photoURL || "",
       userId: uid,
-      kycStatus: "pending", // future KYC ready
+      kycStatus: "pending",
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
     };
 
     // ===============================
-    // 3️⃣ SAVE TO FIRESTORE
+    // ✅ SAVE TO FIRESTORE
     // ===============================
     await setDoc(doc(db, "profiles", uid), profileData, {
       merge: true,
     });
+
+    console.log("✅ Profile saved successfully");
 
     return {
       success: true,

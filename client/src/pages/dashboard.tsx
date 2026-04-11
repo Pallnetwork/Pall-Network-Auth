@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Menu, X, Home, User, Users, CreditCard, Info, Wallet, Shield, Pickaxe, Zap } from "lucide-react";
+import { LogOut, Menu, X, Home, User, Users, Info, Wallet, Shield, Zap } from "lucide-react";
 import MiningDashboard from "@/components/MiningDashboard";
 import UpgradePage from "@/components/UpgradePage";
 import PoliciesPage from "@/components/PoliciesPage";
@@ -114,23 +114,16 @@ export default function Dashboard() {
         dob: profile.dob || "",
         gender: profile.gender || "",
         phone: profile.phone || "",
-        address: profile.address || "",
-        photoURL: profile.photoURL || ""
+        address: profile.address || ""
       });
-
-      if (profile.photoURL) {
-        setPhotoPreview(profile.photoURL);
-      }
     }
   }, [profile]);
 
   const [referrals, setReferrals] = useState<User[]>([]);
   const safeReferrals = referrals || [];
-  const [f2Total, setF2Total] = useState(0);
   const [referralData, setReferralData] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [pallBalance, setPallBalance] = useState(0);
-  const [usdtBalance, setUsdtBalance] = useState(0);
   const [miningStatus, setMiningStatus] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authInitialized, setAuthInitialized] = useState(false);
@@ -142,10 +135,8 @@ export default function Dashboard() {
     gender: "",
     phone: "",
     address: "",
-    photoURL: ""
   });
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState("");
+
   const [path, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -187,7 +178,6 @@ export default function Dashboard() {
     // Authentication state listener
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       authCheckCount++;
-      console.log(`🔥 Firebase Auth state changed (check #${authCheckCount}):`, firebaseUser ? `User logged in: ${firebaseUser.uid}` : 'No user');
 
       // Clear any pending redirect timeout
       if (redirectTimeout) {
@@ -199,18 +189,15 @@ export default function Dashboard() {
 
       // If no firebase user -> wait longer for WebView/Android environment
       if (!firebaseUser) {
-        console.log('⚠️ No Firebase user found, checking again in 3000ms before redirecting...');
 
         // Increased timeout for WebView environment - Android apps need more time
         redirectTimeout = setTimeout(() => {
           const currentUser = auth.currentUser;
           if (!currentUser) {
-            console.log('❌ Confirmed: No Firebase user after extended timeout, redirecting to signin');
             localStorage.removeItem("userId");
             clearAuthTimestamp();
             navigate("/app/signin");
           } else {
-            console.log('✅ False alarm: Firebase user found on double-check:', currentUser.uid);
           }
         }, 3000); // Increased from 500ms to 3000ms for WebView stability
         return;
@@ -218,7 +205,7 @@ export default function Dashboard() {
 
       // If user is present, set userId and timestamp then fetch data
       const userId = firebaseUser.uid;
-      console.log('✅ Firebase user authenticated:', userId);
+
       try {
         localStorage.setItem("userId", userId);
       } catch (e) {
@@ -258,7 +245,6 @@ export default function Dashboard() {
 
             setReferralData(refData || {
               f1Commission: 0,
-              f2Commission: 0,
               totalCommission: 0,
               referredUsers: [],
               totalReferrals: 0,
@@ -270,7 +256,6 @@ export default function Dashboard() {
 
             setReferralData({
               f1Commission: 0,
-              f2Commission: 0,
               totalCommission: 0,
               referredUsers: [],
               totalReferrals: 0,
@@ -325,13 +310,11 @@ export default function Dashboard() {
       try {
         // Only check expiry if auth has been initialized and we have a user
         if (!authInitialized || !auth.currentUser) {
-          console.log("🕐 Skipping expiry check - auth not initialized or no current user");
           return;
         }
 
         // Only act if expiry has a timestamp and it is expired
         if (isAuthExpired()) {
-          console.log("⏰ Auth expired by timestamp, signing out user.");
           // Sign out
           try {
             await signOut(auth);
@@ -374,20 +357,6 @@ export default function Dashboard() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setPhotoPreview(result);
-        setForm({ ...form, photoURL: result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const shareViaWhatsApp = () => {
     if (user?.referralCode) {
       const message = generateReferralMessage(user?.referralCode);
@@ -396,19 +365,7 @@ export default function Dashboard() {
     }
   };
 
-  const shareViaTelegram = () => {
-    if (user?.referralCode) {
-      const message = generateReferralMessage(user?.referralCode);
-      const url = `https://t.me/share/url?text=${encodeURIComponent(message)}`;
-      window.open(url, "_blank");
-    }
-  };
-
   const handleSaveProfile = async () => {
-    console.log("🔥 SAVE PROFILE CLICKED");
-    console.log("USER:", user);
-    console.log("FORM DATA:", form);
-    console.log("PHOTO FILE:", photoFile);
 
     if (!user) return;
 
@@ -416,10 +373,7 @@ export default function Dashboard() {
       const result = await saveUserProfile(
         user.id,
         form,
-        photoFile
       );
-
-      console.log("📦 SAVE RESULT:", result); // 👈 ye bhi add karo
 
       if (result?.success) {
         toast({
@@ -441,7 +395,6 @@ export default function Dashboard() {
         });
       }
     } catch (err) {
-      console.error("❌ SAVE ERROR:", err); // 👈 ye bhi important
       toast({
         title: "Error",
         description: "Something went wrong",
@@ -487,7 +440,6 @@ export default function Dashboard() {
 
   // Commission Totals
   const totalF1 = referralData?.f1Commission ?? 0;
-  const totalF2 = 0; // PHASE 1: F2 disabled
 
   if (isLoading) {
     return <Splash />;
@@ -496,10 +448,10 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top Bar with Safe Area */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-green-600 text-white p-2 pt-4 shadow-lg" style={{paddingTop: 'max(0.5rem, env(safe-area-inset-top, 1rem))'}}>
+      <div className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-green-600 text-white p-2 pt-4 shadow-lg" style={{paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0.5rem))'}}>
         <div className="flex items-center space-x-3">
           <img src="/logo192.png" alt="Pall Network" className="w-8 h-8 rounded-full" />
-          <h1 className="text-x2 font-bold">Pall Network</h1>
+          <h1 className="text-2xl font-bold">Pall Network</h1>
         </div>
 
         <Button
@@ -748,7 +700,6 @@ export default function Dashboard() {
                   {/* Commission Info */}
                   <div className="text-sm text-center text-muted-foreground">
                     <p>F1: <span className="text-green-600 font-bold">5%</span></p>
-                    <p>F2: <span className="text-blue-600 font-bold">2.5%</span></p>
                   </div>
                 </CardContent>
               </Card>
@@ -776,42 +727,6 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-
-                    {/* Photo Upload */}
-                    <div className="mb-6">
-                      <Label htmlFor="photo">Profile Photo</Label>
-                      <div className="mt-2 flex flex-col items-center">
-                        {photoPreview ? (
-                          <img
-                            src={photoPreview}
-                            alt="Preview"
-                            className="w-24 h-24 rounded-full object-cover mb-3"
-                          />
-                        ) : (
-                          <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-3">
-                            <User className="w-12 h-12 text-gray-400" />
-                          </div>
-                        )}
-
-                        <input
-                          type="file"
-                          id="photo"
-                          name="photo"
-                          accept="image/*"
-                          onChange={handlePhotoChange}
-                          className="hidden"
-                        />
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById('photo')?.click()}
-                          className="text-sm"
-                        >
-                          Choose Photo
-                        </Button>
-                      </div>
-                    </div>
 
                     {/* Form */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -894,8 +809,7 @@ export default function Dashboard() {
                         !form.firstName ||
                         !form.lastName ||
                         !form.phone ||
-                        !form.address ||
-                        !photoPreview // 👈 image required
+                        !form.address
                       }
                       className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50"
                     >
@@ -941,39 +855,6 @@ export default function Dashboard() {
                           </div>
                         </div>
                       ))}
-
-                      {/* F2 Indirect Referrals */}
-                      <div className="mt-6">
-                        <h3 className="text-lg font-semibold mb-4 text-blue-600">
-                          Indirect Referrals (F2) – 2.5% Commission
-                        </h3>
-                        {safeReferrals.length === 0 ? (
-                          <p className="text-muted-foreground mb-4">No indirect referrals yet.</p>
-                        ) : (
-                          <div className="space-y-2 mb-4">
-                            {referrals
-                              .filter(r => false)
-                              .map((referral, index) => (
-                                <div
-                                  key={index}
-                                  className="flex justify-between items-center p-4 rounded-xl bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-sm"
-                                  data-testid={`f2-referral-${index}`}
-                                >
-                                  <div>
-                                    <p className="font-medium">@{referral.username}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                      Joined {formatDate(referral.createdAt)}
-                                    </p>
-                                  </div>
-                                  <div className="text-blue-600 font-bold">
-                                    2.5% ({(0.025 * (referral.packagePrice || 100)).toFixed(2)} USDT)
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
                     </div>
                   )}
                 </div>
@@ -988,16 +869,7 @@ export default function Dashboard() {
                         {totalF1.toFixed(2)} USDT
                       </span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">F2 Total:</span>
-                      <span className="ml-2 font-bold text-blue-600" data-testid="f2-total">
-                        {totalF2.toFixed(2)} USDT
-                      </span>
-                    </div>
                   </div>
-                  <p className="mt-4 font-bold">
-                    Total Referral Commission: {(totalF1 + totalF2).toFixed(2)} USDT
-                  </p>
                 </div>
 
                 {safeReferrals.length === 0 && (
@@ -1030,7 +902,6 @@ export default function Dashboard() {
               <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
                 <p className="text-lg mb-2">💰 <strong>PALL Balance:</strong> {pallBalance.toFixed(4)} PALL</p>
                 <p className="text-lg mb-2">💵 <strong>USDT Balance:</strong> {totalF1.toFixed(2)} USDT</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Referral Earnings: F1 ({totalF1.toFixed(2)}) + F2 ({totalF2.toFixed(2)})</p>
               </div>
 
               {/* Wallet Connection Status */}
