@@ -23,10 +23,16 @@ export async function getReferralUsers(userId: string) {
 
     const snap = await getDocs(q);
 
-    return snap.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-    }));
+    return snap.docs.map((d) => {
+      const data = d.data();
+
+      return {
+        id: d.id,
+        username: data.username || "unknown",
+        createdAt: data.createdAt || null,
+        packagePrice: data.packagePrice || 100,
+      };
+    });
   } catch (error) {
     console.error("❌ getReferralUsers error:", error);
     return [];
