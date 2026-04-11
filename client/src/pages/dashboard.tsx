@@ -405,6 +405,11 @@ export default function Dashboard() {
   };
 
   const handleSaveProfile = async () => {
+    console.log("🔥 SAVE PROFILE CLICKED");
+    console.log("USER:", user);
+    console.log("FORM DATA:", form);
+    console.log("PHOTO FILE:", photoFile);
+
     if (!user) return;
 
     try {
@@ -413,6 +418,8 @@ export default function Dashboard() {
         form,
         photoFile
       );
+
+      console.log("📦 SAVE RESULT:", result); // 👈 ye bhi add karo
 
       if (result?.success) {
         toast({
@@ -434,6 +441,7 @@ export default function Dashboard() {
         });
       }
     } catch (err) {
+      console.error("❌ SAVE ERROR:", err); // 👈 ye bhi important
       toast({
         title: "Error",
         description: "Something went wrong",
