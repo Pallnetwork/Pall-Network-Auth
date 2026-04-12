@@ -675,6 +675,7 @@ export default function Dashboard() {
                     </div>
                   )
                 )}
+              </div>
 
               {/* Quick Stats */}
               <div>
