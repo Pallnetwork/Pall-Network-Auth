@@ -169,9 +169,17 @@ export default function UpgradePage({ userId }: { userId: string }) {
       {/* ===================== */}
       {showAgreement && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-5 rounded-xl max-w-md w-full shadow-lg space-y-4">
+          <div className="bg-white p-3 rounded-lg w-[280px] sm:w-[320px] shadow-xl space-y-3 relative">
 
-            <h2 className="text-lg font-bold">User Agreement</h2>
+            {/* ❌ CLOSE BUTTON */}
+            <button
+              onClick={() => setShowAgreement(false)}
+              className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-lg font-bold"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-sm font-bold">User Agreement</h2>
 
             <div className="flex items-start space-x-2">
               <input
