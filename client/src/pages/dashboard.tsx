@@ -16,6 +16,8 @@ import Splash from "@/pages/Splash";
 import { saveUserProfile } from "@/lib/profile";
 import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { onSnapshot, doc } from "firebase/firestore";
 import {
   generateReferralLink,
   generateReferralMessage,
@@ -133,6 +135,7 @@ export default function Dashboard() {
   const safeReferrals = referrals || [];
   const [referralData, setReferralData] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [latestPlan, setLatestPlan] = useState<any>(null);
   const [pallBalance, setPallBalance] = useState(0);
   const [miningStatus, setMiningStatus] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -274,16 +277,40 @@ export default function Dashboard() {
             setReferrals([]);
           }
 
-          // Fetch transaction history
+          // Fetch transaction history (FIXED FOR ADMIN PANEL COMPATIBILITY)
           try {
-            const txSnap = await getDoc(doc(db, "transactions", userId));
+            const q = query(
+              collection(db, "transactions"),
+              where("userId", "==", userId)
+            );
 
-            if (txSnap.exists()) {
-              const txData = txSnap.data();
-              setTransactions(txData?.items || []);
-            } else {
-              setTransactions([]);
-            }
+            const snap = await getDocs(q);
+
+            const txList: any[] = [];
+
+            snap.forEach((d) => {
+              const data = d.data();
+
+              txList.push({
+                id: d.id,
+                plan: data.plan,
+                status: data.status,
+                txid: data.txid,
+                createdAt: data.createdAt,
+              });
+            });
+
+            setTransactions(txList);
+
+            // latest plan (NEWEST FIRST)
+            const latest = txList
+              .filter((t: any) => t.plan)
+              .sort(
+                (a: any, b: any) =>
+                  (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+              )[0];
+
+            setLatestPlan(latest || null);
           } catch (error) {
             console.error("Transactions fetch error:", error);
           }
@@ -639,6 +666,36 @@ export default function Dashboard() {
               </div>
 
               {/* ================== 👆 TRADING CARDS SLIDER END 👆 ================== */}
+
+              {/* 🧾 PLAN STATUS INDICATOR (PHASE 4 - STEP 4) */}
+              {latestPlan && (
+                <div className="p-4 rounded-lg border mb-4 bg-blue-50 dark:bg-blue-900/20">
+                  <p className="font-semibold">📦 Plan Request Status</p>
+
+                  <p className="text-sm mt-1">
+                    Plan: <strong>{latestPlan.plan}</strong>
+                  </p>
+
+                  <p className="text-sm">
+                    Status:
+                    <span
+                      className={
+                        latestPlan.status === "pending"
+                        ? "text-yellow-600 font-bold ml-2"
+                        : latestPlan.status === "approved"
+                        ? "text-green-600 font-bold ml-2"
+                        : "text-red-600 font-bold ml-2"
+                      }
+                    >
+                      {latestPlan.status}
+                    </span>
+                  </p>
+
+                  <p className="text-xs text-muted-foreground mt-1">
+                    TxID: {latestPlan.txid}
+                  </p>
+                </div>
+              )}
 
               {/* 🔐 Subscription Status */}
               {profile?.subscription?.status === "pending" && (

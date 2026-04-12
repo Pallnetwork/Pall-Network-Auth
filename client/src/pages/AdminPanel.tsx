@@ -4,96 +4,129 @@ import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-interface User {
-  id: string;
-  email: string;
-  username: string;
-  package?: string;
-}
-
-interface Profile {
-  userId: string;
-  subscription?: {
-    status: "active" | "pending" | "inactive";
-  };
-}
-
 export default function AdminPanel() {
-  const [users, setUsers] = useState<any[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchPendingUsers();
+    fetchPendingRequests();
   }, []);
 
-  const fetchPendingUsers = async () => {
-    const usersSnap = await getDocs(collection(db, "users"));
-    const profilesSnap = await getDocs(collection(db, "profiles"));
+  // 🔥 STEP 1: FETCH TRANSACTIONS (ONLY PENDING)
+  const fetchPendingRequests = async () => {
+    try {
+      const snap = await getDocs(collection(db, "transactions"));
 
-    const profilesMap: any = {};
+      const list: any[] = [];
 
-    profilesSnap.forEach((doc) => {
-      profilesMap[doc.id] = doc.data();
-    });
+      snap.forEach((docSnap) => {
+        const data = docSnap.data();
 
-    const pendingUsers: any[] = [];
+        // only valid plan requests
+        if (data.status === "pending" && data.plan) {
+          list.push({
+            id: docSnap.id,
+            ...data,
+          });
+        }
+      });
 
-    usersSnap.forEach((docSnap) => {
-      const user = docSnap.data();
-      const profile = profilesMap[docSnap.id];
-
-      if (profile?.subscription?.status === "pending") {
-        pendingUsers.push({
-          id: docSnap.id,
-          ...user,
-        });
-      }
-    });
-
-    setUsers(pendingUsers);
+      setRequests(list);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
   };
 
-  const approveUser = async (userId: string) => {
-    await updateDoc(doc(db, "profiles", userId), {
-      "subscription.status": "active",
-    });
+  // 🔥 STEP 2: APPROVE REQUEST
+  const approveRequest = async (
+    id: string,
+    userId: string,
+    plan: string
+  ) => {
+    try {
+      // 1. update transaction status
+      await updateDoc(doc(db, "transactions", id), {
+        status: "approved",
+      });
 
-    alert("User Approved ✅");
-    fetchPendingUsers();
+      // 2. update user package
+      await updateDoc(doc(db, "users", userId), {
+        package: plan,
+        packageStatus: "active",
+      });
+
+      alert("User Approved ✅");
+      fetchPendingRequests();
+    } catch (err) {
+      console.error(err);
+      alert("Error approving request");
+    }
   };
 
-  const rejectUser = async (userId: string) => {
-    await updateDoc(doc(db, "profiles", userId), {
-      "subscription.status": "inactive",
-    });
+  // 🔥 STEP 3: REJECT REQUEST
+  const rejectRequest = async (id: string) => {
+    try {
+      await updateDoc(doc(db, "transactions", id), {
+        status: "rejected",
+      });
 
-    alert("User Rejected ❌");
-    fetchPendingUsers();
+      alert("User Rejected ❌");
+      fetchPendingRequests();
+    } catch (err) {
+      console.error(err);
+      alert("Error rejecting request");
+    }
   };
 
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Admin Panel</h1>
 
-      {users.length === 0 ? (
-        <p>No pending users</p>
+      {requests.length === 0 ? (
+        <p className="text-gray-500">No pending requests</p>
       ) : (
-        users.map((user) => (
-          <Card key={user.id} className="mb-4">
+        requests.map((req) => (
+          <Card key={req.id} className="mb-4">
             <CardContent className="p-4 flex justify-between items-center">
+
+              {/* LEFT INFO */}
               <div>
-                <p><strong>@{user.username}</strong></p>
-                <p className="text-sm">{user.email}</p>
-                <p className="text-sm">Plan: {user.package || "N/A"}</p>
+                <p><strong>User ID:</strong> {req.userId}</p>
+                <p className="text-sm">
+                  <strong>Plan:</strong> {req.plan}
+                </p>
+                <p className="text-sm">
+                  <strong>Amount:</strong> ${req.amount}
+                </p>
+                <p className="text-sm">
+                  <strong>TXID:</strong> {req.txid}
+                </p>
+
+                <p className="text-xs mt-1">
+                  Status:
+                  <span className="font-bold ml-1 text-yellow-600">
+                    {req.status}
+                  </span>
+                </p>
               </div>
 
+              {/* ACTION BUTTONS */}
               <div className="space-x-2">
-                <Button onClick={() => approveUser(user.id)}>
+                <Button
+                  onClick={() =>
+                    approveRequest(req.id, req.userId, req.plan)
+                  }
+                >
                   ✅ Approve
                 </Button>
-                <Button variant="destructive" onClick={() => rejectUser(user.id)}>
+
+                <Button
+                  variant="destructive"
+                  onClick={() => rejectRequest(req.id)}
+                >
                   ❌ Reject
                 </Button>
               </div>
+
             </CardContent>
           </Card>
         ))
