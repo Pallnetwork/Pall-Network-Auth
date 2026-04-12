@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { db, auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,7 @@ import { saveUserProfile } from "@/lib/profile";
 import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { onSnapshot, doc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, where, onSnapshot } from "firebase/firestore";
 import {
   generateReferralLink,
   generateReferralMessage,
@@ -653,12 +652,12 @@ export default function Dashboard() {
                 </p>
               </div>
 
-               {/* ==================👇 TRADING CARDS SLIDER START 👇================== */}
+              {/* ==================👇 TRADING CARDS SLIDER START 👇================== */}
 
-               <div className="mb-6">
+              <div className="mb-6">
                 <div
-                className="p-4 rounded-xl shadow-lg text-white text-center font-bold text-lg transition-all duration-500"
-                style={{ backgroundColor: tradingCards[currentCardIndex].bgColor }}
+                  className="p-4 rounded-xl shadow-lg text-white text-center font-bold text-lg transition-all duration-500"
+                  style={{ backgroundColor: tradingCards[currentCardIndex].bgColor }}
                 >
                   <span className="mr-2">{tradingCards[currentCardIndex].emoji}</span>
                   {tradingCards[currentCardIndex].title}
