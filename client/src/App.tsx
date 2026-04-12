@@ -18,6 +18,7 @@ import Dashboard from "@/pages/dashboard";
 import KYCPage from "@/pages/kyc";
 import NotFound from "@/pages/not-found";
 import Admin from "@/pages/admin";
+import AdminPanel from "@/pages/AdminPanel";
 
 
 function Router() {
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/app/signup" component={SignUp} />
       <Route path="/app/forgot-password" component={ForgotPassword} />
       <Route path="/app/admin" component={Admin} />
+      <Route path="/admin" component={AdminPanel} />
 
       {/* DASHBOARD */}
       <Route path="/app/dashboard/:section?" component={Dashboard} />

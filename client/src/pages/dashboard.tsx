@@ -46,6 +46,13 @@ interface Profile {
   address: string;
   photoURL?: string;
   createdAt: any;
+
+  // ✅ SUBSCRIPTION BLOCK
+  subscription?: {
+    status: "active" | "inactive" | "pending";
+    plan?: string;
+    activatedAt?: any;
+  };
 }
 
 // ---- AUTH EXPIRY: 24 HOURS ----
@@ -105,6 +112,9 @@ export default function Dashboard() {
 
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+
+  // 🔐 SUBSCRIPTION CHECK
+  const isSubscribed = profile?.subscription?.status === "active";
 
   useEffect(() => {
     if (profile) {
@@ -630,10 +640,41 @@ export default function Dashboard() {
 
               {/* ================== 👆 TRADING CARDS SLIDER END 👆 ================== */}
 
+              {/* 🔐 Subscription Status */}
+              {profile?.subscription?.status === "pending" && (
+                <div className="p-4 text-center border rounded-lg bg-yellow-50 mb-4">
+                  ⏳ Your payment is under review. Please wait for admin approval.
+                </div>
+              )}
+
+              {profile?.subscription?.status === "inactive" && (
+                <div className="p-4 text-center border rounded-lg bg-red-50 mb-4">
+                  ❌ Your subscription is inactive. Please contact support.
+                </div>
+              )}
+
               {/* Mining Dashboard - Main Feature */}
               <div className="mb-8">
-                {user && <MiningDashboard userId={user.id} />}
-              </div>
+                {user && (
+                  isSubscribed ? (
+                    <MiningDashboard userId={user.id} />
+                  ) : (
+                    <div className="p-4 text-center border rounded-lg bg-yellow-50">
+                      <p className="text-lg font-semibold text-yellow-700">
+                        🔒 Upgrade Required
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Please upgrade your plan to access mining features.
+                      </p>
+                      <Button
+                        className="mt-3"
+                        onClick={() => navigate("/app/dashboard/upgrade")}
+                      >
+                        Upgrade Now
+                      </Button>
+                    </div>
+                  )
+                )}
 
               {/* Quick Stats */}
               <div>
