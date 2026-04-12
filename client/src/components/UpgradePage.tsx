@@ -3,18 +3,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Copy } from "lucide-react";
+import { useLocation } from "wouter";
 
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-const RECEIVER_ADDRESS = "0xAaE232DeFc1a7951C6b8a00EC46C6d451f605cCF";
+// 🔐 Binance BEP20 Wallet Address
+const RECEIVER_ADDRESS = "0x95a06defc685659068820ee58ec65fe4a75df633";
 
 export default function UpgradePage({ userId }: { userId: string }) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [txid, setTxid] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // ✅ Agreement States
+  const [showAgreement, setShowAgreement] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   // =========================
   // PLANS DATA
@@ -45,7 +52,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
   ];
 
   // =========================
-  // COPY WALLET
+  // COPY WALLET FUNCTION
   // =========================
   const copyToClipboard = async () => {
     try {
@@ -90,11 +97,14 @@ export default function UpgradePage({ userId }: { userId: string }) {
 
       toast({
         title: "Success",
-        description: "Payment submitted for verification (up to 24h)",
+        description: "Payment submitted (verification within 24h)",
       });
 
+      // RESET STATE
       setSelectedPlan(null);
       setTxid("");
+      setAgreed(false);
+      setShowAgreement(false);
     } catch (err) {
       console.error(err);
       toast({
@@ -120,9 +130,16 @@ export default function UpgradePage({ userId }: { userId: string }) {
             className={plan.popular ? "border-green-500 border-2" : ""}
           >
             <CardContent className="p-5 space-y-3">
+
+              {plan.popular && (
+                <div className="text-xs bg-green-500 text-white px-2 py-1 rounded inline-block">
+                  Most Popular
+                </div>
+              )}
+
               <h2 className="text-xl font-bold">{plan.name}</h2>
 
-              <p className="text-lg font-semibold">${plan.price}</p>
+              <p className="text-lg font-semibold">{plan.price} USDT</p>
 
               <p className="text-sm text-gray-500">{plan.duration}</p>
 
@@ -134,19 +151,64 @@ export default function UpgradePage({ userId }: { userId: string }) {
 
               <Button
                 className="w-full mt-2"
-                onClick={() => setSelectedPlan(plan)}
+                onClick={() => {
+                  setSelectedPlan(plan);
+                  setShowAgreement(true);
+                }}
               >
                 Select Plan
               </Button>
+
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* ===================== */}
+      {/* AGREEMENT POPUP */}
+      {/* ===================== */}
+      {showAgreement && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-5 rounded-xl max-w-md w-full shadow-lg space-y-4">
+
+            <h2 className="text-lg font-bold">User Agreement</h2>
+
+            <div className="flex items-start space-x-2">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={() => setAgreed(!agreed)}
+              />
+              <p className="text-sm">
+                I agree to the Terms & Conditions and understand this platform
+                is for digital knowledge services only and does not provide
+                financial returns.
+              </p>
+            </div>
+
+            <button
+              className="text-blue-600 text-sm underline"
+              onClick={() => navigate("/app/policy-full")}
+            >
+              Read Full Policy
+            </button>
+
+            <Button
+              disabled={!agreed}
+              onClick={() => setShowAgreement(false)}
+              className="w-full"
+            >
+              Continue
+            </Button>
+
+          </div>
+        </div>dd
+      )}
+
+      {/* ===================== */}
       {/* PAYMENT SECTION */}
       {/* ===================== */}
-      {selectedPlan && (
+      {selectedPlan && !showAgreement && (
         <Card>
           <CardContent className="p-5 space-y-4">
 
@@ -154,10 +216,18 @@ export default function UpgradePage({ userId }: { userId: string }) {
               {selectedPlan.name} Plan Selected
             </h2>
 
+            {/* 🔥 BINANCE INSTRUCTION */}
+            <div className="bg-yellow-50 p-3 rounded-lg border text-sm">
+              ⚠️ Send payment using <b>BEP20 (BSC Network)</b> only
+              <br />
+              Sending from wrong network may result in permanent loss.
+            </div>
+
             <p>
-              Send <b>${selectedPlan.price}</b> to wallet below:
+              Send <b>{selectedPlan.price} USDT</b> to address below:
             </p>
 
+            {/* WALLET ADDRESS */}
             <div className="flex items-center gap-2">
               <p className="break-all bg-gray-100 p-2 rounded text-sm flex-1">
                 {RECEIVER_ADDRESS}
@@ -168,6 +238,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
               </Button>
             </div>
 
+            {/* TXID INPUT */}
             <input
               className="border p-2 w-full rounded"
               placeholder="Enter TXID (Transaction ID)"
@@ -175,13 +246,18 @@ export default function UpgradePage({ userId }: { userId: string }) {
               onChange={(e) => setTxid(e.target.value)}
             />
 
+            {/* SUBMIT BUTTON */}
             <Button
               className="w-full"
-              disabled={loading}
+              disabled={loading || !txid}
               onClick={handleSubmit}
             >
               {loading ? "Submitting..." : "Submit Payment"}
             </Button>
+
+            <p className="text-xs text-gray-500 text-center">
+              ⏳ Payment verification may take up to 24 hours
+            </p>
 
           </CardContent>
         </Card>

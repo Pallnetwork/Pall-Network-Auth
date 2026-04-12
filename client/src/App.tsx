@@ -19,6 +19,7 @@ import KYCPage from "@/pages/kyc";
 import NotFound from "@/pages/not-found";
 import Admin from "@/pages/admin";
 import AdminPanel from "@/pages/AdminPanel";
+import PolicyFull from "@/pages/policyfull";
 
 
 function Router() {
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/app/forgot-password" component={ForgotPassword} />
       <Route path="/app/admin" component={Admin} />
       <Route path="/admin" component={AdminPanel} />
+      <Route path="/app/policy-full" component={PolicyFull} />
 
       {/* DASHBOARD */}
       <Route path="/app/dashboard/:section?" component={Dashboard} />
