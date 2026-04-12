@@ -656,24 +656,7 @@ export default function Dashboard() {
               {/* Mining Dashboard - Main Feature */}
               <div className="mb-8">
                 {user && (
-                  isSubscribed ? (
-                    <MiningDashboard userId={user.id} />
-                  ) : (
-                    <div className="p-4 text-center border rounded-lg bg-yellow-50">
-                      <p className="text-lg font-semibold text-yellow-700">
-                        🔒 Upgrade Required
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Please upgrade your plan to access mining features.
-                      </p>
-                      <Button
-                        className="mt-3"
-                        onClick={() => navigate("/app/dashboard/upgrade")}
-                      >
-                        Upgrade Now
-                      </Button>
-                    </div>
-                  )
+                  <MiningDashboard userId={user.id} />
                 )}
               </div>
 
