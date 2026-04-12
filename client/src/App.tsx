@@ -17,6 +17,7 @@ import ForgotPassword from "@/pages/forgot-password";
 import Dashboard from "@/pages/dashboard";
 import KYCPage from "@/pages/kyc";
 import NotFound from "@/pages/not-found";
+import Admin from "@/pages/admin";
 
 
 function Router() {
