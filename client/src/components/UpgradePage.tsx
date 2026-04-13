@@ -164,7 +164,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
       {selectedPlan && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
 
-          <div className="bg-white p-4 rounded-xl w-[320px] shadow-xl space-y-4 relative">
+          <div className="bg-white dark:bg-gray-900 p-4 rounded-xl w-[320px] shadow-xl space-y-4 relative text-black dark:text-white">
 
             {/* CLOSE */}
             <button
@@ -184,7 +184,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
             </h2>
 
             {/* WARNING */}
-            <div className="bg-yellow-50 p-2 rounded border text-xs">
+            <div className="bg-yellow-50 dark:bg-yellow-900/30 p-2 rounded border text-xs text-black dark:text-yellow-200">
               ⚠️ Send payment using <b>BEP20 (BSC Network)</b> only
               <br />
               Wrong network may result in permanent loss.
@@ -197,7 +197,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
 
             {/* WALLET */}
             <div className="flex items-center gap-2">
-              <p className="break-all bg-gray-100 p-2 rounded text-xs flex-1">
+              <p className="break-all bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs flex-1 text-black dark:text-white">
                 {RECEIVER_ADDRESS}
               </p>
 
@@ -208,7 +208,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
 
             {/* TXID */}
             <input
-              className="border p-2 w-full rounded text-sm"
+              className="border p-2 w-full rounded text-sm bg-white dark:bg-gray-800 text-black dark:text-white"
               placeholder="Enter TXID (Transaction ID)"
               value={txid}
               onChange={(e) => setTxid(e.target.value)}
@@ -225,7 +225,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
                   checked={agreed}
                   onChange={() => setAgreed(!agreed)}
                 />
-                <p className="text-xs">
+                <p className="text-xs text-black dark:text-gray-300">
                   I agree to Terms & Conditions and understand this platform is for digital knowledge services only.
                 </p>
               </div>
@@ -248,7 +248,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
               {loading ? "Submitting..." : "Submit Payment"}
             </Button>
 
-            <p className="text-xs text-gray-500 text-center">
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
               ⏳ Payment verification may take up to 24 hours
             </p>
 

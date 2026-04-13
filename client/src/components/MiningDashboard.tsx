@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { claimDailyReward } from "@/lib/dailyReward";
 import { useLocation } from "wouter";
 import { Sun, Moon } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 
 declare global {
   interface Window {
