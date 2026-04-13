@@ -15,8 +15,19 @@ import Splash from "@/pages/Splash";
 import { saveUserProfile } from "@/lib/profile";
 import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { doc, getDoc, collection, getDocs, query, where, onSnapshot } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+  collection,
+  getDocs,
+  query,
+  where,
+  onSnapshot
+} from "firebase/firestore";
+
 import {
   generateReferralLink,
   generateReferralMessage,
