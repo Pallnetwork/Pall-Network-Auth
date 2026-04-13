@@ -496,7 +496,6 @@ export default function Dashboard() {
         <div className="flex items-center space-x-2">
           <img
             src="/logo192.png"
-            src="/logo192.png"
             alt="Pall Network"
             className="w-6 h-6 rounded-full"
           />
@@ -657,9 +656,7 @@ export default function Dashboard() {
 
                   <div
                     className="flex transition-transform duration-500"
-                    style={{
-                      transform: `translateX(-${currentIndex * 90}%)`,
-                    }}
+                    style={{ transform: `translateX(-${currentIndex * 90}%)` }}
                   >
                     {banners.map((img, i) => (
                       <div
@@ -667,11 +664,12 @@ export default function Dashboard() {
                         className="min-w-[90%] mx-[5%] rounded-xl overflow-hidden shadow-md"
                       >
                         <img
-                        src={img}
-                        className="w-full h-[160px] object-cover"
-                      />
-                    </div>
-                  ))}
+                          src={img}
+                          className="w-full h-[160px] object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* DOT INDICATOR */}
