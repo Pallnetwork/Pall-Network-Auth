@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { claimDailyReward } from "@/lib/dailyReward";
 import { useLocation } from "wouter";
+import { Sun, Moon } from "lucide-react";
 
 declare global {
   interface Window {
@@ -35,6 +36,7 @@ export default function MiningDashboard() {
   const [showDailyPopup, setShowDailyPopup] = useState(false);
 
   const [, navigate] = useLocation();
+  const { theme, setTheme } = useTheme();
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"daily" | null>(null);
@@ -348,6 +350,22 @@ export default function MiningDashboard() {
       <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
         <CardHeader className="pb-4" />
         <CardContent className="text-center space-y-6 px-6 pb-8 relative">
+
+          {/* RIGHT SIDE → DARK MODE */}
+          <div className="absolute top-4 right-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="rounded-full shrink-0"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-5 w-5 text-yellow-400" />
+              ) : (
+                <Moon className="h-5 w-5 text-blue-500" />
+              )}
+            </Button>
+          </div>
 
           {/* 🔥 UPGRADE BUTTON (LEFT SIDE) */}
           <button
