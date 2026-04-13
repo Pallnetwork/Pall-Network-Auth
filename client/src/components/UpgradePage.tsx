@@ -18,9 +18,6 @@ export default function UpgradePage({ userId }: { userId: string }) {
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [txid, setTxid] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // ✅ Agreement States
-  const [showAgreement, setShowAgreement] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
   // =========================
@@ -52,7 +49,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
   ];
 
   // =========================
-  // COPY WALLET FUNCTION
+  // COPY WALLET
   // =========================
   const copyToClipboard = async () => {
     try {
@@ -61,7 +58,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
         title: "Copied!",
         description: "Wallet address copied successfully",
       });
-    } catch (err) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to copy address",
@@ -74,10 +71,10 @@ export default function UpgradePage({ userId }: { userId: string }) {
   // SUBMIT PAYMENT
   // =========================
   const handleSubmit = async () => {
-    if (!selectedPlan || !txid) {
+    if (!selectedPlan || !txid || !agreed) {
       toast({
         title: "Error",
-        description: "Select plan and enter TXID",
+        description: "Complete all fields and accept agreement",
         variant: "destructive",
       });
       return;
@@ -100,11 +97,11 @@ export default function UpgradePage({ userId }: { userId: string }) {
         description: "Payment submitted (verification within 24h)",
       });
 
-      // RESET STATE
+      // RESET
       setSelectedPlan(null);
       setTxid("");
       setAgreed(false);
-      setShowAgreement(false);
+
     } catch (err) {
       console.error(err);
       toast({
@@ -121,7 +118,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
     <div className="max-w-5xl mx-auto space-y-6">
 
       {/* ===================== */}
-      {/* PLANS CARDS */}
+      {/* PLANS */}
       {/* ===================== */}
       <div className="grid md:grid-cols-3 gap-4">
         {plans.map((plan) => (
@@ -151,10 +148,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
 
               <Button
                 className="w-full mt-2"
-                onClick={() => {
-                  setSelectedPlan(plan);
-                  setShowAgreement(true);
-                }}
+                onClick={() => setSelectedPlan(plan)}
               >
                 Select Plan
               </Button>
@@ -165,99 +159,90 @@ export default function UpgradePage({ userId }: { userId: string }) {
       </div>
 
       {/* ===================== */}
-      {/* AGREEMENT POPUP */}
+      {/* 🔥 SINGLE POPUP */}
       {/* ===================== */}
-      {showAgreement && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-3 rounded-lg w-[280px] sm:w-[320px] shadow-xl space-y-3 relative">
+      {selectedPlan && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
 
-            {/* ❌ CLOSE BUTTON */}
+          <div className="bg-white p-4 rounded-xl w-[320px] shadow-xl space-y-4 relative">
+
+            {/* CLOSE */}
             <button
-              onClick={() => setShowAgreement(false)}
+              onClick={() => {
+                setSelectedPlan(null);
+                setTxid("");
+                setAgreed(false);
+              }}
               className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-lg font-bold"
             >
               ✕
             </button>
 
-            <h2 className="text-sm font-bold">User Agreement</h2>
-
-            <div className="flex items-start space-x-2">
-              <input
-                type="checkbox"
-                checked={agreed}
-                onChange={() => setAgreed(!agreed)}
-              />
-              <p className="text-sm">
-                I agree to the Terms & Conditions and understand this platform
-                is for digital knowledge services only and does not provide
-                financial returns.
-              </p>
-            </div>
-
-            <button
-              className="text-blue-600 text-sm underline"
-              onClick={() => navigate("/app/policy-full")}
-            >
-              Read Full Policy
-            </button>
-
-            <Button
-              disabled={!agreed}
-              onClick={() => setShowAgreement(false)}
-              className="w-full"
-            >
-              Continue
-            </Button>
-
-          </div>
-        </div>
-      )}
-
-      {/* ===================== */}
-      {/* PAYMENT SECTION */}
-      {/* ===================== */}
-      {selectedPlan && !showAgreement && (
-        <Card>
-          <CardContent className="p-5 space-y-4">
-
-            <h2 className="text-xl font-bold">
+            {/* PLAN */}
+            <h2 className="text-lg font-bold">
               {selectedPlan.name} Plan Selected
             </h2>
 
-            {/* 🔥 BINANCE INSTRUCTION */}
-            <div className="bg-yellow-50 p-3 rounded-lg border text-sm">
+            {/* WARNING */}
+            <div className="bg-yellow-50 p-2 rounded border text-xs">
               ⚠️ Send payment using <b>BEP20 (BSC Network)</b> only
               <br />
-              Sending from wrong network may result in permanent loss.
+              Wrong network may result in permanent loss.
             </div>
 
-            <p>
+            {/* AMOUNT */}
+            <p className="text-sm">
               Send <b>{selectedPlan.price} USDT</b> to address below:
             </p>
 
-            {/* WALLET ADDRESS */}
+            {/* WALLET */}
             <div className="flex items-center gap-2">
-              <p className="break-all bg-gray-100 p-2 rounded text-sm flex-1">
+              <p className="break-all bg-gray-100 p-2 rounded text-xs flex-1">
                 {RECEIVER_ADDRESS}
               </p>
 
-              <Button onClick={copyToClipboard} variant="outline">
+              <Button onClick={copyToClipboard} variant="outline" size="sm">
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
 
-            {/* TXID INPUT */}
+            {/* TXID */}
             <input
-              className="border p-2 w-full rounded"
+              className="border p-2 w-full rounded text-sm"
               placeholder="Enter TXID (Transaction ID)"
               value={txid}
               onChange={(e) => setTxid(e.target.value)}
             />
 
-            {/* SUBMIT BUTTON */}
+            {/* AGREEMENT */}
+            <div className="border-t pt-3 space-y-2">
+
+              <h3 className="text-sm font-semibold">User Agreement</h3>
+
+              <div className="flex items-start space-x-2">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={() => setAgreed(!agreed)}
+                />
+                <p className="text-xs">
+                  I agree to Terms & Conditions and understand this platform is for digital knowledge services only.
+                </p>
+              </div>
+
+              <button
+                className="text-blue-600 text-xs underline"
+                onClick={() => navigate("/app/policy-full")}
+              >
+                Read Full Policy
+              </button>
+
+            </div>
+
+            {/* SUBMIT */}
             <Button
               className="w-full"
-              disabled={loading || !txid}
+              disabled={loading || !txid || !agreed}
               onClick={handleSubmit}
             >
               {loading ? "Submitting..." : "Submit Payment"}
@@ -267,8 +252,8 @@ export default function UpgradePage({ userId }: { userId: string }) {
               ⏳ Payment verification may take up to 24 hours
             </p>
 
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
     </div>
