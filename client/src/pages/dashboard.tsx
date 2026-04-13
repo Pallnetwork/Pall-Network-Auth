@@ -649,55 +649,31 @@ export default function Dashboard() {
 
               {/* ================== 👇 TOP ROW: CARD + DARK MODE 👇 ================== */}
 
-              <div className="flex items-center justify-between gap-3 mb-4">
+              {/* 🔥 CAROUSEL SLIDER */}
+              <div className="w-full mt-2 px-3">
 
-                {/* 🔥 CAROUSEL SLIDER */}
-                <div className="overflow-hidden relative w-full">
-
+                <div className="overflow-hidden">
                   <div
                     className="flex transition-transform duration-500"
-                    style={{ transform: `translateX(-${currentIndex * 90}%)` }}
+                    style={{
+                      transform: `translateX(-${currentIndex * 92}%)`,
+                    }}
                   >
                     {banners.map((img, i) => (
                       <div
                         key={i}
-                        className="min-w-[90%] mx-[5%] rounded-xl overflow-hidden shadow-md"
+                        className="w-[92%] mr-[8%] flex-shrink-0"
                       >
-                        <img
-                          src={img}
-                          className="w-full h-[160px] object-cover"
-                        />
+                        <div className="rounded-2xl overflow-hidden shadow-md">
+                          <img
+                            src={img}
+                            className="w-full h-[135px] object-cover"
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
-
-                {/* DOT INDICATOR */}
-                <div className="flex justify-center mt-2 gap-2">
-                  {banners.map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-2 w-2 rounded-full ${
-                        currentIndex === i ? "bg-green-500" : "bg-gray-300"
-                      }`}
-                    />
-                  ))}
-                </div>
-
-                {/* RIGHT SIDE → DARK MODE */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="rounded-full shrink-0"
-                >
-                  {theme === "dark" ? (
-                    <Sun className="h-5 w-5 text-yellow-400" />
-                  ) : (
-                    <Moon className="h-5 w-5 text-blue-500" />
-                  )}
-                </Button>
-
               </div>
 
               {/* ================== 👆 END TOP ROW 👆 ================== */}
