@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { claimDailyReward } from "@/lib/dailyReward";
+import { useLocation } from "wouter";
 
 declare global {
   interface Window {
@@ -32,6 +33,8 @@ export default function MiningDashboard() {
   const [miningCountdown, setMiningCountdown] = useState(30);
   const [adReady, setAdReady] = useState(false);
   const [showDailyPopup, setShowDailyPopup] = useState(false);
+
+  const [, navigate] = useLocation();
 
   const waitingForAdRef = useRef(false);
   const adPurposeRef = useRef<"daily" | null>(null);
@@ -152,7 +155,7 @@ export default function MiningDashboard() {
 
     loadDaily();
   }, [uid]);
-  
+
 
   // ======================
   // UTC+5 Daily Reset
@@ -305,7 +308,7 @@ export default function MiningDashboard() {
     waitingForAdRef.current = false;
     adPurposeRef.current = null;
   };
-  
+
   // ======================
   // POLICY-COMPLIANT DAILY REWARD POPUP HANDLER
   // ======================
@@ -344,7 +347,16 @@ export default function MiningDashboard() {
       {/* Balance & Mining Card */}
       <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
         <CardHeader className="pb-4" />
-        <CardContent className="text-center space-y-6 px-6 pb-8">
+        <CardContent className="text-center space-y-6 px-6 pb-8 relative">
+
+          {/* 🔥 UPGRADE BUTTON (LEFT SIDE) */}
+          <button
+            onClick={() => navigate("/app/dashboard/upgrade")}
+            className="absolute top-4 left-4 bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-1 rounded-lg shadow"
+          >
+            Upgrade
+          </button>
+
           {/* Balance Display */}
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
             <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
@@ -452,7 +464,7 @@ export default function MiningDashboard() {
       {showDailyPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
           <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 w-[90%] max-w-sm text-center shadow-2xl relative">
-            
+
             {/* CUT / CLOSE BUTTON */}
             <button
               onClick={() => setShowDailyPopup(false)}
