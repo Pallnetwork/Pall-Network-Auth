@@ -92,18 +92,22 @@ export default function Dashboard() {
 
   // ================== 👇 TRADING CARDS SLIDER STATE START 👇 ==================
 
- const tradingCards = [
-   { emoji: "🧠", title: "Trade Smart, Not Hard", bgColor: "#f4a261" },
-   { emoji: "🎯", title: "Discipline Wins", bgColor: "#e76f51" },
-   { emoji: "📈", title: "Learn Before You Earn", bgColor: "#0f4c81" },
-   { emoji: "⚖️", title: "Risk Before Reward", bgColor: "#1a936f" },
+ const banners = [
+   "/banners/banner1.jpg",
+   "/banners/banner2.jpg",
+   "/banners/banner3.jpg",
+   "/banners/banner4.jpg",
+   "/banners/banner5.jpg",
+   "/banners/banner6.jpg",
  ];
+
+ const [currentIndex, setCurrentIndex] = useState(0);
 
  const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
  useEffect(() => {
    const interval = setInterval(() => {
-     setCurrentCardIndex((prev) => (prev + 1) % tradingCards.length);
+     setCurrentIndex((prev) => (prev + 1) % banners.length);
    }, 3000);
 
    return () => clearInterval(interval);
@@ -483,21 +487,33 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Top Bar with Safe Area */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-green-600 text-white p-2 pt-4 shadow-lg" style={{paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0.5rem))'}}>
-        <div className="flex items-center space-x-3">
-          <img src="/logo192.png" alt="Pall Network" className="w-8 h-8 rounded-full" />
-          <h1 className="text-2xl font-bold">Pall Network</h1>
+      {/* Top Bar - Optimized Mobile Size */}
+      <div
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-green-600 text-white px-3 py-2 shadow-md"
+        style={{ paddingTop: "max(0.4rem, env(safe-area-inset-top, 0.4rem))" }}
+      >
+        {/* LEFT SIDE */}
+        <div className="flex items-center space-x-2">
+          <img
+            src="/logo192.png"
+            src="/logo192.png"
+            alt="Pall Network"
+            className="w-6 h-6 rounded-full"
+          />
+          <h1 className="text-base font-semibold tracking-wide">
+            Pall Network
+          </h1>
         </div>
 
+        {/* RIGHT SIDE MENU */}
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="text-white hover:bg-green-700"
+          className="text-white hover:bg-green-700 rounded-full"
           data-testid="button-menu"
         >
-          <Menu className="w-6 h-6" />
+          <Menu className="w-5 h-5" />
         </Button>
       </div>
 
@@ -631,40 +647,74 @@ export default function Dashboard() {
           {/* HOME Page */}
           {currentPage === "HOME" && (
             <div className="space-y-6">
-              {/* 🌙☀️ Dark Mode Toggle */}
-              <div className="flex justify-end">
-               <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="rounded-full"
-              >
-                {theme === "dark" ? (
-                 <Sun className="h-5 w-5 text-yellow-400" />
-                ):(
-                 <Moon className="h-5 w-5 text-blue-500" />
-                )}
-               </Button>
+
+              {/* ================== 👇 TOP ROW: CARD + DARK MODE 👇 ================== */}
+
+              <div className="flex items-center justify-between gap-3 mb-4">
+
+                {/* 🔥 CAROUSEL SLIDER */}
+                <div className="overflow-hidden relative w-full">
+
+                  <div
+                    className="flex transition-transform duration-500"
+                    style={{
+                      transform: `translateX(-${currentIndex * 90}%)`,
+                    }}
+                  >
+                    {banners.map((img, i) => (
+                      <div
+                        key={i}
+                        className="min-w-[90%] mx-[5%] rounded-xl overflow-hidden shadow-md"
+                      >
+                        <img
+                        src={img}
+                        className="w-full h-[160px] object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* DOT INDICATOR */}
+                <div className="flex justify-center mt-2 gap-2">
+                  {banners.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-2 w-2 rounded-full ${
+                        currentIndex === i ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* RIGHT SIDE → DARK MODE */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="rounded-full shrink-0"
+                >
+                  {theme === "dark" ? (
+                    <Sun className="h-5 w-5 text-yellow-400" />
+                  ) : (
+                    <Moon className="h-5 w-5 text-blue-500" />
+                  )}
+                </Button>
+
               </div>
+
+              {/* ================== 👆 END TOP ROW 👆 ================== */}
               <div className="text-center">
                 <h2 className="text-3xl font-bold mb-2"></h2>
                 <p className="text-muted-foreground mb-6">
                 </p>
               </div>
 
-              {/* ==================👇 TRADING CARDS SLIDER START 👇================== */}
-
-              <div className="mb-6">
-                <div
-                  className="p-4 rounded-xl shadow-lg text-white text-center font-bold text-lg transition-all duration-500"
-                  style={{ backgroundColor: tradingCards[currentCardIndex].bgColor }}
-                >
-                  <span className="mr-2">{tradingCards[currentCardIndex].emoji}</span>
-                  {tradingCards[currentCardIndex].title}
-                </div>
+              {/* Mining Dashboard - Main Feature */}
+              <div className="mb-8">
+                {user && (
+                  <MiningDashboard userId={user.id} />
+                )}
               </div>
-
-              {/* ================== 👆 TRADING CARDS SLIDER END 👆 ================== */}
 
               {/* 🧾 PLAN STATUS INDICATOR (PHASE 4 - STEP 4) */}
               {latestPlan && (
@@ -708,13 +758,6 @@ export default function Dashboard() {
                   ❌ Your subscription is inactive. Please contact support.
                 </div>
               )}
-
-              {/* Mining Dashboard - Main Feature */}
-              <div className="mb-8">
-                {user && (
-                  <MiningDashboard userId={user.id} />
-                )}
-              </div>
 
               {/* Quick Stats */}
               <div>
@@ -1044,3 +1087,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
