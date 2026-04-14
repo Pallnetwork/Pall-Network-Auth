@@ -79,7 +79,10 @@ export default function MiningDashboard() {
   // DAILY AD HANDLER
   //================
   useEffect(() => {
-    window.onDailyAdReady = () => setAdReady(true);
+    window.onDailyAdReady = () => {
+      console.log("🔥 AD READY FROM ANDROID");
+      setAdReady(true);
+    };
     return () => { window.onDailyAdReady = undefined; };
   }, []);
 

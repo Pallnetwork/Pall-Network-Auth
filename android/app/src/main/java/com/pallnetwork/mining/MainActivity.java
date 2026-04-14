@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.webkit.JavascriptInterface;
 
 import androidx.activity.OnBackPressedCallback;
 
@@ -18,8 +19,6 @@ public class MainActivity extends BridgeActivity {
     private RewardedAd mRewardedAd;
     private AdView bannerAd;
 
-    private boolean bannerAdded = false;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,7 +30,15 @@ public class MainActivity extends BridgeActivity {
             loadRewardedAd();
         });
 
-        // SAFE BACK BUTTON
+        // ✅ JS BRIDGE ATTACH
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().addJavascriptInterface(
+                    new AndroidBridge(),
+                    "AndroidBridge"
+            );
+        }
+
+        // ✅ BACK BUTTON FIX
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -44,74 +51,90 @@ public class MainActivity extends BridgeActivity {
                 }
             }
         });
+    }
 
-        // START CHECK
-        if (getBridge() != null && getBridge().getWebView() != null) {
-            getBridge().getWebView().postDelayed(this::checkAndShowBanner, 2000);
+    // =========================
+    // ✅ ANDROID BRIDGE (FIXED)
+    // =========================
+
+    private class AndroidBridge {
+
+        @JavascriptInterface
+        public void showBannerAd() {
+            MainActivity.this.showBannerAd();
+        }
+
+        @JavascriptInterface
+        public void hideBannerAd() {
+            MainActivity.this.hideBannerAd();
+        }
+
+        @JavascriptInterface
+        public void showInterstitialForWallet() {
+            MainActivity.this.showInterstitialForWallet();
+        }
+
+        // 🔥 FIX: REWARDED AD BRIDGE
+        @JavascriptInterface
+        public void startDailyRewardedAd() {
+            MainActivity.this.startDailyRewardedAd();
         }
     }
 
-    // DASHBOARD ONLY
-    private void checkAndShowBanner() {
+    // =========================
+    // BANNER
+    // =========================
 
-        if (getBridge() == null || getBridge().getWebView() == null) return;
+    public void showBannerAd() {
 
-        String url = getBridge().getWebView().getUrl();
+        runOnUiThread(() -> {
 
-        if (url != null && url.contains("dashboard")) {
+            if (bannerAd != null) return;
 
-            if (!bannerAdded) {
-                loadBannerAd();
-                bannerAdded = true;
+            bannerAd = new AdView(this);
+            bannerAd.setAdUnitId(BuildConfig.BANNER_AD_UNIT_ID);
+            bannerAd.setAdSize(AdSize.BANNER);
+
+            if (getBridge() == null || getBridge().getWebView() == null) return;
+
+            ViewGroup root = (ViewGroup) getBridge().getWebView().getParent();
+            if (root == null) return;
+
+            FrameLayout.LayoutParams params =
+                    new FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.WRAP_CONTENT
+                    );
+
+            params.topMargin = 300;
+
+            bannerAd.setLayoutParams(params);
+
+            root.addView(bannerAd);
+
+            AdRequest request = new AdRequest.Builder().build();
+            bannerAd.loadAd(request);
+        });
+    }
+
+    public void hideBannerAd() {
+
+        runOnUiThread(() -> {
+
+            if (bannerAd != null) {
+                ViewGroup parent = (ViewGroup) bannerAd.getParent();
+                if (parent != null) parent.removeView(bannerAd);
+
+                bannerAd.destroy();
+                bannerAd = null;
             }
-
-        } else {
-            removeBanner();
-            bannerAdded = false;
-        }
-
-        getBridge().getWebView().postDelayed(this::checkAndShowBanner, 2000);
+        });
     }
 
-    private void removeBanner() {
-        if (bannerAd != null) {
-            ViewGroup parent = (ViewGroup) bannerAd.getParent();
-            if (parent != null) parent.removeView(bannerAd);
-
-            bannerAd.destroy();
-            bannerAd = null;
-        }
-    }
-
-    // BANNER FIXED VERSION (NO topMargin)
-    private void loadBannerAd() {
-
-        bannerAd = new AdView(this);
-        bannerAd.setAdUnitId(BuildConfig.BANNER_AD_UNIT_ID);
-        bannerAd.setAdSize(AdSize.BANNER);
-
-        if (getBridge() == null || getBridge().getWebView() == null) return;
-
-        ViewGroup root = (ViewGroup) getBridge().getWebView().getParent();
-        if (root == null) return;
-
-        FrameLayout.LayoutParams params =
-                new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.WRAP_CONTENT
-                );
-
-        params.gravity = android.view.Gravity.BOTTOM; // ✅ FIXED POSITION LOGIC
-
-        bannerAd.setLayoutParams(params);
-
-        root.addView(bannerAd);
-
-        AdRequest request = new AdRequest.Builder().build();
-        bannerAd.loadAd(request);
-    }
-
+    // =========================
     // INTERSTITIAL
+    // =========================
+
     private void loadInterstitialAd() {
 
         AdRequest request = new AdRequest.Builder().build();
@@ -159,7 +182,10 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    // REWARDED
+    // =========================
+    // REWARDED (FINAL FIXED)
+    // =========================
+
     private void loadRewardedAd() {
 
         AdRequest request = new AdRequest.Builder().build();
@@ -170,11 +196,22 @@ public class MainActivity extends BridgeActivity {
                     @Override
                     public void onAdLoaded(RewardedAd ad) {
                         mRewardedAd = ad;
+
+                        Log.d("ADS_DEBUG", "✅ Rewarded Ad Loaded");
+
+                        // 🔥 IMPORTANT: notify React that ad is ready
+                        if (getBridge() != null && getBridge().getWebView() != null) {
+                            getBridge().getWebView().evaluateJavascript(
+                                    "window.onDailyAdReady()", null
+                            );
+                        }
                     }
 
                     @Override
                     public void onAdFailedToLoad(LoadAdError error) {
                         mRewardedAd = null;
+
+                        Log.e("ADS_DEBUG", "❌ Ad Failed: " + error.getMessage());
                     }
                 });
     }
@@ -193,17 +230,23 @@ public class MainActivity extends BridgeActivity {
             );
 
             mRewardedAd.show(this, rewardItem -> {
-                getBridge().getWebView().evaluateJavascript(
-                        "window.onRewardAdCompleted()", null
-                );
+
+                if (getBridge() != null && getBridge().getWebView() != null) {
+                    getBridge().getWebView().evaluateJavascript(
+                            "window.onRewardAdCompleted()", null
+                    );
+                }
             });
 
         } else {
+
             loadRewardedAd();
 
-            getBridge().getWebView().evaluateJavascript(
-                    "window.onAdFailed()", null
-            );
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                getBridge().getWebView().evaluateJavascript(
+                        "window.onAdFailed()", null
+                );
+            }
         }
     }
 }
