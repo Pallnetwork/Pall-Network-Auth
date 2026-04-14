@@ -678,7 +678,7 @@ export default function Dashboard() {
                          <div className="rounded-xl overflow-hidden shadow-sm">
                           <img
                             src={img}
-                            className="w-full h-[105px] object-cover"
+                            className="w-full h-[100px] object-cover"
                           />
                         </div>
                       </div>
