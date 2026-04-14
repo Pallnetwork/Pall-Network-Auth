@@ -67,6 +67,16 @@ export default function MiningDashboard() {
     return () => { window.onAdCompleted = undefined; };
   }, [toast]);
 
+  useEffect(() => {
+    window.onRewardAdCompleted = () => {
+      window.dispatchEvent(new Event("rewardAdCompleted"));
+    };
+
+    return () => {
+      window.onRewardAdCompleted = undefined;
+    };
+  }, []);
+
   // ======================
   // AUTH STATE
   // ======================
@@ -83,7 +93,10 @@ export default function MiningDashboard() {
       console.log("🔥 AD READY FROM ANDROID");
       setAdReady(true);
     };
-    return () => { window.onDailyAdReady = undefined; };
+
+    return () => {
+      window.onDailyAdReady = () => {}; // fallback empty function
+    };
   }, []);
 
   // ======================

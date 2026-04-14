@@ -202,7 +202,7 @@ public class MainActivity extends BridgeActivity {
                         // 🔥 IMPORTANT: notify React that ad is ready
                         if (getBridge() != null && getBridge().getWebView() != null) {
                             getBridge().getWebView().evaluateJavascript(
-                                    "window.onDailyAdReady()", null
+                                    "window.onDailyAdReady && window.onDailyAdReady()", null
                             );
                         }
                     }
