@@ -350,7 +350,7 @@ export default function MiningDashboard() {
       {/* Balance & Mining Card */}
       <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
         <CardHeader className="pb-4" />
-        <CardContent className="text-center space-y-6 px-6 pb-8 relative pt-4">
+        <CardContent className="text-center space-y-6 px-6 pb-8 relative pt-1">
 
           {/* 🔥 UPGRADE BUTTON (LEFT SIDE) */}
           <button
