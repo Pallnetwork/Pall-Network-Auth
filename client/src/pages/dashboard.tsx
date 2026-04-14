@@ -661,24 +661,24 @@ export default function Dashboard() {
               {/* ================== 👇 TOP ROW: CARD + DARK MODE 👇 ================== */}
 
               {/* 🔥 CAROUSEL SLIDER */}
-              <div className="w-full mt-2 px-3">
+              <div className="w-full mt-2 px-2">
 
                 <div className="overflow-hidden">
                   <div
                     className="flex transition-transform duration-500"
                     style={{
-                      transform: `translateX(-${currentIndex * 92}%)`,
+                      transform: `translateX(-${currentIndex * 95}%)`,
                     }}
                   >
                     {banners.map((img, i) => (
                       <div
                         key={i}
-                        className="w-[92%] mr-[8%] flex-shrink-0"
+                        className="w-[95%] mr-[5%] flex-shrink-0"
                       >
-                        <div className="rounded-2xl overflow-hidden shadow-md">
+                         <div className="rounded-xl overflow-hidden shadow-sm">
                           <img
                             src={img}
-                            className="w-full h-[135px] object-cover"
+                            className="w-full h-[110px] object-cover"
                           />
                         </div>
                       </div>
