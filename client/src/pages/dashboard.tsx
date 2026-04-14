@@ -15,7 +15,6 @@ import Splash from "@/pages/Splash";
 import { saveUserProfile } from "@/lib/profile";
 import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
-import BannerAd from "@/components/BannerAd";
 import {
   doc,
   getDoc,
@@ -688,8 +687,24 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* 📢 BANNER (NEW - FIXED POSITION IN ORDER) */}
-              <BannerAd />
+              {/* 📱 ADMOB BANNER (ANDROID WEBVIEW INTEGRATION) */}
+              {currentPage === "HOME" && (
+                <div className="w-full flex justify-center my-2">
+                  <div className="w-full max-w-md">
+
+                    {/* Native Android AdMob Banner Trigger */}
+                    <div
+                      ref={(el) => {
+                        if (el && window.AndroidBridge?.showBannerAd) {
+                          window.AndroidBridge.showBannerAd();
+                        }
+                      }}
+                    />
+
+                  </div>
+                </div>
+              )}
+
 
               {/* ================== 👆 END TOP ROW 👆 ================== */}
               <div className="text-center">
