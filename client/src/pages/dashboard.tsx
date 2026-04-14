@@ -667,18 +667,18 @@ export default function Dashboard() {
                   <div
                     className="flex transition-transform duration-500"
                     style={{
-                      transform: `translateX(-${currentIndex * 95}%)`,
+                      transform: `translateX(-${currentIndex * 99}%)`,
                     }}
                   >
                     {banners.map((img, i) => (
                       <div
                         key={i}
-                        className="w-[97%] mr-[3%] flex-shrink-0"
+                        className="w-[99%] pr-[3%] flex-shrink-0"
                       >
                          <div className="rounded-xl overflow-hidden shadow-sm">
                           <img
                             src={img}
-                            className="w-full h-[100px] object-cover"
+                            className="w-full h-[105px] object-cover"
                           />
                         </div>
                       </div>
