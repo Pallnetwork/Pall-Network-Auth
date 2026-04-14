@@ -1,7 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.pall.network">
 
+    <!-- ✅ Internet + Ads -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
     <application
         android:allowBackup="true"
@@ -9,12 +11,21 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:hardwareAccelerated="true">
 
+        <!-- ✅ AdMob App ID (Flavor based) -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="${ADMOB_APP_ID}" />
 
+        <!-- ✅ Ad Activity (Required for Ads) -->
+        <activity
+            android:name="com.google.android.gms.ads.AdActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent" />
+
+        <!-- ✅ Main Activity -->
         <activity
             android:name="com.pall.network.MainActivity"
             android:exported="true"
@@ -28,6 +39,7 @@
             </intent-filter>
         </activity>
 
+        <!-- ✅ File Provider -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -43,7 +43,7 @@ export default function MiningDashboard() {
   const adPurposeRef = useRef<"daily" | null>(null);
   const { toast } = useToast();
 
-  const baseMiningRate = 0.00001157;
+  const baseMiningRate = 0.00000578;
   const MAX_SECONDS = 24 * 60 * 60;
 
   // ======================
@@ -350,7 +350,7 @@ export default function MiningDashboard() {
       {/* Balance & Mining Card */}
       <Card className="max-w-md mx-auto rounded-2xl shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
         <CardHeader className="pb-4" />
-        <CardContent className="text-center space-y-6 px-6 pb-8 relative pt-1">
+        <CardContent className="text-center space-y-6 px-6 pb-8 relative">
 
           {/* 🔥 UPGRADE BUTTON (LEFT SIDE) */}
           <button
@@ -501,6 +501,17 @@ export default function MiningDashboard() {
               <Button
                 onClick={() => {
                   setShowDailyPopup(false);
+
+                  // ✅ CHECK AD READY STATE
+                  if (!adReady) {
+                    toast({
+                      title: "Ad Not Ready",
+                      description: "Please wait",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
                   setDailyWaiting(true);
                   waitingForAdRef.current = true;
                   adPurposeRef.current = "daily";

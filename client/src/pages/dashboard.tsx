@@ -15,6 +15,7 @@ import Splash from "@/pages/Splash";
 import { saveUserProfile } from "@/lib/profile";
 import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
+import BannerAd from "@/components/BannerAd";
 import {
   doc,
   getDoc,
@@ -686,6 +687,9 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* 📢 BANNER (NEW - FIXED POSITION IN ORDER) */}
+              <BannerAd />
 
               {/* ================== 👆 END TOP ROW 👆 ================== */}
               <div className="text-center">
