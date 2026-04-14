@@ -673,12 +673,12 @@ export default function Dashboard() {
                     {banners.map((img, i) => (
                       <div
                         key={i}
-                        className="w-[95%] mr-[5%] flex-shrink-0"
+                        className="w-[97%] mr-[3%] flex-shrink-0"
                       >
                          <div className="rounded-xl overflow-hidden shadow-sm">
                           <img
                             src={img}
-                            className="w-full h-[110px] object-cover"
+                            className="w-full h-[100px] object-cover"
                           />
                         </div>
                       </div>
