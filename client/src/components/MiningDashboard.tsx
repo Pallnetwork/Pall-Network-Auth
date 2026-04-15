@@ -49,7 +49,7 @@ export default function MiningDashboard() {
   // ======================
   // GLOBAL CALLBACKS
   // ======================
-  window.onRewardAdCompleted = () => window.dispatchEvent(new Event("rewardAdCompleted"));
+
   window.onAdFailed = () => {
     if (!waitingForAdRef.current) return;
     waitingForAdRef.current = false;
@@ -93,12 +93,18 @@ export default function MiningDashboard() {
 
     window.onDailyAdReady = () => {
       console.log("🟢 React: onDailyAdReady CALLED");
+      window.__AD_READY__ = true;   // ✅ SAVE FLAG
       setAdReady(true);
     };
 
+    // ✅ IMPORTANT: check if already ready
+    if (window.__AD_READY__) {
+      console.log("🟢 React: Ad already ready (from Android)");
+      setAdReady(true);
+    }
+
     return () => {
-      console.log("🔴 React: cleanup onDailyAdReady");
-      window.onDailyAdReady = () => {}; // fallback empty function
+      window.onDailyAdReady = () => {};
     };
   }, []);
 
