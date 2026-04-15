@@ -23,9 +23,13 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Log.d("ADS_DEBUG", "🚀 App Started");
+
         Log.d("FLAVOR_CHECK", "BASE_URL: " + BuildConfig.BASE_URL);
 
         MobileAds.initialize(this, status -> {
+            Log.d("ADS_DEBUG", "🔥 AdMob Initialized");
+
             loadInterstitialAd();
             loadRewardedAd();
         });
@@ -188,6 +192,8 @@ public class MainActivity extends BridgeActivity {
 
     private void loadRewardedAd() {
 
+        Log.d("ADS_DEBUG", "📥 loadRewardedAd() CALLED");
+
         AdRequest request = new AdRequest.Builder().build();
 
         RewardedAd.load(this, BuildConfig.REWARDED_AD_UNIT_ID, request,
@@ -204,7 +210,8 @@ public class MainActivity extends BridgeActivity {
                             Log.d("ADS_DEBUG", "📢 Calling JS: onDailyAdReady");
 
                             getBridge().getWebView().evaluateJavascript(
-                                    "window.onDailyAdReady && window.onDailyAdReady()", null
+                                    "window.__AD_READY__ = true; window.onDailyAdReady && window.onDailyAdReady();",
+                                    null
                             );
                         }
                     }
@@ -214,6 +221,8 @@ public class MainActivity extends BridgeActivity {
                         mRewardedAd = null;
 
                         Log.e("ADS_DEBUG", "❌ Rewarded Ad FAILED: " + error.getMessage());
+                        Log.e("ADS_DEBUG", "Code: " + error.getCode());
+                        Log.e("ADS_DEBUG", "Message: " + error.getMessage());
                     }
                 });
     }
