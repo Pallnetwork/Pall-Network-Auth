@@ -86,39 +86,34 @@ public class MainActivity extends BridgeActivity {
     }
 
     // =========================
-    // BANNER ADS (FIXED)
+    // BANNER ADS
     // =========================
     public void showBannerAd() {
 
         runOnUiThread(() -> {
 
-            try {
+            if (bannerAd != null) return;
 
-                // 🔥 CLEAN OLD BANNER FIRST
-                if (bannerAd != null) {
-                    ViewGroup parent = (ViewGroup) bannerAd.getParent();
-                    if (parent != null) parent.removeView(bannerAd);
+            bannerAd = new AdView(this);
+            bannerAd.setAdUnitId(BuildConfig.BANNER_AD_UNIT_ID);
+            bannerAd.setAdSize(AdSize.BANNER);
 
-                    bannerAd.destroy();
-                    bannerAd = null;
-                }
+            ViewGroup root = (ViewGroup) getBridge().getWebView().getParent();
+            if (root == null) return;
 
-                FrameLayout container = findViewById(R.id.adContainer);
-                container.removeAllViews(); // prevent stacking
+            FrameLayout.LayoutParams params =
+                    new FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.WRAP_CONTENT
+                    );
 
-                // 🔥 CREATE NEW BANNER
-                bannerAd = new AdView(this);
-                bannerAd.setAdUnitId(BuildConfig.BANNER_AD_UNIT_ID);
-                bannerAd.setAdSize(AdSize.BANNER);
+            params.topMargin = 300;
+            bannerAd.setLayoutParams(params);
 
-                container.addView(bannerAd);
+            root.addView(bannerAd);
 
-                AdRequest request = new AdRequest.Builder().build();
-                bannerAd.loadAd(request);
-
-            } catch (Exception e) {
-                Log.e("ADS_DEBUG", "Banner Error: " + e.getMessage());
-            }
+            AdRequest request = new AdRequest.Builder().build();
+            bannerAd.loadAd(request);
         });
     }
 
@@ -126,22 +121,12 @@ public class MainActivity extends BridgeActivity {
 
         runOnUiThread(() -> {
 
-            try {
+            if (bannerAd != null) {
+                ViewGroup parent = (ViewGroup) bannerAd.getParent();
+                if (parent != null) parent.removeView(bannerAd);
 
-                if (bannerAd != null) {
-
-                    ViewGroup parent = (ViewGroup) bannerAd.getParent();
-                    if (parent != null) parent.removeView(bannerAd);
-
-                    bannerAd.destroy();
-                    bannerAd = null;
-                }
-
-                FrameLayout container = findViewById(R.id.adContainer);
-                container.removeAllViews();
-
-            } catch (Exception e) {
-                Log.e("ADS_DEBUG", "Hide Banner Error: " + e.getMessage());
+                bannerAd.destroy();
+                bannerAd = null;
             }
         });
     }
@@ -215,11 +200,13 @@ public class MainActivity extends BridgeActivity {
                     @Override
                     public void onAdLoaded(RewardedAd ad) {
                         mRewardedAd = ad;
+
                         Log.d("ADS_DEBUG", "✅ Rewarded Ad Loaded SUCCESS");
 
                         if (getBridge() != null && getBridge().getWebView() != null) {
                             getBridge().getWebView().evaluateJavascript(
-                                    "window.__AD_READY__ = true;", null
+                                    "window.__AD_READY__ = true; window.onDailyAdReady && window.onDailyAdReady();",
+                                    null
                             );
                         }
                     }
@@ -233,18 +220,23 @@ public class MainActivity extends BridgeActivity {
     }
 
     // =========================
-    // REWARDED AD SHOW
+    // REWARDED AD SHOW (FIXED CRASH)
     // =========================
     public void startDailyRewardedAd() {
+
+        Log.d("ADS_DEBUG", "🎯 startDailyRewardedAd CALLED");
 
         runOnUiThread(() -> {
 
             if (mRewardedAd != null) {
 
+                Log.d("ADS_DEBUG", "🟢 Showing Rewarded Ad");
+
                 mRewardedAd.setFullScreenContentCallback(
                         new FullScreenContentCallback() {
                             @Override
                             public void onAdDismissedFullScreenContent() {
+                                Log.d("ADS_DEBUG", "🔁 Ad Closed → Reloading");
                                 mRewardedAd = null;
                                 loadRewardedAd();
                             }
@@ -252,22 +244,40 @@ public class MainActivity extends BridgeActivity {
                 );
 
                 try {
-
                     mRewardedAd.show(MainActivity.this, rewardItem -> {
 
+                        Log.d("ADS_DEBUG", "🎁 User Earned Reward");
+
                         if (getBridge() != null && getBridge().getWebView() != null) {
-                            getBridge().getWebView().evaluateJavascript(
-                                    "window.onRewardAdCompleted()", null
+                            getBridge().getWebView().post(() ->
+                                    getBridge().getWebView().evaluateJavascript(
+                                            "window.onRewardAdCompleted()", null
+                                    )
                             );
                         }
                     });
 
                 } catch (Exception e) {
-                    Log.e("ADS_DEBUG", "SHOW ERROR: " + e.getMessage());
+                    Log.e("ADS_DEBUG", "❌ SHOW ERROR: " + e.getMessage());
+
+                    if (getBridge() != null && getBridge().getWebView() != null) {
+                        getBridge().getWebView().evaluateJavascript(
+                                "window.onAdFailed()", null
+                        );
+                    }
                 }
 
             } else {
+
+                Log.e("ADS_DEBUG", "🔴 Ad NOT READY");
+
                 loadRewardedAd();
+
+                if (getBridge() != null && getBridge().getWebView() != null) {
+                    getBridge().getWebView().evaluateJavascript(
+                            "window.onAdFailed()", null
+                    );
+                }
             }
         });
     }
