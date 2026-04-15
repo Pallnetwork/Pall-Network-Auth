@@ -89,12 +89,15 @@ export default function MiningDashboard() {
   // DAILY AD HANDLER
   //================
   useEffect(() => {
+    console.log("🟡 React: Setting onDailyAdReady listener");
+
     window.onDailyAdReady = () => {
-      console.log("🔥 AD READY FROM ANDROID");
+      console.log("🟢 React: onDailyAdReady CALLED");
       setAdReady(true);
     };
 
     return () => {
+      console.log("🔴 React: cleanup onDailyAdReady");
       window.onDailyAdReady = () => {}; // fallback empty function
     };
   }, []);
@@ -346,6 +349,8 @@ export default function MiningDashboard() {
     if (!uid) return;
 
     const rewardHandler = async () => {
+      console.log("🟢 React: rewardAdCompleted event received");
+
       if (adPurposeRef.current !== "daily") return;
       await completeDailyReward();
     };
@@ -518,8 +523,11 @@ export default function MiningDashboard() {
                 onClick={() => {
                   setShowDailyPopup(false);
 
+                  console.log("🟡 adReady state:", adReady);
+
                   // ✅ CHECK AD READY STATE
                   if (!adReady) {
+                    console.log("🔴 Ad NOT ready");
                     toast({
                       title: "Ad Not Ready",
                       description: "Please wait",
@@ -527,6 +535,8 @@ export default function MiningDashboard() {
                     });
                     return;
                   }
+
+                  console.log("🟢 Calling AndroidBridge.startDailyRewardedAd");
 
                   setDailyWaiting(true);
                   waitingForAdRef.current = true;
@@ -536,6 +546,7 @@ export default function MiningDashboard() {
                     window.AndroidBridge.setAdPurpose?.("daily");
                     window.AndroidBridge.startDailyRewardedAd();
                   } else {
+                    console.log("🔴 AndroidBridge NOT FOUND");
                     completeDailyReward();
                   }
                 }}

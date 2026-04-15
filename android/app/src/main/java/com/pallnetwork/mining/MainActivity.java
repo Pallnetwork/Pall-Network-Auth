@@ -197,10 +197,12 @@ public class MainActivity extends BridgeActivity {
                     public void onAdLoaded(RewardedAd ad) {
                         mRewardedAd = ad;
 
-                        Log.d("ADS_DEBUG", "✅ Rewarded Ad Loaded");
+                        Log.d("ADS_DEBUG", "✅ Rewarded Ad Loaded SUCCESS");
 
                         // 🔥 IMPORTANT: notify React that ad is ready
                         if (getBridge() != null && getBridge().getWebView() != null) {
+                            Log.d("ADS_DEBUG", "📢 Calling JS: onDailyAdReady");
+
                             getBridge().getWebView().evaluateJavascript(
                                     "window.onDailyAdReady && window.onDailyAdReady()", null
                             );
@@ -211,25 +213,32 @@ public class MainActivity extends BridgeActivity {
                     public void onAdFailedToLoad(LoadAdError error) {
                         mRewardedAd = null;
 
-                        Log.e("ADS_DEBUG", "❌ Ad Failed: " + error.getMessage());
+                        Log.e("ADS_DEBUG", "❌ Rewarded Ad FAILED: " + error.getMessage());
                     }
                 });
     }
 
     public void startDailyRewardedAd() {
 
+        Log.d("ADS_DEBUG", "🎯 startDailyRewardedAd CALLED");
+
         if (mRewardedAd != null) {
+
+            Log.d("ADS_DEBUG", "🟢 Showing Rewarded Ad");
 
             mRewardedAd.setFullScreenContentCallback(
                     new FullScreenContentCallback() {
                         @Override
                         public void onAdDismissedFullScreenContent() {
+                            Log.d("ADS_DEBUG", "🔁 Ad Closed → Reloading");
                             loadRewardedAd();
                         }
                     }
             );
 
             mRewardedAd.show(this, rewardItem -> {
+
+                Log.d("ADS_DEBUG", "🎁 User Earned Reward");
 
                 if (getBridge() != null && getBridge().getWebView() != null) {
                     getBridge().getWebView().evaluateJavascript(
@@ -239,6 +248,8 @@ public class MainActivity extends BridgeActivity {
             });
 
         } else {
+
+            Log.e("ADS_DEBUG", "🔴 Ad NOT READY when requested");
 
             loadRewardedAd();
 
