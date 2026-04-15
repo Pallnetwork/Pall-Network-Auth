@@ -29,14 +29,14 @@ export default function UpgradePage({ userId }: { userId: string }) {
       name: "Starter",
       price: 5,
       duration: "3 Months",
-      features: ["Basic Access", "Quiz System", "Limited Content"],
+      features: ["Optional KYC verification available", "Initial platform credits included", "Entry-level access", "Basic features", "Limited content"],
     },
     {
       id: "growth",
       name: "Growth",
       price: 30,
       duration: "6 Months",
-      features: ["Advanced Modules", "Full Content", "Reduced Ads"],
+      features: ["Optional KYC verification available", "Enhanced platform credits", "Mid-level progression", "Expanded access + reduced ads", "Advanced modules"],
       popular: true,
     },
     {
@@ -44,7 +44,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
       name: "Elite",
       price: 100,
       duration: "Lifetime",
-      features: ["All Access", "Premium Features", "Early Updates"],
+      features: ["Optional KYC verification available", "Premium platform credits", "Full access unlock", "Complete feature availability", "Minimal ad experience"],
     },
   ];
 
