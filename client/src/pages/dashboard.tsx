@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { db, auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -15,6 +15,7 @@ import Splash from "@/pages/Splash";
 import { saveUserProfile } from "@/lib/profile";
 import { useTheme } from "@/components/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
+import { useEffect } from "react";
 import {
   doc,
   getDoc,
@@ -116,6 +117,8 @@ export default function Dashboard() {
 
  const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
+ const bannerAdShownRef = useRef(false);
+
  useEffect(() => {
    const interval = setInterval(() => {
      setCurrentIndex((prev) => (prev + 1) % banners.length);
@@ -176,6 +179,17 @@ export default function Dashboard() {
     if (path === '/app/dashboard/policies') return 'ABOUT';
     return 'HOME'; // default for /app/dashboard
   })();
+
+  useEffect(() => {
+    if (currentPage !== "HOME") return;
+    if (bannerAdShownRef.current) return;
+
+    bannerAdShownRef.current = true;
+
+    if (window.AndroidBridge?.showBannerAd) {
+      window.AndroidBridge.showBannerAd();
+    }
+  }, [currentPage]);
 
   // only once balance sync for mining dashboard
   useEffect(() => {
@@ -691,15 +705,6 @@ export default function Dashboard() {
               {currentPage === "HOME" && (
                 <div className="w-full flex justify-center my-2">
                   <div className="w-full max-w-md">
-
-                    {/* Native Android AdMob Banner Trigger */}
-                    <div
-                      ref={(el) => {
-                        if (el && window.AndroidBridge?.showBannerAd) {
-                          window.AndroidBridge.showBannerAd();
-                        }
-                      }}
-                    />
 
                   </div>
                 </div>
