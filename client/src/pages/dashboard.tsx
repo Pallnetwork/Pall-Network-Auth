@@ -180,16 +180,10 @@ export default function Dashboard() {
     return 'HOME'; // default for /app/dashboard
   })();
 
+  // 🚫 Banner disabled for now
   useEffect(() => {
-    if (currentPage !== "HOME") return;
-    if (bannerAdShownRef.current) return;
-
-    bannerAdShownRef.current = true;
-
-    if (window.AndroidBridge?.showBannerAd) {
-      window.AndroidBridge.showBannerAd();
-    }
-  }, [currentPage]);
+    // intentionally disabled
+  }, []);
 
   // only once balance sync for mining dashboard
   useEffect(() => {
@@ -672,46 +666,34 @@ export default function Dashboard() {
           {currentPage === "HOME" && (
             <div className="space-y-6">
 
-              {/* ================== 👇 TOP ROW: CARD + DARK MODE 👇 ================== */}
+              {/* 🔥 CAROUSEL SLIDER (300×60 FIXED) */}
+              <div className="w-full mt-2 flex justify-center">
 
-              {/* 🔥 CAROUSEL SLIDER */}
-              <div className="w-full mt-2 px-2">
+                <div className="w-[300px] overflow-hidden rounded-lg shadow-sm">
 
-                <div className="overflow-hidden">
                   <div
                     className="flex transition-transform duration-500"
                     style={{
-                      transform: `translateX(-${currentIndex * 99}%)`,
+                      transform: `translateX(-${currentIndex * 100}%)`,
                     }}
                   >
                     {banners.map((img, i) => (
                       <div
                         key={i}
-                        className="w-[99%] pr-[3%] flex-shrink-0"
+                        className="w-[300px] h-[60px] flex-shrink-0"
                       >
-                         <div className="rounded-xl overflow-hidden shadow-sm">
-                          <img
-                            src={img}
-                            className="w-full h-[100px] object-cover"
-                          />
-                        </div>
+                        <img
+                          src={img}
+                          className="w-[300px] h-[60px] object-cover"
+                          alt={`banner-${i}`}
+                        />
                       </div>
                     ))}
                   </div>
+
                 </div>
               </div>
 
-              {/* 📱 ADMOB BANNER (ANDROID WEBVIEW INTEGRATION) */}
-              {currentPage === "HOME" && (
-                <div className="w-full flex justify-center my-2">
-                  <div className="w-full max-w-md">
-
-                  </div>
-                </div>
-              )}
-
-
-              {/* ================== 👆 END TOP ROW 👆 ================== */}
               <div className="text-center">
                 <h2 className="text-3xl font-bold mb-2"></h2>
                 <p className="text-muted-foreground mb-6">

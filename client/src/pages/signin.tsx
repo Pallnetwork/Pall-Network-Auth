@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 import logo from "@/assets/logo.png"; // ✅ REAL LOGO IMPORT
+import { Eye, EyeOff } from "lucide-react";
 
 export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
@@ -132,23 +133,26 @@ export default function SignIn() {
 
               <div className="space-y-1">
                 <Label className="text-white/80">Password</Label>
-                <Input
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={handleChange}
-                  required
-                  className="bg-white/20 border-white/20 text-white placeholder:text-white/60 pr-10"
-                />
 
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-white/70"
-                >
-                  {showPassword ? "🙈" : "👁️"}
-                </button>
+                <div className="relative">
+                  <Input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={handleChange}
+                    required
+                    className="bg-white/20 border-white/20 text-white placeholder:text-white/60 pr-10"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 text-white/70 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               {error && (
