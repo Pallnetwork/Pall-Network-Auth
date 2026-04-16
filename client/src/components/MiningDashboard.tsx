@@ -405,7 +405,7 @@ export default function MiningDashboard() {
 
           {/* Balance Display */}
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
-            <p className="text-sm font-medium text-muted-foreground mb-2">Current Balance</p>
+            <p className="text-sm font-medium text-muted-foreground mb-2">Balance</p>
             <p className="text-3xl font-bold text-blue-600">{uiBalance.toFixed(8)} PALL</p>
           </div>
 
