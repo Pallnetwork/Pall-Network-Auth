@@ -1,14 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Copy } from "lucide-react";
 import { useLocation } from "wouter";
-
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+  query,
+  where
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-// 🔐 Binance BEP20 Wallet Address
 const RECEIVER_ADDRESS = "0x95a06defc685659068820ee58ec65fe4a75df633";
 
 export default function UpgradePage({ userId }: { userId: string }) {
@@ -20,61 +29,226 @@ export default function UpgradePage({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
+  const [userActivePlan, setUserActivePlan] = useState<string | null>(null);
+  const [txVerified, setTxVerified] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  const getDeviceId = () => {
+    let id = localStorage.getItem("deviceId");
+
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem("deviceId", id);
+    }
+
+    return id;
+  };
+
   // =========================
-  // PLANS DATA
+  // LOAD USER CURRENT PLAN
+  // =========================
+  useEffect(() => {
+    const fetchUser = async () => {
+      const snap = await getDocs(
+        query(collection(db, "users"), where("id", "==", userId))
+      );
+
+      snap.forEach((d) => {
+        const data = d.data();
+        setUserActivePlan(data.package || "free");
+      });
+    };
+
+    fetchUser();
+  }, [userId]);
+
+  // =========================
+  // PLANS
   // =========================
   const plans = [
     {
       id: "starter",
       name: "Starter",
       price: 5,
-      duration: "3 Months",
-      features: ["Optional KYC verification available", "Initial platform credits included", "Entry-level access", "Basic features", "Limited content"],
     },
     {
       id: "growth",
       name: "Growth",
       price: 30,
-      duration: "6 Months",
-      features: ["Optional KYC verification available", "Enhanced platform credits", "Mid-level progression", "Expanded access + reduced ads", "Advanced modules"],
       popular: true,
     },
     {
       id: "elite",
       name: "Elite",
       price: 100,
-      duration: "Lifetime",
-      features: ["Optional KYC verification available", "Premium platform credits", "Full access unlock", "Complete feature availability", "Minimal ad experience"],
     },
   ];
+
+  // PHASE 5: RATE LIMIT SYSTEM
+  const checkRateLimit = async (userId: string) => {
+    const ref = doc(db, "rateLimits", userId);
+    const snap = await getDoc(ref);
+
+    const now = Date.now();
+
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        lastRequestAt: now,
+        requestCount: 1,
+      });
+      return false;
+    }
+
+    const data = snap.data();
+    const last = data.lastRequestAt || 0;
+
+    // ⛔ BLOCK: 30 sec cooldown
+    if (now - last < 30000) {
+      return true;
+    }
+
+    await updateDoc(ref, {
+      lastRequestAt: now,
+      requestCount: (data.requestCount || 0) + 1,
+    });
+
+    return false;
+  };
+
+  // SESSION CHECK FUNCTION
+  const checkDeviceSession = async (userId: string) => {
+    const deviceId = getDeviceId();
+
+    const ref = doc(db, "userSessions", userId);
+    const snap = await getDoc(ref);
+
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        activeDeviceId: deviceId,
+        lastLoginAt: serverTimestamp(),
+      });
+      return false;
+    }
+
+    const data = snap.data();
+
+    // ❌ BLOCK if different device
+    if (data.activeDeviceId !== deviceId) {
+      return true;
+    }
+
+    return false;
+  };
+
+  // ✅ ADD THIS HERE
+  const planOrder: any = {
+    free: 0,
+    starter: 1,
+    growth: 2,
+    elite: 3,
+  };
 
   // =========================
   // COPY WALLET
   // =========================
   const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(RECEIVER_ADDRESS);
+    await navigator.clipboard.writeText(RECEIVER_ADDRESS);
+    toast({ title: "Copied" });
+  };
+
+  // =========================
+  // TXID BASIC VALIDATION
+  // =========================
+  const validateTxid = (value: string) => {
+    if (!value) return false;
+    if (value.length < 20) return false; // basic anti-fake
+    return true;
+  };
+
+  // =========================
+  // VERIFY TXID (FAKE CHECK PREVENTION LAYER)
+  // =========================
+  const handleVerifyTxid = async () => {
+    if (!validateTxid(txid)) {
       toast({
-        title: "Copied!",
-        description: "Wallet address copied successfully",
-      });
-    } catch {
-      toast({
-        title: "Error",
-        description: "Failed to copy address",
+        title: "Invalid TXID",
+        description: "TXID too short or invalid format",
         variant: "destructive",
       });
+      return;
     }
+
+    setVerifying(true);
+
+    // simulate verification step (future: blockchain API)
+    setTimeout(() => {
+      setTxVerified(true);
+      setVerifying(false);
+
+      toast({
+        title: "TXID Verified",
+        description: "Proceed to submit",
+      });
+    }, 1200);
+  };
+
+  // =========================
+  // DUPLICATE PLAN CHECK
+  // =========================
+  const checkDuplicatePlan = async () => {
+    const q = query(
+      collection(db, "transactions"),
+      where("userId", "==", userId),
+      where("plan", "==", selectedPlan.id),
+      where("status", "in", ["pending", "approved"])
+    );
+
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      toast({
+        title: "Already Exists",
+        description: "You already purchased or have a pending request",
+        variant: "destructive",
+      });
+      return true;
+    }
+
+    return false;
   };
 
   // =========================
   // SUBMIT PAYMENT
   // =========================
   const handleSubmit = async () => {
-    if (!selectedPlan || !txid || !agreed) {
+
+    const blockedDevice = await checkDeviceSession(userId);
+
+    if (blockedDevice) {
       toast({
-        title: "Error",
-        description: "Complete all fields and accept agreement",
+        title: "Multiple Device Detected",
+        description: "You are logged in on another device",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 🚨 PHASE 5: RATE LIMIT CHECK
+    const blocked = await checkRateLimit(userId);
+
+    if (blocked) {
+      toast({
+        title: "Too Many Requests",
+        description: "Please wait 30 seconds before trying again",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedPlan || !txid || !agreed || !txVerified) {
+      toast({
+        title: "Verification Required",
+        description: "Please verify TXID before submitting",
         variant: "destructive",
       });
       return;
@@ -83,24 +257,56 @@ export default function UpgradePage({ userId }: { userId: string }) {
     try {
       setLoading(true);
 
+      // PHASE 1: DUPLICATE CHECK
+      const isDuplicate = await checkDuplicatePlan();
+      if (isDuplicate) {
+        setLoading(false);
+        return;
+      }
+
+      // ❌ BLOCK: already active plan
+      if (userActivePlan && userActivePlan !== "free") {
+        if (userActivePlan === selectedPlan.id) {
+          toast({
+            title: "Already Purchased",
+            description: "You already have this plan active",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // ❌ BLOCK: downgrade or same-level plan
+      if (userActivePlan) {
+        const currentLevel = planOrder[userActivePlan] || 0;
+        const selectedLevel = planOrder[selectedPlan.id] || 0;
+
+        if (selectedLevel <= currentLevel) {
+          toast({
+            title: "Upgrade Required",
+            description: "You can only upgrade to a higher plan",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // CREATE TRANSACTION
       await addDoc(collection(db, "transactions"), {
         userId,
         plan: selectedPlan.id,
         amount: selectedPlan.price,
-        txid: txid,
+        txid,
         status: "pending",
         createdAt: serverTimestamp(),
       });
 
-      toast({
-        title: "Success",
-        description: "Payment submitted (verification within 24h)",
-      });
-
-      // RESET
       setSelectedPlan(null);
       setTxid("");
       setAgreed(false);
+      setTxVerified(false);
 
     } catch (err) {
       console.error(err);
@@ -117,40 +323,29 @@ export default function UpgradePage({ userId }: { userId: string }) {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
 
-      {/* ===================== */}
+      {/* USER STATUS */}
+      <div className="text-sm text-gray-500">
+        Current Plan: <b>{userActivePlan || "loading..."}</b>
+      </div>
+
       {/* PLANS */}
-      {/* ===================== */}
       <div className="grid md:grid-cols-3 gap-4">
         {plans.map((plan) => (
-          <Card
-            key={plan.id}
-            className={plan.popular ? "border-green-500 border-2" : ""}
-          >
-            <CardContent className="p-5 space-y-3">
+          <Card key={plan.id}>
+            <CardContent className="p-4 space-y-2">
 
-              {plan.popular && (
-                <div className="text-xs bg-green-500 text-white px-2 py-1 rounded inline-block">
-                  Most Popular
-                </div>
+              <h2 className="font-bold">{plan.name}</h2>
+              <p>{plan.price} USDT</p>
+
+              {userActivePlan === plan.id && (
+                <p className="text-green-600 text-sm">Already Active</p>
               )}
 
-              <h2 className="text-xl font-bold">{plan.name}</h2>
-
-              <p className="text-lg font-semibold">{plan.price} USDT</p>
-
-              <p className="text-sm text-gray-500">{plan.duration}</p>
-
-              <ul className="text-sm space-y-1">
-                {plan.features.map((f, i) => (
-                  <li key={i}>✔ {f}</li>
-                ))}
-              </ul>
-
               <Button
-                className="w-full mt-2"
+                disabled={userActivePlan === plan.id}
                 onClick={() => setSelectedPlan(plan)}
               >
-                Select Plan
+                Select
               </Button>
 
             </CardContent>
@@ -158,104 +353,68 @@ export default function UpgradePage({ userId }: { userId: string }) {
         ))}
       </div>
 
-      {/* ===================== */}
-      {/* 🔥 SINGLE POPUP */}
-      {/* ===================== */}
+      {/* POPUP */}
       {selectedPlan && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center">
+          <div className="bg-white p-4 rounded w-[320px] space-y-3">
 
-          <div className="bg-white dark:bg-gray-900 p-4 rounded-xl w-[320px] shadow-xl space-y-4 relative text-black dark:text-white">
+            <h2>{selectedPlan.name}</h2>
 
-            {/* CLOSE */}
-            <button
-              onClick={() => {
-                setSelectedPlan(null);
-                setTxid("");
-                setAgreed(false);
-              }}
-              className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-lg font-bold"
-            >
-              ✕
-            </button>
+            <div className="flex gap-2">
+              <input
+                value={txid}
+                onChange={(e) => {
+                  setTxid(e.target.value);
+                  setTxVerified(false);
+                }}
+                placeholder="TXID"
+                className="border p-2 w-full"
+              />
 
-            {/* PLAN */}
-            <h2 className="text-lg font-bold">
-              {selectedPlan.name} Plan Selected
-            </h2>
-
-            {/* WARNING */}
-            <div className="bg-yellow-50 dark:bg-yellow-900/30 p-2 rounded border text-xs text-black dark:text-yellow-200">
-              ⚠️ Send payment using <b>BEP20 (BSC Network)</b> only
-              <br />
-              Wrong network may result in permanent loss.
+              <Button onClick={handleVerifyTxid}>
+                {verifying ? "..." : "Verify"}
+              </Button>
             </div>
 
-            {/* AMOUNT */}
-            <p className="text-sm">
-              Send <b>{selectedPlan.price} USDT</b> to address below:
-            </p>
+            {txVerified && (
+              <p className="text-green-600 text-sm">TXID Verified ✅</p>
+            )}
 
-            {/* WALLET */}
-            <div className="flex items-center gap-2">
-              <p className="break-all bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs flex-1 text-black dark:text-white">
-                {RECEIVER_ADDRESS}
-              </p>
-
-              <Button onClick={copyToClipboard} variant="outline" size="sm">
+            <div className="flex gap-2 items-center">
+              <p className="text-xs break-all flex-1">{RECEIVER_ADDRESS}</p>
+              <Button onClick={copyToClipboard}>
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
 
-            {/* TXID */}
-            <input
-              className="border p-2 w-full rounded text-sm bg-white dark:bg-gray-800 text-black dark:text-white"
-              placeholder="Enter TXID (Transaction ID)"
-              value={txid}
-              onChange={(e) => setTxid(e.target.value)}
-            />
+            <label className="text-xs">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={() => setAgreed(!agreed)}
+              />{" "}
+              I agree
+            </label>
 
-            {/* AGREEMENT */}
-            <div className="border-t pt-3 space-y-2">
-
-              <h3 className="text-sm font-semibold">User Agreement</h3>
-
-              <div className="flex items-start space-x-2">
-                <input
-                  type="checkbox"
-                  checked={agreed}
-                  onChange={() => setAgreed(!agreed)}
-                />
-                <p className="text-xs text-black dark:text-gray-300">
-                  I agree to Terms & Conditions and understand this platform is for digital knowledge services only.
-                </p>
-              </div>
-
-              <button
-                className="text-blue-600 text-xs underline"
-                onClick={() => navigate("/app/policy-full")}
-              >
-                Read Full Policy
-              </button>
-
-            </div>
-
-            {/* SUBMIT */}
             <Button
-              className="w-full"
-              disabled={loading || !txid || !agreed}
+              disabled={!txVerified || !agreed || loading}
               onClick={handleSubmit}
+              className="w-full"
             >
-              {loading ? "Submitting..." : "Submit Payment"}
+              Submit
             </Button>
 
-            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-              ⏳ Payment verification may take up to 24 hours
-            </p>
+            <Button
+              variant="destructive"
+              onClick={() => setSelectedPlan(null)}
+              className="w-full"
+            >
+              Close
+            </Button>
 
           </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -1,17 +1,27 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  getDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function AdminPanel() {
   const [requests, setRequests] = useState<any[]>([]);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPendingRequests();
   }, []);
 
-  // 🔥 STEP 1: FETCH TRANSACTIONS (ONLY PENDING)
+  // =========================
+  // FETCH PENDING TRANSACTIONS
+  // =========================
   const fetchPendingRequests = async () => {
     try {
       const snap = await getDocs(collection(db, "transactions"));
@@ -21,8 +31,7 @@ export default function AdminPanel() {
       snap.forEach((docSnap) => {
         const data = docSnap.data();
 
-        // only valid plan requests
-        if (data.status === "pending" && data.plan) {
+        if (data.status === "pending" && data.plan && data.userId) {
           list.push({
             id: docSnap.id,
             ...data,
@@ -36,37 +45,78 @@ export default function AdminPanel() {
     }
   };
 
-  // 🔥 STEP 2: APPROVE REQUEST
+  // =========================
+  // APPROVE REQUEST (SAFE FLOW)
+  // =========================
   const approveRequest = async (
     id: string,
     userId: string,
     plan: string
   ) => {
     try {
-      // 1. update transaction status
+      if (loadingId) return; // prevent double click
+      setLoadingId(id);
+
+      // ❌ prevent double processing
+      const req = requests.find((r) => r.id === id);
+      if (!req || req.status !== "pending") {
+        alert("Already processed ❌");
+        setLoadingId(null);
+        return;
+      }
+
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        alert("User not found ❌");
+        setLoadingId(null);
+        return;
+      }
+
+      const userData = userSnap.data();
+
+      // ❌ BLOCK: same active plan
+      if (userData.package === plan && userData.packageStatus === "active") {
+        alert("User already has this active plan ❌");
+        setLoadingId(null);
+        return;
+      }
+
+      // 1️⃣ Update transaction
       await updateDoc(doc(db, "transactions", id), {
         status: "approved",
+        approvedAt: serverTimestamp(),
+        approvedBy: "admin",
       });
 
-      // 2. update user package
-      await updateDoc(doc(db, "users", userId), {
+      // 2️⃣ Update user package
+      await updateDoc(userRef, {
         package: plan,
         packageStatus: "active",
+        updatedAt: serverTimestamp(),
       });
 
-      alert("User Approved ✅");
+      alert("User Approved & Upgraded ✅");
+
       fetchPendingRequests();
     } catch (err) {
       console.error(err);
       alert("Error approving request");
+    } finally {
+      setLoadingId(null);
     }
   };
 
-  // 🔥 STEP 3: REJECT REQUEST
+  // =========================
+  // REJECT REQUEST
+  // =========================
   const rejectRequest = async (id: string) => {
     try {
       await updateDoc(doc(db, "transactions", id), {
         status: "rejected",
+        rejectedAt: serverTimestamp(),
+        rejectedBy: "admin",
       });
 
       alert("User Rejected ❌");
@@ -95,9 +145,9 @@ export default function AdminPanel() {
                   <strong>Plan:</strong> {req.plan}
                 </p>
                 <p className="text-sm">
-                  <strong>Amount:</strong> ${req.amount}
+                  <strong>Amount:</strong> {req.amount} USDT
                 </p>
-                <p className="text-sm">
+                <p className="text-sm break-all">
                   <strong>TXID:</strong> {req.txid}
                 </p>
 
@@ -112,11 +162,12 @@ export default function AdminPanel() {
               {/* ACTION BUTTONS */}
               <div className="space-x-2">
                 <Button
+                  disabled={loadingId === req.id || req.status !== "pending"}
                   onClick={() =>
                     approveRequest(req.id, req.userId, req.plan)
                   }
                 >
-                  ✅ Approve
+                  {loadingId === req.id ? "Processing..." : "✅ Approve"}
                 </Button>
 
                 <Button
