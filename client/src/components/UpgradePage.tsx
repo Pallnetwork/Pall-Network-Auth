@@ -409,8 +409,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
 
             </CardContent>
           </Card>
-        )}
-
+        ))}
       </div>
 
       {/* POPUP */}
