@@ -110,6 +110,9 @@ export default function AdminPanel() {
         approvedBy: "admin",
       });
 
+      await fetchPendingRequests();
+      setLoadingId(null);
+
       // 2️⃣ Update user package
       await updateDoc(userRef, {
         package: plan,
@@ -138,6 +141,9 @@ export default function AdminPanel() {
         rejectedAt: serverTimestamp(),
         rejectedBy: "admin",
       });
+
+      await fetchPendingRequests();
+      setLoadingId(null);
 
       alert("User Rejected ❌");
       fetchPendingRequests();

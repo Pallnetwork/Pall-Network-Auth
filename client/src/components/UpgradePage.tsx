@@ -370,6 +370,36 @@ export default function UpgradePage({ userId }: { userId: string }) {
         Current Plan: <b>{userActivePlan || "loading..."}</b>
       </div>
 
+      {/* PAYMENT INSTRUCTION BANNER */}
+      <div className="bg-yellow-50 border border-yellow-300 text-gray-800 p-4 rounded-xl mb-4 space-y-2">
+
+        <h2 className="text-sm font-bold text-center text-gray-900">
+          📌 Payment Instructions
+        </h2>
+
+        <p className="text-xs text-center">
+          Please read carefully before purchasing any plan.
+        </p>
+
+        <p className="text-xs text-center">
+          ✔ Send payment only via <b>BEP20 (BSC Network)</b>
+        </p>
+
+        <p className="text-xs text-center">
+          ✔ Copy the wallet address below and send exact USDT amount of selected plan
+        </p>
+
+        <p className="text-xs text-center break-all font-mono bg-white p-2 rounded">
+          0x95a06defc685659068820ee58ec65fe4a75df633
+        </p>
+
+        <p className="text-xs text-center text-red-500">
+          ⚠️ Wrong network or wrong amount may result in permanent loss
+        </p>
+
+      </div>
+
+
       {/* PLANS */}
       <div className="grid md:grid-cols-3 gap-4">
         {plans.map((plan) => (
@@ -429,6 +459,17 @@ export default function UpgradePage({ userId }: { userId: string }) {
               {selectedPlan.name} Plan
             </h2>
 
+            {/* ADD THIS BLOCK */}
+            <p className="text-xs text-red-500 mt-2 text-center">
+            ⚠️ Send payment using BEP20 (BSC Network) only
+            </p>
+            <p className="text-xs text-red-500 text-center">
+            Wrong network may result in permanent loss.
+            </p>
+            <p className="text-sm font-semibold text-center mt-2">
+            Send {selectedPlan.price} USDT to address below:
+            </p>
+
             <div className="flex gap-2">
               <input
                 value={txid}
@@ -437,7 +478,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
                   setTxVerified(false);
                 }}
                 placeholder="TXID"
-                className="border rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="border rounded-md p-2 w-full bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
 
               <Button
@@ -453,20 +494,24 @@ export default function UpgradePage({ userId }: { userId: string }) {
             )}
 
             <div className="flex gap-2 items-center">
-              <p className="text-xs break-all flex-1 bg-gray-100 dark:bg-gray-800 p-2 rounded">{RECEIVER_ADDRESS}</p>
+              <p className="text-xs break-all flex-1 bg-gray-100 dark:bg-gray-800 text-black dark:text-white p-2 rounded">{RECEIVER_ADDRESS}</p>
               <Button onClick={copyToClipboard}>
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
 
-            <label className="text-xs text-black dark:text-gray-300">
+            <h3 className="text-sm font-semibold">User Agreement</h3>
+
+            <div className="flex items-start gap-2">
               <input
                 type="checkbox"
                 checked={agreed}
                 onChange={() => setAgreed(!agreed)}
               />{" "}
-              I agree to Terms & Conditions
-            </label>
+              <p className="text-xs text-gray-600 text-center">
+                I agree to Terms & Conditions and understand this platform is for digital knowledge services only.
+              </p>
+            </div>
 
             {/* 📜 POLICY BUTTON */}
             <button
@@ -481,8 +526,12 @@ export default function UpgradePage({ userId }: { userId: string }) {
               onClick={handleSubmit}
               className="w-full bg-green-600 hover:bg-green-700 text-white"
             >
-              Submit
+              {loading ? "Submitting..." : "Submit Payment"}
             </Button>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              ⏳ Payment verification may take up to 24 hours
+            </p>
 
           </div>
         </div>
