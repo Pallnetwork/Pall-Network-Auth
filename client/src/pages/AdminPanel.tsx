@@ -10,13 +10,33 @@ import {
 } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { onSnapshot } from "firebase/firestore";
 
 export default function AdminPanel() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPendingRequests();
+    const unsub = onSnapshot(collection(db, "transactions"), (snap) => {
+      const list: any[] = [];
+
+      snap.forEach((docSnap) => {
+        const data = docSnap.data();
+
+        console.log(data); // 👈 YE LINE ADD KARO
+
+        if (data.status === "pending" && data.plan && data.userId) {
+          list.push({
+            id: docSnap.id,
+            ...data,
+          });
+        }
+      });
+
+      setRequests(list);
+    });
+
+    return () => unsub();
   }, []);
 
   // =========================
