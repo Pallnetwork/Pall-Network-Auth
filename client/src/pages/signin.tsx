@@ -70,6 +70,28 @@ export default function SignIn() {
         form.password
       );
 
+      // 🔒 DEVICE LOCK CHECK
+      const sessionRef = doc(db, "userSessions", userCredential.user.uid);
+      const sessionSnap = await getDoc(sessionRef);
+
+      const currentDevice = navigator.userAgent;
+
+      if (sessionSnap.exists()) {
+        const data = sessionSnap.data();
+
+        // ❌ BLOCK: different device
+        if (data.device && data.device !== currentDevice) {
+          toast({
+            title: "Access Denied",
+            description: "Account already active on another device",
+            variant: "destructive",
+          });
+
+          setIsLoading(false);
+          return;
+        }
+      }
+
       localStorage.setItem("userId", userCredential.user.uid);
 
       // 🔐 SESSION CREATE (PHASE 6)
@@ -78,7 +100,7 @@ export default function SignIn() {
       await setDoc(sessionRef, {
         userId: userCredential.user.uid,
         loginAt: serverTimestamp(),
-        device: navigator.userAgent,
+        device: currentDevice,
         active: true,
       });
 

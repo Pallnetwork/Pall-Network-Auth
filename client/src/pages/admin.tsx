@@ -1,11 +1,33 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, doc, updateDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  setDoc,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { auth, db, ADMIN_EMAIL } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function Admin() {
   const [txns, setTxns] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (!user || user.email !== ADMIN_EMAIL) {
+        navigate("/signin");
+      }
+    });
+
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     fetchTxns();
@@ -37,6 +59,18 @@ export default function Admin() {
       // 1️⃣ Mark transaction approved
       await updateDoc(txRef, {
         status: "approved",
+      });
+
+      // 2️⃣ Save history
+      await addDoc(collection(db, "admin_history"), {
+        transactionId: tx.id,
+        userId: tx.userId,
+        plan: tx.plan,
+        amount: tx.amount || 0,
+        txid: tx.txid,
+        status: "approved",
+        actionBy: "admin",
+        timestamp: serverTimestamp(),
       });
 
       // 2️⃣ Calculate expiry
@@ -76,6 +110,37 @@ export default function Admin() {
     }
   };
 
+  // =========================
+  // REJECT USER
+  // =========================
+  const reject = async (tx: any) => {
+    try {
+      const txRef = doc(db, "transactions", tx.id);
+
+      // 1️⃣ Update status
+      await updateDoc(txRef, {
+        status: "rejected",
+      });
+
+      // 2️⃣ Save history
+      await addDoc(collection(db, "admin_history"), {
+        transactionId: tx.id,
+        userId: tx.userId,
+        plan: tx.plan,
+        amount: tx.amount || 0,
+        txid: tx.txid,
+        status: "rejected",
+        actionBy: "admin",
+        timestamp: serverTimestamp(),
+      });
+
+      alert("User Rejected ❌");
+      fetchTxns();
+    } catch (err) {
+      console.error("Reject error:", err);
+    }
+  };
+
   return (
     <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Admin Panel</h1>
@@ -98,6 +163,14 @@ export default function Admin() {
             onClick={() => approve(t)}
           >
             {t.status === "approved" ? "Approved ✅" : "Approve"}
+          </Button>
+
+          <Button
+            variant="destructive"
+            className="ml-2"
+            onClick={() => reject(t)}
+          >
+            Reject
           </Button>
         </div>
       ))}

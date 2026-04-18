@@ -30,8 +30,6 @@ export default function UpgradePage({ userId }: { userId: string }) {
   const [agreed, setAgreed] = useState(false);
 
   const [userActivePlan, setUserActivePlan] = useState<string | null>(null);
-  const [txVerified, setTxVerified] = useState(false);
-  const [verifying, setVerifying] = useState(false);
 
   const getDeviceId = () => {
     let id = localStorage.getItem("deviceId");
@@ -181,60 +179,6 @@ export default function UpgradePage({ userId }: { userId: string }) {
   };
 
   // =========================
-  // TXID BASIC VALIDATION
-  // =========================
-  const validateTxid = (value: string) => {
-    if (!value) return false;
-
-    const txRegex = /^0x([A-Fa-f0-9]{64})$/;
-    return txRegex.test(value);
-  };
-
-  // =========================
-  // VERIFY TXID (FAKE CHECK PREVENTION LAYER)
-  // =========================
-  const handleVerifyTxid = async () => {
-    if (!validateTxid(txid)) {
-      toast({
-        title: "Invalid TXID",
-        description: "Invalid format",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setVerifying(true);
-
-    try {
-      const res = await fetch(
-        `https://api.bscscan.com/api?module=transaction&action=gettxreceiptstatus&txhash=${txid}&apikey=${import.meta.env.VITE_BSCSCAN_API_KEY}`
-      );
-
-      const data = await res.json();
-
-      if (data.result.status === "1") {
-        setTxVerified(true);
-        toast({ title: "TXID Verified ✅" });
-      } else {
-        setTxVerified(false);
-        toast({
-          title: "Invalid TXID",
-          description: "Transaction not found",
-          variant: "destructive",
-        });
-      }
-    } catch {
-      toast({
-        title: "Error",
-        description: "Verification failed",
-        variant: "destructive",
-      });
-    }
-
-    setVerifying(false);
-  };
-
-  // =========================
   // DUPLICATE PLAN CHECK
   // =========================
   const checkDuplicatePlan = async () => {
@@ -287,7 +231,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
       return;
     }
 
-    if (!selectedPlan || !txid || !agreed || !txVerified) {
+    if (!selectedPlan || !txid || !agreed) {
       toast({
         title: "Verification Required",
         description: "Please verify TXID before submitting",
@@ -348,7 +292,6 @@ export default function UpgradePage({ userId }: { userId: string }) {
       setSelectedPlan(null);
       setTxid("");
       setAgreed(false);
-      setTxVerified(false);
 
     } catch (err) {
       console.error(err);
@@ -470,31 +413,27 @@ export default function UpgradePage({ userId }: { userId: string }) {
             Send {selectedPlan.price} USDT to address below:
             </p>
 
+            <p className="text-sm font-semibold text-center text-black dark:text-white">
+              Transaction ID
+            </p>
+
             <div className="flex gap-2">
               <input
                 value={txid}
-                onChange={(e) => {
-                  setTxid(e.target.value);
-                  setTxVerified(false);
-                }}
-                placeholder="TXID"
+                onChange={(e) => setTxid(e.target.value)}
+                placeholder="Enter Transaction ID"
                 className="border rounded-md p-2 w-full bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-
-              <Button
-                onClick={handleVerifyTxid}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {verifying ? "..." : "Verify"}
-              </Button>
             </div>
 
-            {txVerified && (
-              <p className="text-green-600 text-sm">TXID Verified ✅</p>
-            )}
+            <p className="text-sm font-semibold text-center text-black dark:text-white">
+              Copy Address
+            </p>
 
             <div className="flex gap-2 items-center">
-              <p className="text-xs break-all flex-1 bg-gray-100 dark:bg-gray-800 text-black dark:text-white p-2 rounded">{RECEIVER_ADDRESS}</p>
+              <p className="text-xs break-all flex-1 bg-gray-100 dark:bg-gray-800 text-black dark:text-white p-2 rounded">
+                {RECEIVER_ADDRESS}
+              </p>
               <Button onClick={copyToClipboard}>
                 <Copy className="w-4 h-4" />
               </Button>
@@ -522,7 +461,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
             </button>
 
             <Button
-              disabled={!txVerified || !agreed || loading}
+              disabled={!txid || !agreed || loading}
               onClick={handleSubmit}
               className="w-full bg-green-600 hover:bg-green-700 text-white"
             >

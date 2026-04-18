@@ -11,10 +11,36 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { onSnapshot } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { auth, ADMIN_EMAIL } from "@/lib/firebase";
+import { addDoc } from "firebase/firestore";
 
 export default function AdminPanel() {
   const [requests, setRequests] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "admin_history"), (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds);
+      setHistory(list);
+    });
+
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+
+    if (!user || user.email !== ADMIN_EMAIL) {
+      navigate("/signin");
+    }
+  }, []);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "transactions"), (snap) => {
@@ -110,6 +136,25 @@ export default function AdminPanel() {
         approvedBy: "admin",
       });
 
+      // SAVE HISTORY
+      const historyRef = collection(db, "admin_history");
+
+      // check if already exists
+      const existing = history.find((h) => h.transactionId === id);
+
+      if (!existing) {
+        await addDoc(historyRef, {
+          transactionId: id,
+          userId,
+          plan,
+          txid: req.txid,
+          amount: req.amount || 0,
+          status: "approved",
+          actionBy: "admin",
+          timestamp: serverTimestamp(),
+        });
+      }
+
       await fetchPendingRequests();
       setLoadingId(null);
 
@@ -132,6 +177,25 @@ export default function AdminPanel() {
   };
 
   // =========================
+  // UPDATE HISTORY STATUS
+  // =========================
+  const updateHistoryStatus = async (id: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === "approved" ? "rejected" : "approved";
+
+      await updateDoc(doc(db, "admin_history", id), {
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+      });
+
+      alert("Status Updated ✅");
+    } catch (err) {
+      console.error(err);
+      alert("Error updating history");
+    }
+  };
+
+  // =========================
   // REJECT REQUEST
   // =========================
   const rejectRequest = async (id: string) => {
@@ -141,6 +205,22 @@ export default function AdminPanel() {
         rejectedAt: serverTimestamp(),
         rejectedBy: "admin",
       });
+
+      // SAVE HISTORY
+      const existing = history.find((h) => h.transactionId === id);
+
+      if (!existing) {
+        await addDoc(collection(db, "admin_history"), {
+          transactionId: id,
+          userId: requests.find(r => r.id === id)?.userId,
+          plan: requests.find(r => r.id === id)?.plan,
+          txid: requests.find(r => r.id === id)?.txid,
+          amount: requests.find(r => r.id === id)?.amount || 0,
+          status: "rejected",
+          actionBy: "admin",
+          timestamp: serverTimestamp(),
+        });
+      }
 
       await fetchPendingRequests();
       setLoadingId(null);
@@ -157,57 +237,130 @@ export default function AdminPanel() {
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Admin Panel</h1>
 
-      {requests.length === 0 ? (
-        <p className="text-gray-500">No pending requests</p>
+      {/* TABS */}
+      <div className="flex gap-2 mb-4">
+        <Button
+          variant={activeTab === "pending" ? "default" : "outline"}
+          onClick={() => setActiveTab("pending")}
+        >
+          Pending
+        </Button>
+
+        <Button
+          variant={activeTab === "history" ? "default" : "outline"}
+          onClick={() => setActiveTab("history")}
+        >
+          History
+        </Button>
+      </div>
+
+      {/* =========================
+          HISTORY TAB
+      ========================= */}
+      {activeTab === "history" ? (
+        <>
+          <h2 className="text-xl font-bold mb-2">History</h2>
+
+          <p className="text-sm text-gray-500 mb-2">
+            Total Records: {history.length}
+          </p>
+
+          {history.length === 0 ? (
+            <p className="text-gray-500">No history found</p>
+          ) : (
+            history.map((h) => (
+              <Card key={h.id} className="mb-2">
+                <CardContent className="p-3">
+                  <p><b>User:</b> {h.userId}</p>
+                  <p><b>Plan:</b> {h.plan}</p>
+
+                  <p>
+                    <b>Status:</b>{" "}
+                    <span
+                      className={
+                        h.status === "approved"
+                          ? "text-green-600 font-bold"
+                          : "text-red-600 font-bold"
+                      }
+                    >
+                      {h.status}
+                    </span>
+                  </p>
+
+                  <p><b>TXID:</b> {h.txid}</p>
+
+                  <Button
+                    className="mt-2"
+                    variant={h.status === "approved" ? "destructive" : "default"}
+                    onClick={() => updateHistoryStatus(h.id, h.status)}
+                  >
+                    🔄 {h.status === "approved" ? "Mark Rejected" : "Mark Approved"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </>
       ) : (
-        requests.map((req) => (
-          <Card key={req.id} className="mb-4">
-            <CardContent className="p-4 flex justify-between items-center">
+        <>
+          {/* =========================
+              PENDING TAB
+          ========================= */}
+          {requests.length === 0 ? (
+            <p className="text-gray-500">No pending requests</p>
+          ) : (
+            requests.map((req) => (
+              <Card key={req.id} className="mb-4">
+                <CardContent className="p-4 flex justify-between items-center">
 
-              {/* LEFT INFO */}
-              <div>
-                <p><strong>User ID:</strong> {req.userId}</p>
-                <p className="text-sm">
-                  <strong>Plan:</strong> {req.plan}
-                </p>
-                <p className="text-sm">
-                  <strong>Amount:</strong> {req.amount} USDT
-                </p>
-                <p className="text-sm break-all">
-                  <strong>TXID:</strong> {req.txid}
-                </p>
+                  {/* LEFT INFO */}
+                  <div>
+                    <p><strong>User ID:</strong> {req.userId}</p>
 
-                <p className="text-xs mt-1">
-                  Status:
-                  <span className="font-bold ml-1 text-yellow-600">
-                    {req.status}
-                  </span>
-                </p>
-              </div>
+                    <p className="text-sm">
+                      <strong>Plan:</strong> {req.plan}
+                    </p>
 
-              {/* ACTION BUTTONS */}
-              <div className="space-x-2">
-                <Button
-                  disabled={loadingId === req.id || req.status !== "pending"}
-                  onClick={() =>
-                    approveRequest(req.id, req.userId, req.plan)
-                  }
-                >
-                  {loadingId === req.id ? "Processing..." : "✅ Approve"}
-                </Button>
+                    <p className="text-sm">
+                      <strong>Amount:</strong> {req.amount} USDT
+                    </p>
 
-                <Button
-                  variant="destructive"
-                  onClick={() => rejectRequest(req.id)}
-                >
-                  ❌ Reject
-                </Button>
-              </div>
+                    <p className="text-sm break-all">
+                      <strong>TXID:</strong> {req.txid}
+                    </p>
 
-            </CardContent>
-          </Card>
-        ))
+                    <p className="text-xs mt-1">
+                      Status:
+                      <span className="font-bold ml-1 text-yellow-600">
+                        {req.status}
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* ACTION BUTTONS */}
+                  <div className="space-x-2">
+                    <Button
+                      disabled={loadingId === req.id || req.status !== "pending"}
+                      onClick={() =>
+                        approveRequest(req.id, req.userId, req.plan)
+                      }
+                    >
+                      {loadingId === req.id ? "Processing..." : "✅ Approve"}
+                    </Button>
+
+                    <Button
+                      variant="destructive"
+                      onClick={() => rejectRequest(req.id)}
+                    >
+                      ❌ Reject
+                    </Button>
+                  </div>
+
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </>
       )}
     </div>
   );
-}
