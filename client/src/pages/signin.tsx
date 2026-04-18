@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { auth, db } from "@/lib/firebase";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
-import { doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import { AlertCircle } from "lucide-react";
 import logo from "@/assets/logo.png"; // ✅ REAL LOGO IMPORT
 import { Eye, EyeOff } from "lucide-react";
 import { serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
 
 export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
@@ -95,7 +95,6 @@ export default function SignIn() {
       localStorage.setItem("userId", userCredential.user.uid);
 
       // 🔐 SESSION CREATE (PHASE 6)
-      const sessionRef = doc(db, "userSessions", userCredential.user.uid);
 
       await setDoc(sessionRef, {
         userId: userCredential.user.uid,
