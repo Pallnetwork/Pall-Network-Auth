@@ -391,12 +391,12 @@ export default function UpgradePage({ userId }: { userId: string }) {
           <div className="bg-white dark:bg-gray-900 p-5 rounded-xl w-[90%] max-w-sm shadow-xl space-y-4 text-black dark:text-white relative">
 
             {/* ❌ CLOSE BUTTON */}
-            <button
+            <Button
               onClick={() => setSelectedPlan(null)}
               className="absolute top-2 right-3 text-gray-500 hover:text-red-600 text-lg"
             >
               ✕
-            </button>
+            </Button>
 
             <h2 className="text-lg font-bold text-center">
               {selectedPlan.name} Plan
