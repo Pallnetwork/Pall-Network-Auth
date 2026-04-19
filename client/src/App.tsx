@@ -29,7 +29,6 @@ function Router() {
       <Route path="/app/signin" component={SignIn} />
       <Route path="/app/signup" component={SignUp} />
       <Route path="/app/forgot-password" component={ForgotPassword} />
-      <Route path="/app/admin" component={Admin} />
       <Route path="/admin" component={AdminPanel} />
       <Route path="/app/policy-full" component={PolicyFull} />
 
