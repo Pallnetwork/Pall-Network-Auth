@@ -208,9 +208,14 @@ export default function UpgradePage({ userId }: { userId: string }) {
   // =========================
   const handleSubmit = async () => {
 
+    console.log("Submit clicked");
+
     const blockedDevice = await checkDeviceSession(userId);
 
     if (blockedDevice) {
+
+      console.log("Blocked: device");
+
       toast({
         title: "Multiple Device Detected",
         description: "You are logged in on another device",
@@ -223,6 +228,9 @@ export default function UpgradePage({ userId }: { userId: string }) {
     const blocked = await checkRateLimit(userId);
 
     if (blocked) {
+
+      console.log("Blocked: rate limit");
+
       toast({
         title: "Too Many Requests",
         description: "Please wait 30 seconds before trying again",
@@ -247,6 +255,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
       const isDuplicate = await checkDuplicatePlan();
       if (isDuplicate) {
         setLoading(false);
+        console.log("Blocked: duplicate plan");
         return;
       }
 
@@ -269,6 +278,9 @@ export default function UpgradePage({ userId }: { userId: string }) {
         const selectedLevel = planOrder[selectedPlan.id] || 0;
 
         if (selectedLevel <= currentLevel) {
+
+          console.log("Blocked: downgrade or same plan");
+
           toast({
             title: "Upgrade Required",
             description: "You can only upgrade to a higher plan",
@@ -289,9 +301,18 @@ export default function UpgradePage({ userId }: { userId: string }) {
         createdAt: serverTimestamp(),
       });
 
+      // SUCCESS MESSAGE
+      toast({
+        title: "Payment Submitted ✅",
+        description: "Your request is sent for admin approval",
+      });
+
       setSelectedPlan(null);
       setTxid("");
       setAgreed(false);
+
+      // REDIRECT
+      navigate("/app/dashboard");
 
     } catch (err) {
       console.error(err);
@@ -413,7 +434,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
             Send {selectedPlan.price} USDT to address below:
             </p>
 
-            <p className="text-sm font-semibold text-center text-black dark:text-white">
+            <p className="text-sm font-semibold text-left text-black dark:text-white">
               Transaction ID
             </p>
 
@@ -426,7 +447,7 @@ export default function UpgradePage({ userId }: { userId: string }) {
               />
             </div>
 
-            <p className="text-sm font-semibold text-center text-black dark:text-white">
+            <p className="text-sm font-semibold text-left text-black dark:text-white">
               Copy Address
             </p>
 

@@ -11,9 +11,10 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { onSnapshot } from "firebase/firestore";
-import { useNavigate } from "react-router-dom";
 import { auth, ADMIN_EMAIL } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { addDoc } from "firebase/firestore";
+import { useLocation } from "wouter";
 
 export default function AdminPanel() {
   const [requests, setRequests] = useState<any[]>([]);
@@ -21,7 +22,7 @@ export default function AdminPanel() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
 
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "admin_history"), (snap) => {
@@ -35,11 +36,13 @@ export default function AdminPanel() {
   }, []);
 
   useEffect(() => {
-    const user = auth.currentUser;
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (!user || user.email !== ADMIN_EMAIL) {
+        navigate("/app/signin");
+      }
+    });
 
-    if (!user || user.email !== ADMIN_EMAIL) {
-      navigate("/signin");
-    }
+    return () => unsub();
   }, []);
 
   useEffect(() => {

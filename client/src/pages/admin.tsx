@@ -8,7 +8,7 @@ import {
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { auth, db, ADMIN_EMAIL } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { onAuthStateChanged } from "firebase/auth";
@@ -17,12 +17,12 @@ export default function Admin() {
   const [txns, setTxns] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (!user || user.email !== ADMIN_EMAIL) {
-        navigate("/signin");
+        navigate("/app/signin");
       }
     });
 
