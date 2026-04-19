@@ -17,11 +17,30 @@ import ForgotPassword from "@/pages/forgot-password";
 import Dashboard from "@/pages/dashboard";
 import KYCPage from "@/pages/kyc";
 import NotFound from "@/pages/not-found";
-import Admin from "@/pages/admin";
 import AdminPanel from "@/pages/AdminPanel";
 import PolicyFull from "@/pages/policyfull";
 
+// 🔐 ADMIN UID (central lock)
+const ADMIN_UID = "Kyqy8Ra4qxfJxj4WdIB4a77BH172";
 
+// =========================
+// ADMIN ROUTE GUARD
+// =========================
+function AdminRoute() {
+  const user = auth.currentUser;
+
+  if (!user) return <Redirect to="/app/signin" />;
+
+  if (user.uid !== ADMIN_UID) {
+    return <Redirect to="/app/signin" />;
+  }
+
+  return <AdminPanel />;
+}
+
+// =========================
+// ROUTER
+// =========================
 function Router() {
   return (
     <Switch>
@@ -29,7 +48,11 @@ function Router() {
       <Route path="/app/signin" component={SignIn} />
       <Route path="/app/signup" component={SignUp} />
       <Route path="/app/forgot-password" component={ForgotPassword} />
-      <Route path="/admin" component={AdminPanel} />
+
+      {/* ADMIN (FIXED) */}
+      <Route path="/admin" component={AdminRoute} />
+
+      {/* POLICY */}
       <Route path="/app/policy-full" component={PolicyFull} />
 
       {/* DASHBOARD */}
@@ -49,12 +72,14 @@ function Router() {
   );
 }
 
+// =========================
+// APP
+// =========================
 function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // 🔐 Token logic (tumhara existing)
       if (user) {
         const token = await user.getIdToken(true);
         localStorage.setItem("firebaseToken", token);
@@ -62,11 +87,8 @@ function App() {
         localStorage.removeItem("firebaseToken");
       }
 
-      // 🌊 GLOBAL SPLASH (har auth change par)
       setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-      }, 1200); // ⏳ splash duration
+      setTimeout(() => setLoading(false), 1200);
     });
 
     return () => unsubscribe();
@@ -78,7 +100,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
 
-          {/* 🔥 GLOBAL SPLASH */}
+          {/* SPLASH */}
           {loading && <Splash />}
 
           {/* APP */}

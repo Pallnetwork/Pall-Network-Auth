@@ -21,6 +21,7 @@ export default function AdminPanel() {
   const [history, setHistory] = useState<any[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const [, navigate] = useLocation();
 
@@ -37,9 +38,17 @@ export default function AdminPanel() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user || user.email !== ADMIN_EMAIL) {
+      if (!user) {
         navigate("/app/signin");
+        return;
       }
+
+      if (user.uid !== "Kyqy8Ra4qxfJxj4WdIB4a77BH172") {
+        navigate("/app/signin");
+        return;
+      }
+
+      setCheckingAuth(false); // ✅ allowed admin
     });
 
     return () => unsub();
@@ -235,6 +244,10 @@ export default function AdminPanel() {
       alert("Error rejecting request");
     }
   };
+
+  if (checkingAuth) {
+    return <div>Loading admin panel...</div>;
+  }
 
   return (
     <div className="p-4">
