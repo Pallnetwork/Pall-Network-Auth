@@ -21,9 +21,17 @@ export default function Admin() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user || user.email !== ADMIN_EMAIL) {
+      if (!user) {
         navigate("/app/signin");
+        return;
       }
+
+      if (user.uid !== "Kyqy8Ra4qxfJxj4WdIB4a77BH172") {
+        navigate("/app/signin");
+        return;
+      }
+
+      setCheckingAuth(false);
     });
 
     return () => unsub();

@@ -20,14 +20,26 @@ import NotFound from "@/pages/not-found";
 import AdminPanel from "@/pages/AdminPanel";
 import PolicyFull from "@/pages/policyfull";
 
-// 🔐 ADMIN UID (central lock)
+// 🔐 ADMIN UID
 const ADMIN_UID = "Kyqy8Ra4qxfJxj4WdIB4a77BH172";
 
 // =========================
-// ADMIN ROUTE GUARD
+// ADMIN ROUTE (FIXED)
 // =========================
 function AdminRoute() {
-  const user = auth.currentUser;
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+
+    return () => unsub();
+  }, []);
+
+  if (loading) return <Splash />;
 
   if (!user) return <Redirect to="/app/signin" />;
 
@@ -49,7 +61,7 @@ function Router() {
       <Route path="/app/signup" component={SignUp} />
       <Route path="/app/forgot-password" component={ForgotPassword} />
 
-      {/* ADMIN (FIXED) */}
+      {/* ADMIN */}
       <Route path="/admin" component={AdminRoute} />
 
       {/* POLICY */}
@@ -88,7 +100,7 @@ function App() {
       }
 
       setLoading(true);
-      setTimeout(() => setLoading(false), 1200);
+      setTimeout(() => setLoading(false), 1000);
     });
 
     return () => unsubscribe();
@@ -100,10 +112,8 @@ function App() {
         <TooltipProvider>
           <Toaster />
 
-          {/* SPLASH */}
           {loading && <Splash />}
 
-          {/* APP */}
           <Router />
         </TooltipProvider>
       </ThemeProvider>
