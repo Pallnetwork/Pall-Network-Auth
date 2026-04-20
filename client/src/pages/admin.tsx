@@ -9,16 +9,22 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { useLocation } from "wouter";
-import { auth, db, ADMIN_EMAIL } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { onAuthStateChanged } from "firebase/auth";
+
+const ADMIN_UID = "Kyqy8Ra4qxfJxj4WdIB4a77BH172";
 
 export default function Admin() {
   const [txns, setTxns] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const [, navigate] = useLocation();
 
+  // =========================
+  // AUTH CHECK (FIXED)
+  // =========================
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (!user) {
@@ -26,7 +32,7 @@ export default function Admin() {
         return;
       }
 
-      if (user.uid !== "Kyqy8Ra4qxfJxj4WdIB4a77BH172") {
+      if (user.uid !== ADMIN_UID) {
         navigate("/app/signin");
         return;
       }
@@ -58,18 +64,16 @@ export default function Admin() {
   };
 
   // =========================
-  // APPROVE + ACTIVATE USER
+  // APPROVE USER
   // =========================
   const approve = async (tx: any) => {
     try {
       const txRef = doc(db, "transactions", tx.id);
 
-      // 1️⃣ Mark transaction approved
       await updateDoc(txRef, {
         status: "approved",
       });
 
-      // 2️⃣ Save history
       await addDoc(collection(db, "admin_history"), {
         transactionId: tx.id,
         userId: tx.userId,
@@ -81,7 +85,6 @@ export default function Admin() {
         timestamp: serverTimestamp(),
       });
 
-      // 2️⃣ Calculate expiry
       const now = new Date();
       let expiryDate = new Date();
 
@@ -90,10 +93,9 @@ export default function Admin() {
       } else if (tx.plan === "growth") {
         expiryDate.setMonth(now.getMonth() + 6);
       } else {
-        expiryDate.setFullYear(now.getFullYear() + 100); // lifetime
+        expiryDate.setFullYear(now.getFullYear() + 100);
       }
 
-      // 3️⃣ Activate user subscription in profile
       const profileRef = doc(db, "profiles", tx.userId);
 
       await setDoc(
@@ -109,12 +111,10 @@ export default function Admin() {
         { merge: true }
       );
 
-      alert("User Approved + Subscription Activated 🚀");
-
-      // refresh list
+      alert("Approved Successfully 🚀");
       fetchTxns();
     } catch (err) {
-      console.error("Approve error:", err);
+      console.error(err);
     }
   };
 
@@ -125,12 +125,10 @@ export default function Admin() {
     try {
       const txRef = doc(db, "transactions", tx.id);
 
-      // 1️⃣ Update status
       await updateDoc(txRef, {
         status: "rejected",
       });
 
-      // 2️⃣ Save history
       await addDoc(collection(db, "admin_history"), {
         transactionId: tx.id,
         userId: tx.userId,
@@ -142,12 +140,19 @@ export default function Admin() {
         timestamp: serverTimestamp(),
       });
 
-      alert("User Rejected ❌");
+      alert("Rejected ❌");
       fetchTxns();
     } catch (err) {
-      console.error("Reject error:", err);
+      console.error(err);
     }
   };
+
+  // =========================
+  // LOADING SCREEN (IMPORTANT)
+  // =========================
+  if (checkingAuth) {
+    return <div>Loading admin panel...</div>;
+  }
 
   return (
     <div className="p-4">
@@ -155,9 +160,7 @@ export default function Admin() {
 
       {loading && <p>Loading transactions...</p>}
 
-      {txns.length === 0 && !loading && (
-        <p>No transactions found</p>
-      )}
+      {txns.length === 0 && !loading && <p>No transactions found</p>}
 
       {txns.map((t: any) => (
         <div key={t.id} className="border p-3 my-2 rounded">

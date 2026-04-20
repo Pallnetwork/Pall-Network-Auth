@@ -39,7 +39,7 @@ function AdminRoute() {
     return () => unsub();
   }, []);
 
-  if (loading) return <Splash />;
+  if (loading || user === undefined) return <Splash />;
 
   if (!user) return <Redirect to="/app/signin" />;
 
@@ -99,8 +99,10 @@ function App() {
         localStorage.removeItem("firebaseToken");
       }
 
-      setLoading(true);
-      setTimeout(() => setLoading(false), 1000);
+      if (!user) {
+        setLoading(true);
+        setTimeout(() => setLoading(false), 1000);
+      }
     });
 
     return () => unsubscribe();
