@@ -39,13 +39,11 @@ function AdminRoute() {
     return () => unsub();
   }, []);
 
-  if (loading || user === undefined) return <Splash />;
+  if (loading) return <Splash />;
 
   if (!user) return <Redirect to="/app/signin" />;
 
-  if (user.uid !== ADMIN_UID) {
-    return <Redirect to="/app/signin" />;
-  }
+  if (user.uid !== ADMIN_UID) return <Redirect to="/app/signin" />;
 
   return <AdminPanel />;
 }
